@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,8 +16,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// pages
 Route::get('/', [AppController::class, 'index'])->name('index');
+Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
+Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
+Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
+
+
+// require javascript
 Route::get('/require', [AppController::class, 'require'])->name('require');
+
+// generate document
+Route::get('generate-document', [DocumentController::class, 'generateDocument']);
 
 /*
 Route::get('/dashboard', function () {

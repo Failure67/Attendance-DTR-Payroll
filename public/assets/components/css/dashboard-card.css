@@ -1,0 +1,72 @@
+/* © 2025 Romar Jabez */
+
+.dashboard-card {
+    background-color: #d1e1f3;
+    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+    padding: 15px;
+    border-radius: 10px;
+    border-bottom: 4px solid #0D2C42;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dashboard-card-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dashboard-card-title {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.dashboard-card-view-all-btn {
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    gap: 3px;
+}
+
+.dashboard-card-view-all-btn:hover {
+    text-decoration: underline;
+}
+
+.dashboard-card-view-all {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* table */
+
+.dashboard-card-table table thead tr th,
+.dashboard-card-table table tbody tr td {
+    padding: 5px 8px;
+}
+
+.dashboard-card-table table thead tr th {
+    background-color: transparent;
+    font-size: 14px;
+}
+
+.dashboard-card-table table tbody tr td {
+    font-size: 13px;
+}
+
+.dashboard-card-table .recent-attendance.employee-name {
+    width: 200px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.dashboard-card-table .recent-attendance.time-in,
+.dashboard-card-table .recent-attendance.time-out {
+    width: 80px;
+}
+
+.dashboard-card-table .recent-attendance.date-modified {
+    width: 140px;
+}

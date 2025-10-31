@@ -1,0 +1,6 @@
+/* © 2025 Romar Jabez */
+
+.container.index {
+    display: flex;
+    gap: 20px;
+}
