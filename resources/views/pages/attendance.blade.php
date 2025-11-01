@@ -8,6 +8,15 @@
 
         <h1>{{ $title }}</h1>
 
+        <div class="container {{ $pageClass }}">
+
+            @include('components.search', [
+                'searchClass' => 'attendance',
+                'searchId' => 'attendance-search',
+            ])
+
+        </div>
+
     </div>
 
 @endsection

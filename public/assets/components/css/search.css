@@ -1,0 +1,19 @@
+/* © 2025 Romar Jabez */
+
+.search input {
+    background-color: #D1E1F3;
+    border: 1px solid #616161;
+    outline: none;
+    padding: 3px 10px 3px 33px;
+    border-radius: 18px;
+    width: 100%;
+    max-width: 300px;
+}
+
+#search-icon {
+    cursor: text;
+    position: absolute;
+    transform: translateY(5px);
+    padding-left: 10px;
+    font-size: 14px;
+}

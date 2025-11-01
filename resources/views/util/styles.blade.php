@@ -4,9 +4,11 @@
 
 {{-- components --}}
 <link rel="stylesheet" href="{{ asset('assets/components/css/dashboard-card.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/components/css/search.css') }}">
 
 {{-- pages --}}
 <link rel="stylesheet" href="{{ asset('assets/css/index.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/attendance.css') }}">
 
 {{-- main assets --}}
 <link rel="stylesheet" href="{{ asset('assets/css/menu.css') }}">
