@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="{{ asset('assets/fontawesome/css/fontawesome.min.css') }}">
 
 {{-- components --}}
+<link rel="stylesheet" href="{{ asset('assets/components/css/button.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/dashboard-card.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/search.css') }}">
 

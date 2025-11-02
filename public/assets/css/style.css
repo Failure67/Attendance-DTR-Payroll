@@ -31,3 +31,8 @@ main {
 hr {
     margin: 0;
 }
+
+.crud-buttons {
+    display: flex;
+    gap: 5px;
+}

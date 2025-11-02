@@ -1,0 +1,25 @@
+/* © 2025 Romar Jabez */
+
+.button {
+    border: none;
+    outline: none;
+    padding: 5px 10px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.button:hover {
+    filter: brightness(0.9);
+}
+
+.button.main {
+    background-color: #245a80;
+    color: #e4e4e4;
+}
+
+.button.danger {
+    background-color: #af423e;
+    color: #ffffff;
+}
