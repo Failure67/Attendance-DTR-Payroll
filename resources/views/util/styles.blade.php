@@ -5,6 +5,7 @@
 {{-- components --}}
 <link rel="stylesheet" href="{{ asset('assets/components/css/button.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/dashboard-card.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/components/css/modal.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/pagination.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/search.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/table.css') }}">

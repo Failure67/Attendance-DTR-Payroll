@@ -1,0 +1,17 @@
+/* © 2025 Romar Jabez */
+
+.modal-content {
+    border-radius: 15px;
+}
+
+.modal-header {
+    padding: 10px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+}

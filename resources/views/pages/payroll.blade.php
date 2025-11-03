@@ -22,6 +22,8 @@
                     'buttonId' => 'payroll-add',
                     'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
                     'buttonLabel' => 'New',
+                    'buttonModal' => true,
+                    'buttonTarget' => 'addPayrollModal'
                 ])
 
                 @include('components.button', [
@@ -29,6 +31,7 @@
                     'buttonId' => 'payroll-delete',
                     'buttonIcon' => '<i class="fa-solid fa-trash"></i>',
                     'buttonLabel' => 'Delete',
+                    'buttonModal' => false,
                 ])
 
             </div>
@@ -70,5 +73,37 @@
         </div>
 
     </div>
+
+@endsection
+
+@section('modal')
+
+    @include('components.modal', [
+        'modalClass' => 'payroll-modal',
+        'modalId' => 'addPayrollModal',
+        'modalHeader' => '
+            <div class="modal-title">
+                New Payroll
+            </div>
+            ' . view('components.button', [
+                'buttonType' => 'icon modal-close',
+                'buttonId' => 'attendance-add',
+                'buttonIcon' => '<i class="fa-solid fa-xmark"></i>',
+                'buttonModal' => true,
+            ])->render() . '
+        ',
+        'modalBody' => '
+            ' . view('components.input-field', [
+                'inputType' => 'text',
+                'inputSrc' => 'payroll',
+                'inputVar' => 'employee-name',
+                'inputName' => 'employee_name',
+                'inputLabel' => 'Name of employee',
+            ])->render() . '
+        ',
+        'modalFooter' => '
+        
+        ',
+    ])
 
 @endsection
