@@ -29,13 +29,20 @@ class AppController extends Controller
     // payroll
     public function viewPayroll()
     {
-        $payrolls = Payroll::with('user')->latest()->get();
-        $users = User::all();
+        //$payrolls = Payroll::with('user')->latest()->get();
+        //$users = User::all();
 
+        /*
         return view('pages.payroll', [
             'title' => 'Payroll',
             'pageClass' => 'payroll',
         ], compact('payrolls', 'users'));
+        */
+
+        return view('pages.payroll', [
+            'title' => 'Payroll',
+            'pageClass' => 'payroll',
+        ]);
     }
 
     public function storePayroll(Request $request)

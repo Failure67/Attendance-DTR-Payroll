@@ -15,7 +15,7 @@
                 'searchId' => 'attendance-search',
             ])
 
-            <span class="crud-buttons">
+            <div class="crud-buttons">
 
                 @include('components.button', [
                     'buttonType' => 'main',
@@ -31,13 +31,39 @@
                     'buttonLabel' => 'Delete',
                 ])
 
-            </span>
+            </div>
 
         </div>
         
-        <div class="container {{ $pageClass }} table">
+        <div class="container {{ $pageClass }} table-component">
             
-            
+            @include('components.table', [
+                'tableClass' => 'payroll-table',
+                'tableCol' => [
+                    'employee-name',
+                    'time-in',
+                    'time-out',
+                    'date-modified',
+                ],
+                'tableLabel' => [
+                    'Name of employee',
+                    'Time-in',
+                    'Time-out',
+                    'Date modified',
+                ],
+                'tableData' => [
+                    ['CELESTIAL, ROMAR JABEZ M.', '06:00 AM', '04:00 PM', 'September 1, 2025'],
+                    
+                ]
+            ])
+
+        </div>
+
+        <div class="container {{ $pageClass }} pagination">
+
+            @include('components.pagination', [
+                'paginationClass' => 'attendance',    
+            ])
 
         </div>
 

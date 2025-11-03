@@ -1,0 +1,51 @@
+/* © 2025 Romar Jabez */
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    user-select: none;
+}
+
+.pagination-prev, .pagination-center, .pagination-next {
+    display: flex;
+    gap: 8px;
+}
+
+.page-btn {
+    border: 2px solid #496174;
+    background-color: #c4d9e7;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    font-weight: 600;
+}
+
+.page-btn:hover:not(.page-btn-disabled):not(.page-btn-selected):not(.page-btn-more) {
+    background-color: #0D2C42;
+    color: white;
+    cursor: pointer;
+}
+
+.page-btn-disabled {
+    background-color: #7a7a7a;
+    color: #d4d4d4;
+    border: 2px solid #6b6b6b;
+}
+
+.page-btn-disabled:hover {
+    cursor: default;
+}
+
+.page-btn-selected {
+    background-color: #0D2C42;
+    color: white;
+}
+
+.page-btn-more {
+    border: none;
+    background-color: transparent;
+}

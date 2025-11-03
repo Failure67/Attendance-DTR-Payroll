@@ -14,13 +14,13 @@
                 'cardClass' => 'recent-attendance',
                 'label' => 'Recent Attendance',
                 'viewAll' => route('attendance'),
-                'tableClass' => [
+                'tableCol' => [
                     'employee-name',
                     'time-in',
                     'time-out',
                     'date-modified',
                 ],
-                'tableCol' => [
+                'tableLabel' => [
                     'Name of employee',
                     'Time-in',
                     'Time-out',
@@ -39,7 +39,7 @@
                 'cardClass' => 'recent-payroll',
                 'label' => 'Recent Payroll',
                 'viewAll' => route('payroll'),
-                'tableClass' => [
+                'tableCol' => [
                     'employee-name',
                     'wage-type',
                     'min-wage',
@@ -48,7 +48,7 @@
                     'deductions',
                     'net-pay',
                 ],
-                'tableCol' => [
+                'tableLabel' => [
                     'Name of employee',
                     'Type of wage',
                     'Minimum wage',

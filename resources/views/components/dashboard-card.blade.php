@@ -14,9 +14,9 @@
 
             <thead>
                 <tr>
-                    @foreach ($tableCol as $index => $col)
-                        <th class="{{ $cardClass }} {{ $tableClass[$index] }}">
-                            {{ $col }}
+                    @foreach ($tableLabel as $index => $label)
+                        <th class="{{ $cardClass }} {{ $tableCol[$index] }}">
+                            {{ $label }}
                         </th>
                     @endforeach
                 </tr>
@@ -24,13 +24,13 @@
 
             <tbody>
                 @foreach ($tableData as $row)
-                <tr>
-                    @foreach ($row as $index => $data)
-                        <td class="{{ $cardClass }} {{ $tableClass[$index] }}">
-                            {{ $data }}
-                        </td>
-                    @endforeach
-                </tr>
+                    <tr>
+                        @foreach ($row as $index => $data)
+                            <td class="{{ $cardClass }} {{ $tableCol[$index] }}">
+                                {{ $data }}
+                            </td>
+                        @endforeach
+                    </tr>
                 @endforeach
             </tbody>
 
