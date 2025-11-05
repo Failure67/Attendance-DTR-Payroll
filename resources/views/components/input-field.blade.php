@@ -8,7 +8,7 @@
 
         <input type="search"   
         class="input-field {{ $inputType }} {{ $inputSrc }}"
-        placeholder="Type {{ ucwords(strtolower($inputLabel)) }} here"
+        placeholder="{{ $inputPlaceholder }}"
 
         @if (!empty($inputName))
             name="{{ $inputName }}"

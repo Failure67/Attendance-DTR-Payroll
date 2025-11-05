@@ -99,6 +99,7 @@
                 'inputVar' => 'employee-name',
                 'inputName' => 'employee_name',
                 'inputLabel' => 'Name of employee',
+                'inputPlaceholder' => 'Employee name',
             ])->render() . '
         ',
         'modalFooter' => '
