@@ -101,6 +101,18 @@
                 'inputLabel' => 'Name of employee',
                 'inputPlaceholder' => 'Employee name',
             ])->render() . '
+            ' . view('components.select', [
+                'selectSrc' => 'payroll',
+                'selectVar' => 'wage-type',
+                'selectName' => 'wage_type',
+                'selectLabel' => 'Type of wage',
+                'selectData' => [
+                    'daily' => 'Daily',
+                    'hourly' => 'Hourly',
+                    'weekly' => 'Weekly',
+                    'monthly' => 'Monthly',
+                ],
+            ])->render() .'
         ',
         'modalFooter' => '
         

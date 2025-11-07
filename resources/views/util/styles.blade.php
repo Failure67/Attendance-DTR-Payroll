@@ -1,6 +1,7 @@
 {{-- plugins --}}
 <link rel="stylesheet" href="{{ asset('assets/bootstrap/css/bootstrap.min.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/fontawesome/css/fontawesome.min.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/select2/dist/css/select2.min.css') }}">
 
 {{-- components --}}
 <link rel="stylesheet" href="{{ asset('assets/components/css/button.css') }}">
@@ -9,6 +10,7 @@
 <link rel="stylesheet" href="{{ asset('assets/components/css/modal.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/pagination.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/search.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/components/css/select.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/table.css') }}">
 
 {{-- pages --}}

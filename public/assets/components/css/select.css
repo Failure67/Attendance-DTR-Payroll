@@ -1,0 +1,32 @@
+/* © 2025 Romar Jabez */
+
+.select-option {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.select2 {
+    width: 100% !important;
+}
+
+.selection .select2-selection--single {
+    padding: 25px 5px;
+    display: flex;
+    align-items: center;
+    border: 2px solid #afafaf;
+    border-radius: 10px;
+    outline: none;
+}
+
+.selection .select2-selection--single .select2-selection__arrow {
+    transform: translate(-6px, 12px);
+}
+
+.select2-search__field {
+    outline: none;
+}
+
+.select2-selection__clear {
+    display: none;
+}

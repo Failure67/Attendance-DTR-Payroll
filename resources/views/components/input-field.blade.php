@@ -7,7 +7,7 @@
     <div class="input-field-container">
 
         <input type="search"   
-        class="input-field {{ $inputType }} {{ $inputSrc }}"
+        class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? '' }}"
         placeholder="{{ $inputPlaceholder }}"
 
         @if (!empty($inputName))
