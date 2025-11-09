@@ -15,3 +15,9 @@
     font-size: 20px;
     font-weight: 600;
 }
+
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}

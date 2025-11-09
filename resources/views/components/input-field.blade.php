@@ -4,6 +4,11 @@
         {{ $inputLabel }}
     </label>
 
+    @if (($inputType === 'amount'))
+
+    @endif
+
+    @if ()
     <div class="input-field-container">
 
         <input type="search"   
