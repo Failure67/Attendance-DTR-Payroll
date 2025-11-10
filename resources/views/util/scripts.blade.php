@@ -5,6 +5,7 @@
 <script src="{{ asset('assets/select2/dist/js/select2.full.min.js') }}"></script>
 
 {{-- components --}}
+<script src="{{ asset('assets/components/js/input-field.js') }}"></script>
 <script src="{{ asset('assets/components/js/select-option.js') }}"></script>
 
 <script>

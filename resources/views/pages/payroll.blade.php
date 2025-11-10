@@ -100,6 +100,7 @@
                 'inputName' => 'employee_name',
                 'inputLabel' => 'Name of employee',
                 'inputPlaceholder' => 'Employee name',
+                'inputInDecrement' => false,
             ])->render() . '
             ' . view('components.select', [
                 'selectSrc' => 'payroll',
@@ -113,6 +114,32 @@
                     'monthly' => 'Monthly',
                 ],
             ])->render() .'
+            ' . view('components.input-field', [
+                'inputType' => 'amount',
+                'inputSrc' => 'payroll',
+                'inputVar' => 'min-wage',
+                'inputName' => 'min_wage',
+                'inputLabel' => 'Minimum wage',
+                'inputPlaceholder' => '0.00',
+                'inputInDecrement' => false,
+            ])->render() . '
+            <div class="container mt-2">
+                <div class="input-label">
+                    Units worked
+                </div>
+
+                ' . view('components.input-field', [
+                        'inputType' => 'number',
+                        'inputSrc' => 'payroll',
+                        'inputVar' => 'units-worked',
+                        'inputName' => 'units_worked',
+                        'inputPlaceholder' => '0',
+                        'inputInDecrement' => true,
+                    ])->render() . '
+            </div>
+            <div class="container">
+                test
+            </div>
         ',
         'modalFooter' => '
         

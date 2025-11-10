@@ -1,5 +1,7 @@
 /* © 2025 Romar Jabez */
 
+/* main */
+
 .button {
     border: none;
     outline: none;
@@ -31,6 +33,20 @@
     font-size: 20px;
     width: 40px;
     height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* icon */
+
+.button.icon {
+    background-color: #245a80;
+    color: #e4e4e4;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;

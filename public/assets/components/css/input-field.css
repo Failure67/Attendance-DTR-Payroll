@@ -6,6 +6,10 @@
     gap: 5px;
 }
 
+.input-label, .select-label {
+    user-select: none;
+}
+
 .input-field {
     border: 2px solid #afafaf;
     border-radius: 10px;
@@ -18,4 +22,36 @@
 .input-field:focus {
     border-color: #5a85a4;
     box-shadow: 0 0 5px 1px rgba(90, 133, 164, 0.8);
+}
+
+/* amount */
+
+.input-field-container.amount {
+    display: flex;
+    align-items: center;
+    position: relative;
+    margin-top: 15px;
+}
+
+.input-field.amount {
+    position: absolute;
+    bottom: -7px;
+    max-width: calc(100% - 32px);
+    padding-left: 30px;
+    max-width: 100%;
+}
+
+.input-field-container.amount .input-amount-sign {
+    z-index: 1;
+    transform: translate(15px, -5px);
+    color: #757575;
+}
+
+/* inDecrement and withLabel */
+
+.input-field-container.inDecrement,
+.input-field-container.withLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
