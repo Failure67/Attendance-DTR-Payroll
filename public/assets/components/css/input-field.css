@@ -49,9 +49,11 @@
 
 /* inDecrement and withLabel */
 
-.input-field-container.inDecrement,
-.input-field-container.withLabel {
+.input-field-container.number.inDecrement {
     display: flex;
     align-items: center;
-    gap: 8px;
+}
+
+.input-field.number {
+    margin: 0 10px;
 }

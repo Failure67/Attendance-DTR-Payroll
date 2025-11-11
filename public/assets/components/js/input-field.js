@@ -40,6 +40,12 @@ $(document).ready(function() {
     function unformatAmount(value) {
         return value.replace(/,/g, '');
     }
+
+    function updatePesoSignColor($input) {
+        const $sign = $input.closest('.input-field-container').find('.input-amount-sign');
+        if ($input.val().trim() !== '') $sign.addClass('has-value');
+        else $sign.removeClass('has-value');
+    }
     
     // amount
     $(document).on('input', '.input-field.amount', function () {
@@ -56,6 +62,8 @@ $(document).ready(function() {
             const diff = formatted.length - oldLength;
             this.setSelectionRange(cursorPos + diff, cursorPos + diff);
         }
+
+        updatePesoSignColor($(this));
     });
 
     $(document).on('blur', '.input-field.amount', function () {
@@ -71,6 +79,8 @@ $(document).ready(function() {
             }
             this.value = formatAmount(v);
         }
+        
+        updatePesoSignColor($(this));
     });
 
     // number

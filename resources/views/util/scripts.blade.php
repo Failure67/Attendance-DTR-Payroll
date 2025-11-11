@@ -6,6 +6,7 @@
 
 {{-- components --}}
 <script src="{{ asset('assets/components/js/input-field.js') }}"></script>
+<script src="{{ asset('assets/components/js/manage-item.js') }}"></script>
 <script src="{{ asset('assets/components/js/select-option.js') }}"></script>
 
 <script>

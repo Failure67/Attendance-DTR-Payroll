@@ -1,8 +1,10 @@
 <div class="input-field-option">
 
-    <label class="input-label {{ $inputType }}" for="{{ $inputVar }}-{{ $inputSrc }}">
-        {{ $inputLabel ?? null }}
-    </label>
+    @if (!empty($inputLabel))
+        <label class="input-label {{ $inputType }}" for="{{ $inputVar }}-{{ $inputSrc }}">
+            {{ $inputLabel }}
+        </label>
+    @endif
 
     {{-- amount input --}}
     @if ($inputType === 'amount')
@@ -21,7 +23,9 @@
             @endif
 
             id="{{ $inputVar }}-{{ $inputSrc }}"
-            autocomplete="off">
+            autocomplete="off"
+            inputmode="decimal"
+            pattern="-?[0-9]*[.,]?[0-9]*">
 
         </div>
     @endif
@@ -29,12 +33,13 @@
     {{-- number --}}
     @if ($inputType === 'number')
         <div class="input-field-container {{ $inputType }} 
-        {{ ($inputInDecrement ?? false) ? 'inDecrement' : '' }} 
-        {{ ($inputNumberWithLabel ?? false) ? 'withLabel' : '' }}">
+        {{ ($inputInDecrement ?? false) ? 'inDecrement' : null }} 
+        {{ ($inputNumberWithLabel ?? false) ? 'withLabel' : null }}"
+        >
 
             @if ($inputInDecrement ?? true)
                 @include('components.button', [
-                    'buttonType' => 'icon',
+                    'buttonType' => 'icon decrement',
                     'buttonId' => $inputVar . '-decrement',
                     'buttonIcon' => '<i class="fa-solid fa-minus"></i>',
                     'buttonModal' => false,
@@ -50,7 +55,14 @@
             @endif
 
             id="{{ $inputVar }}-{{ $inputSrc }}"
-            autocomplete="off">
+            autocomplete="off"
+
+            @if (!empty($inputStyle))
+                style="{{ $inputStyle ?? null }}"
+            @endif
+            
+            inputmode="decimal"
+            pattern="-?[0-9]*[.,]?[0-9]*">
 
             @if ($inputNumberWithLabel ?? true)
                 <span class="input-number-label">
@@ -60,7 +72,7 @@
 
             @if ($inputInDecrement ?? true)
                 @include('components.button', [
-                    'buttonType' => 'icon',
+                    'buttonType' => 'icon increment',
                     'buttonId' => $inputVar . '-increment',
                     'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
                     'buttonModal' => false,

@@ -3,7 +3,7 @@ class="button {{ $buttonType }}{{ ($buttonDisabled ?? false) ? 'disabled' : '' }
 id="{{ $buttonId }}"
 @if ($buttonModal ?? true)
     data-bs-toggle="modal"
-    data-bs-target="#{{ $buttonTarget ?? '' }}"
+    data-bs-target="#{{ $buttonTarget ?? null }}"
 @endif>
     
     @if (!empty($buttonIcon))

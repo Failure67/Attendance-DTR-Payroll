@@ -6,6 +6,7 @@
     gap: 5px;
 }
 
+/* long */
 .select2 {
     width: 100% !important;
 }
@@ -29,4 +30,18 @@
 
 .select2-selection__clear {
     display: none;
+}
+
+/* short */
+
+.select.short {
+    padding: 10px 15px;
+    border: 2px solid #afafaf;
+    border-radius: 10px;
+    outline: none;
+    width: 100%;
+}
+
+@media (max-width: 575px) {
+    
 }

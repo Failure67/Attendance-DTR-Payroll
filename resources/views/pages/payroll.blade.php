@@ -103,6 +103,7 @@
                 'inputInDecrement' => false,
             ])->render() . '
             ' . view('components.select', [
+                'selectType' => 'long',
                 'selectSrc' => 'payroll',
                 'selectVar' => 'wage-type',
                 'selectName' => 'wage_type',
@@ -123,7 +124,7 @@
                 'inputPlaceholder' => '0.00',
                 'inputInDecrement' => false,
             ])->render() . '
-            <div class="container mt-2">
+            <div class="container mt-2 d-flex align-items-center gap-2">
                 <div class="input-label">
                     Units worked
                 </div>
@@ -135,11 +136,30 @@
                         'inputName' => 'units_worked',
                         'inputPlaceholder' => '0',
                         'inputInDecrement' => true,
+                        'inputStyle' => 'width: 80px;'
                     ])->render() . '
+
+                ' . view('components.select', [
+                    'selectType' => 'short',
+                    'selectSrc' => 'payroll',
+                    'selectVar' => 'wage-unit',
+                    'selectData' => [
+                        'day' => 'day/s',
+                        'week' => 'week/s',
+                        'month' => 'month/s',
+                    ],
+                    'selectStyle' => 'width: 170px;'
+                ])->render() .'
             </div>
-            <div class="container">
-                test
-            </div>
+            ' . view('components.input-field', [
+                'inputType' => 'amount',
+                'inputSrc' => 'payroll',
+                'inputVar' => 'gross-pay',
+                'inputName' => 'gross_pay',
+                'inputLabel' => 'Gross pay',
+                'inputPlaceholder' => '0.00',
+                'inputInDecrement' => false,
+            ])->render() . '
         ',
         'modalFooter' => '
         
