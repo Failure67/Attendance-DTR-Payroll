@@ -26,6 +26,10 @@
 
 /* amount */
 
+.input-field-option.amount {
+    margin-bottom: 7px;
+}
+
 .input-field-container.amount {
     display: flex;
     align-items: center;

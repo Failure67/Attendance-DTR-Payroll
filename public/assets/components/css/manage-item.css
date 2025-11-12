@@ -1,0 +1,64 @@
+/* © 2025 Romar Jabez */
+
+.manage-item-option {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.manage-item-container .item-option,
+.manage-item-container .item-action {
+    display: flex;
+}
+
+.manage-item-container .item-option {
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+.manage-item-container .item-action {
+    gap: 5px;
+}
+
+.manage-item-container .item-option .item-label {
+    font-weight: 600;
+    user-select: none;
+}
+
+.manage-item-option .manage-item-more {
+    display: flex;
+    gap: 2px;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+.manage-item-option .manage-item-more:hover {
+    text-decoration: underline;
+}
+
+hr {
+    border: 1px solid #1e1e1e;
+}
+
+/* action buttons */
+
+.manage-item-container .item-action {
+    color: #686868;
+}
+
+.manage-item-container .item-action .item-edit,
+.manage-item-container .item-action .item-remove {
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 50%;
+}
+
+.manage-item-container .item-action .item-edit:hover {
+    background-color: #245a80;
+    color: white;
+}
+
+.manage-item-container .item-action .item-remove:hover {
+    background-color: #af423e;
+    color: white;
+}

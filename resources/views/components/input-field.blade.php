@@ -1,4 +1,4 @@
-<div class="input-field-option">
+<div class="input-field-option {{ $inputType }}">
 
     @if (!empty($inputLabel))
         <label class="input-label {{ $inputType }}" for="{{ $inputVar }}-{{ $inputSrc }}">

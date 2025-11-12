@@ -124,7 +124,8 @@
                 'inputPlaceholder' => '0.00',
                 'inputInDecrement' => false,
             ])->render() . '
-            <div class="container mt-2 d-flex align-items-center gap-2">
+            <div class="container d-flex align-items-center gap-2">
+
                 <div class="input-label">
                     Units worked
                 </div>
@@ -150,6 +151,7 @@
                     ],
                     'selectStyle' => 'width: 170px;'
                 ])->render() .'
+
             </div>
             ' . view('components.input-field', [
                 'inputType' => 'amount',
@@ -160,6 +162,16 @@
                 'inputPlaceholder' => '0.00',
                 'inputInDecrement' => false,
             ])->render() . '
+            ' . view('components.manage-item', [
+                'manageItemLabel' => 'Deductions',
+                'manageItems' => [
+                    ['name' => 'SSS', 'amount' => 500.00],
+                    ['name' => 'PhilHealth', 'amount' => 300.00],
+                ]
+            ])->render() . '
+            ' .view('components.modal-console'
+                
+            )->render() . '
         ',
         'modalFooter' => '
         

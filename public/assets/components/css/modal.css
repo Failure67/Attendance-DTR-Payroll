@@ -21,3 +21,10 @@
     flex-direction: column;
     gap: 5px;
 }
+
+.modal-console {
+    background-color: #a3c0d5;
+    border: 1px solid #12293a;
+    border-radius: 8px;
+    color: #12293a;
+}
