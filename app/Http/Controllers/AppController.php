@@ -71,13 +71,34 @@ class AppController extends Controller
                 break;
         }
 
-        $deductions = $validated['deductions'] ?? 0;
-        $net_pay = $gross_pay - $deductions;
+        $total_deductions = 0;
+        if (!empty($validated['deductions'])) {
+            foreach ($validated['deductions'] as $deduction) {
+                $total_deductions += $deduction['amount'];
+            }
+        }
 
-        $validated['gross_pay'] = $gross_pay;
-        $validated['net_pay'] = $net_pay;
+        $net_pay = $gross_pay - $total_deductions;
 
-        Payroll::create($validated);
+        $payroll = Payroll::create([
+            'user_id' => $validated['user_id'],
+            'wage_type' => $validated['wage_type'],
+            'min_wage' => $validated['min_wage'],
+            'hours_worked' => $validated['hours_worked'],
+            'days_worked' => $validated['days_worked'],
+            'gross_pay' => $gross_pay,
+            'total_deductions' => $total_deductions,
+            'net_pay' => $net_pay,
+        ]);
+
+        if (!empty($validated['deductions'])) {
+            foreach ($validated['deductions'] as $deduction) {
+                $payroll->deductions()->create([
+                    'deduction_name' => $deduction['name'],
+                    'amount' => $deduction['amount'],
+                ]);
+            }
+        }
 
         return back()->with('success', 'Payroll record created successfully.');
     }

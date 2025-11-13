@@ -13,7 +13,7 @@
 
 .manage-item-container .item-option {
     justify-content: space-between;
-    padding: 5px 0;
+    padding: 8px 0;
 }
 
 .manage-item-container .item-action {
@@ -23,6 +23,7 @@
 .manage-item-container .item-option .item-label {
     font-weight: 600;
     user-select: none;
+    margin-top: 3px;
 }
 
 .manage-item-option .manage-item-more {
@@ -53,12 +54,36 @@ hr {
     border-radius: 50%;
 }
 
-.manage-item-container .item-action .item-edit:hover {
+.manage-item-container .item-action .item-edit:hover,
+.manage-item-edit .new-item-action .new-item.add:hover {
     background-color: #245a80;
     color: white;
 }
 
-.manage-item-container .item-action .item-remove:hover {
+.manage-item-container .item-action .item-remove:hover,
+.manage-item-edit .new-item-action .new-item-cancel:hover {
     background-color: #af423e;
     color: white;
+}
+
+/* add new item */
+
+.manage-item-edit {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.manage-item-edit .new-item-action {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    color: #686868;
+}
+
+.manage-item-edit .new-item-action .new-item,
+.manage-item-edit .new-item-action .new-item-cancel {
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 50%;
 }

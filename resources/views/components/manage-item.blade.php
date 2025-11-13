@@ -1,16 +1,15 @@
-<div class="manage-item-option">
+<div class="manage-item-option" data-name="{{ $manageItemName ?? 'items' }}">
 
-    <span class="input-label">
+    <span class="input-label mt-1">
         {{ $manageItemLabel ?? null }}
-        Example
     </span>
 
 
     <div class="manage-item-container">
 
-        @foreach ($manageItems ?? [] as $item)
+        @foreach ($manageItems ?? [] as $index => $item)
 
-        <div class="item-option">
+        <div class="item-option" data-index="{{ $index }}">
 
             <div class="item-label">
                 
@@ -26,6 +25,14 @@
 
             </div>
 
+            <input type="hidden" 
+                   name="{{ $manageItemName ?? 'items' }}[{{ $index }}][name]" 
+                   value="{{ $item['name'] ?? $item->name ?? '' }}">
+
+            <input type="hidden" 
+                   name="{{ $manageItemName ?? 'items' }}[{{ $index }}][amount]" 
+                   value="{{ $item['amount'] ?? $item->amount ?? 0 }}">
+            
             <div class="item-action">
                 
                 <div class="item-edit">
@@ -40,13 +47,48 @@
 
         </div>
 
+        <hr>
+
         @endforeach
+
+    </div>
+
+    <div class="manage-item-edit">
+
+        @include('components.input-field', [
+            'inputType' => 'text',
+            'inputSrc' => 'manage-item',
+            'inputVar' => 'item-name-' . ($manageItemName ?? 'items'),
+            'inputName' => 'temp_' . ($manageItemName ?? 'items') . '_name',
+            'inputPlaceholder' => 'Name of item',
+        ])
+
+        @include('components.input-field', [
+            'inputType' => 'amount',
+            'inputSrc' => 'manage-item',
+            'inputVar' => 'item-amount-' . ($manageItemName ?? 'items'),
+            'inputName' => 'temp_' . ($manageItemName ?? 'items') . '_amount',
+            'inputPlaceholder' => '0.00',
+            'isVertical' => true,
+        ])
+
+        <div class="new-item-action">
+        
+            <div class="new-item add">
+                <i class="fa-solid fa-check"></i>
+            </div>
+
+            <div class="new-item-cancel">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+
+        </div>
 
     </div>
 
     <hr>
 
-    <div class="manage-item-more">
+    <div class="manage-item-more mb-1">
 
         <span class="manage-icon">
             <i class="fa-solid fa-plus"></i>

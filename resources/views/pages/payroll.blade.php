@@ -164,10 +164,8 @@
             ])->render() . '
             ' . view('components.manage-item', [
                 'manageItemLabel' => 'Deductions',
-                'manageItems' => [
-                    ['name' => 'SSS', 'amount' => 500.00],
-                    ['name' => 'PhilHealth', 'amount' => 300.00],
-                ]
+                'manageItemName' => 'deductions',
+                'manageItems' => []
             ])->render() . '
             ' .view('components.modal-console'
                 

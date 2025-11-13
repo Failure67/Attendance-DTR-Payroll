@@ -15,7 +15,7 @@ class Payroll extends Model
         'hours_worked',
         'days_worked',
         'gross_pay',
-        'deductions',
+        'total_deductions',
         'net_pay',
         'status',
         'user_id',
@@ -23,10 +23,21 @@ class Payroll extends Model
 
     protected $casts = [
         'released_at' => 'datetime',
+        'min_wage' => 'decimal:2',
+        'hours_worked' => 'decimal:2',
+        'days_worked' => 'decimal:2',
+        'gross_pay' => 'decimal:2',
+        'total_deductions' => 'decimal:2',
+        'net_pay' => 'decimal:2',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function deductions()
+    {
+        return $this->hasMany(PayrollDeduction::class, 'payroll_id');
     }
 }

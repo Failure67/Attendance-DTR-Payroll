@@ -40,15 +40,50 @@
 .input-field.amount {
     position: absolute;
     bottom: -7px;
-    max-width: calc(100% - 32px);
+    /* max-width: calc(100% - 32px); */
     padding-left: 30px;
     max-width: 100%;
+}
+
+.input-field.amount.vertical {
+    position: relative;
+    margin-bottom: 20px;
 }
 
 .input-field-container.amount .input-amount-sign {
     z-index: 1;
     transform: translate(15px, -5px);
     color: #757575;
+}
+
+/* manage-item edit - remove spacing */
+.manage-item-edit .input-field-option {
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.manage-item-edit .input-field-option.amount {
+    margin-bottom: 0;
+}
+
+.manage-item-edit .input-field-container.amount {
+    margin-top: 0;
+    position: static;
+}
+
+.manage-item-edit .input-field.amount {
+    position: relative;
+    bottom: 0;
+    margin-bottom: 0;
+}
+
+.manage-item-edit .input-field.amount.vertical {
+    margin-bottom: 0;
+}
+
+.manage-item-edit .input-field-container.amount .input-amount-sign {
+    transform: translate(15px, 0);
+    position: absolute;
 }
 
 /* inDecrement and withLabel */

@@ -8,14 +8,14 @@
 
     {{-- amount input --}}
     @if ($inputType === 'amount')
-        <div class="input-field-container {{ $inputType }}">
+        <div class="input-field-container {{ $inputType }} {{ ($isVertical ?? false) ? 'vertical' : null }}">
 
             <span class="input-amount-sign">
                 ₱
             </span>
 
             <input type="search"
-            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isVertical ?? false) ? 'vertical' : null }}"
             placeholder="{{ $inputPlaceholder }}"
 
             @if (!empty($inputName))

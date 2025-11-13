@@ -10,6 +10,42 @@
 
         <div class="container {{ $pageClass }}">
 
+            @include('components.dashboard-count', [
+                'countClass' => 'employees-count',
+                'countLabel' => 'Employees',
+                'countSublabel' => 'As of ' . date('F d, Y'),
+                'countIcon' => '<i class="fa-solid fa-users"></i>',
+                'countValue' => '0',
+            ])
+
+            @include('components.dashboard-count', [
+                'countClass' => 'employees-present',
+                'countLabel' => 'Present',
+                'countSublabel' => 'today',
+                'countIcon' => '<i class="fa-solid fa-user-check"></i>',
+                'countValue' => '0',    
+            ])
+
+            @include('components.dashboard-count', [
+                'countClass' => 'employees-paid',
+                'countLabel' => 'Absent',
+                'countSublabel' => 'today',
+                'countIcon' => '<i class="fa-solid fa-user-xmark"></i>',
+                'countValue' => '0',    
+            ])
+
+            @include('components.dashboard-count', [
+                'countClass' => 'employees-ca-form',
+                'countLabel' => 'Late',
+                'countSublabel' => 'today',
+                'countIcon' => '<i class="fa-solid fa-person-circle-question"></i>',
+                'countValue' => '0',    
+            ])
+
+        </div>
+
+        <div class="container {{ $pageClass }}">
+
             @include('components.dashboard-card', [
                 'cardClass' => 'recent-attendance',
                 'label' => 'Recent Attendance',

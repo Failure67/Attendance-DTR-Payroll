@@ -20,12 +20,12 @@ return new class extends Migration
             
             $table->enum('wage_type', ['Hourly', 'Daily', 'Weekly', 'Monthly']);
 
-            $table->decimal('min_wage', 6, 2);
+            $table->decimal('min_wage', 10, 2);
             $table->decimal('hours_worked', 5, 2)->nullable();
             $table->decimal('days_worked', 3, 2)->nullable();
-            $table->decimal('gross_pay', 6, 2)->nullable();
-            $table->decimal('deductions', 6, 2)->nullable();
-            $table->decimal('net_pay', 6, 2)->nullable();
+            $table->decimal('gross_pay', 10, 2)->nullable();
+            $table->decimal('total_deductions', 10, 2)->nullable();
+            $table->decimal('net_pay', 10, 2)->nullable();
 
             $table->enum('status', ['Pending', 'Released', 'Cancelled'])->default('Pending');
 
