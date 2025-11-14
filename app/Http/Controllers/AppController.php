@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payroll;
+use App\Models\PayrollDeduction;
 use App\Models\User;
+use DB;
 use Illuminate\Http\Request;
 
 class AppController extends Controller
@@ -49,58 +51,82 @@ class AppController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'wage_type' => 'required|in:Hourly,Daily,Weekly,Monthly',
+            'wage_type' => 'required|in:Daily,Hourly,Weekly,Monthly',
             'min_wage' => 'required|numeric|min:0',
-            'hours_worked' => 'nullable|numeric|min:0',
-            'days_worked' => 'nullable|numeric|min:0',
-            'gross_pay' => 'nullable|numeric|min:0',
-            'deductions' => 'nullable|numeric|min:0',
-            'net_pay' => 'nullable|numeric|min:0',
+            'units_worked' => 'required|numeric|min:0',
+            'deductions' => 'nullable|array',
+            'deductions.*.name' => 'required_with:deductions|string|max:30',
+            'deductions.*.amount' => 'required_with:deductions|numeric|min:0',
         ]);
 
-        $gross_pay = 0;
-        switch ($validated['wage_type']) {
-            case 'Hourly':
-                $gross_pay = $validated['min_wage'] * ($validated['hours_worked'] ?? 0);
-                break;
+        DB::beginTransaction();
+
+        try {
+
+            $wage_type = $validated['wage_type'];
+            $min_wage = $validated['min_wage'];
+            $units_worked = $validated['units_worked'];
+
+            $gross_pay = 0;
+            $hours_worked = null;
+            $days_worked = null;
+
+            switch ($wage_type) {
+                case 'Hourly':
+                    $hours_worked = $units_worked;
+                    $gross_pay = $min_wage * $hours_worked;
+                    break;
+                case 'Daily':
+                    $days_worked = $units_worked;
+                    $gross_pay = $min_wage * $days_worked;
+                    break;
+                case 'Weekly':
+                    $days_worked = $units_worked;
+                    $gross_pay = $min_wage * $days_worked;
+                    break;
+                case 'Monthly':
+                    $days_worked = $units_worked;
+                    $gross_pay = $min_wage * $days_worked;
+                    break;
+            }
+
+            $total_deductions = 0;
+            if (!empty($validated['deductions'])) {
+                $total_deductions = array_sum(array_column($validated['deductions'], 'amount'));
+            }
+
+            $net_pay = $gross_pay - $total_deductions;
+
+            $payroll = Payroll::create([
+                'user_id' => $validated['user_id'],
+                'wage_type' => $wage_type,
+                'min_wage' => $min_wage,
+                'hours_worked' => $hours_worked,
+                'days_worked' => $days_worked,
+                'gross_pay' => $gross_pay,
+                'total_deductions' => $total_deductions,
+                'net_pay' => $net_pay,
+                'status' => 'Pending',
+            ]);
+
+            if (!empty($validated['deductions'])) {
+                foreach ($validated['deductions'] as $deduction) {
+                    PayrollDeduction::create([
+                        'payroll_id' => $payroll->id,
+                        'name' => $deduction['name'],
+                        'amount' => $deduction['amount'],
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Payroll added successfully.');
             
-            case 'Daily':
-            case 'Weekly':
-            case 'Monthly':
-                $gross_pay = $validated['min_wage'] * ($validated['days-worked'] ?? 0);
-                break;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'An error occured while adding payroll: ' . $e->getMessage()]);
         }
-
-        $total_deductions = 0;
-        if (!empty($validated['deductions'])) {
-            foreach ($validated['deductions'] as $deduction) {
-                $total_deductions += $deduction['amount'];
-            }
-        }
-
-        $net_pay = $gross_pay - $total_deductions;
-
-        $payroll = Payroll::create([
-            'user_id' => $validated['user_id'],
-            'wage_type' => $validated['wage_type'],
-            'min_wage' => $validated['min_wage'],
-            'hours_worked' => $validated['hours_worked'],
-            'days_worked' => $validated['days_worked'],
-            'gross_pay' => $gross_pay,
-            'total_deductions' => $total_deductions,
-            'net_pay' => $net_pay,
-        ]);
-
-        if (!empty($validated['deductions'])) {
-            foreach ($validated['deductions'] as $deduction) {
-                $payroll->deductions()->create([
-                    'deduction_name' => $deduction['name'],
-                    'amount' => $deduction['amount'],
-                ]);
-            }
-        }
-
-        return back()->with('success', 'Payroll record created successfully.');
     }
 
     // users

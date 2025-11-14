@@ -40,3 +40,30 @@ hr {
 h1, h2, h3, h4, h5, h6 {
     margin: 0;
 }
+
+header {
+    background-color: #0D2C42;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    padding: 10px 20px;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1380px;
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    transition: filter 0.2s ease;
+}
+
+.header-logo:hover {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+}

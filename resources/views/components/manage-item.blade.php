@@ -59,7 +59,6 @@
             'inputType' => 'text',
             'inputSrc' => 'manage-item',
             'inputVar' => 'item-name-' . ($manageItemName ?? 'items'),
-            'inputName' => 'temp_' . ($manageItemName ?? 'items') . '_name',
             'inputPlaceholder' => 'Name of item',
         ])
 
@@ -67,7 +66,6 @@
             'inputType' => 'amount',
             'inputSrc' => 'manage-item',
             'inputVar' => 'item-amount-' . ($manageItemName ?? 'items'),
-            'inputName' => 'temp_' . ($manageItemName ?? 'items') . '_amount',
             'inputPlaceholder' => '0.00',
             'isVertical' => true,
         ])

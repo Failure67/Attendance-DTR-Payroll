@@ -16,12 +16,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// auth
+Route::get('/login', [AppController::class, 'login'])->name('login');
+
 // pages
 Route::get('/', [AppController::class, 'index'])->name('index');
-Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
-Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
-Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
 
+Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
+
+Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
+Route::post('/payroll/create', [AppController::class, 'storePayroll'])->name('payroll.store');
+
+Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
 
 // require javascript
 Route::get('/require', [AppController::class, 'require'])->name('require');

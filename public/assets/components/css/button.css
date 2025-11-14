@@ -26,6 +26,11 @@
     color: #ffffff;
 }
 
+.button.secondary {
+    background-color: #8d8d8d;
+    color: white;
+}
+
 .button.icon.modal-close {
     border-radius: 50%;
     background-color: #d1d0d0;

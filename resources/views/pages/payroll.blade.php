@@ -19,7 +19,8 @@
 
                 @include('components.button', [
                     'buttonType' => 'main',
-                    'buttonId' => 'payroll-add',
+                    'buttonVar' => 'payroll-add',
+                    'buttonSrc' => 'payroll',
                     'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
                     'buttonLabel' => 'New',
                     'buttonModal' => true,
@@ -28,7 +29,8 @@
 
                 @include('components.button', [
                     'buttonType' => 'danger',
-                    'buttonId' => 'payroll-delete',
+                    'buttonVar' => 'payroll-delete',
+                    'buttonSrc' => 'payroll',
                     'buttonIcon' => '<i class="fa-solid fa-trash"></i>',
                     'buttonLabel' => 'Delete',
                     'buttonModal' => false,
@@ -81,15 +83,17 @@
     @include('components.modal', [
         'modalClass' => 'payroll-modal',
         'modalId' => 'addPayrollModal',
+        'modalForm' => 'addPayrollForm',
+        'modalRoute' => 'payroll.store',
         'modalHeader' => '
             <div class="modal-title">
                 New Payroll
             </div>
             ' . view('components.button', [
                 'buttonType' => 'icon modal-close',
-                'buttonId' => 'attendance-add',
+                'buttonVar' => 'payroll-modal-close',
                 'buttonIcon' => '<i class="fa-solid fa-xmark"></i>',
-                'buttonModal' => true,
+                'isModalClose' => true,
             ])->render() . '
         ',
         'modalBody' => '
@@ -167,12 +171,25 @@
                 'manageItemName' => 'deductions',
                 'manageItems' => []
             ])->render() . '
-            ' .view('components.modal-console'
+            {{--' .view('components.modal-console'
                 
-            )->render() . '
+            )->render() . '--}}
         ',
         'modalFooter' => '
-        
+            ' . view('components.button', [
+                'buttonType' => 'secondary',
+                'buttonVar' => 'discard',
+                'buttonSrc' => 'payroll',
+                'buttonLabel' => 'Discard',
+                'isModalClose' => true,
+            ])->render() . '
+            ' . view('components.button', [
+                'buttonType' => 'main',
+                'buttonVar' => 'submit',
+                'buttonSrc' => 'payroll',
+                'buttonLabel' => 'Submit',
+                'isSubmit' => true,
+            ])->render() . '
         ',
     ])
 

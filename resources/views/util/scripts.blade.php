@@ -9,6 +9,7 @@
 <script src="{{ asset('assets/components/js/manage-item.js') }}"></script>
 <script src="{{ asset('assets/components/js/select-option.js') }}"></script>
 
+
 <script>
     $(document).ready(function(){
         $('#addPayrollModal').modal('show');

@@ -18,7 +18,7 @@
             class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isVertical ?? false) ? 'vertical' : null }}"
             placeholder="{{ $inputPlaceholder }}"
 
-            @if (!empty($inputName))
+            @if (!empty($inputName) && $inputSrc !== 'manage-item')
                 name="{{ $inputName }}"
             @endif
 
@@ -40,7 +40,8 @@
             @if ($inputInDecrement ?? true)
                 @include('components.button', [
                     'buttonType' => 'icon decrement',
-                    'buttonId' => $inputVar . '-decrement',
+                    'buttonVar' => $inputVar,
+                    'buttonSrc' => 'decrement',
                     'buttonIcon' => '<i class="fa-solid fa-minus"></i>',
                     'buttonModal' => false,
                 ])
@@ -50,7 +51,7 @@
             class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
             placeholder="{{ $inputPlaceholder }}"
 
-            @if (!empty($inputName))
+            @if (!empty($inputName) && $inputSrc !== 'manage-item')
                 name="{{ $inputName }}"
             @endif
 
@@ -73,7 +74,8 @@
             @if ($inputInDecrement ?? true)
                 @include('components.button', [
                     'buttonType' => 'icon increment',
-                    'buttonId' => $inputVar . '-increment',
+                    'buttonVar' => $inputVar,
+                    'buttonSrc' => 'increment',
                     'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
                     'buttonModal' => false,
                 ])
@@ -90,7 +92,7 @@
             class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
             placeholder="{{ $inputPlaceholder }}"
 
-            @if (!empty($inputName))
+            @if (!empty($inputName) && $inputSrc !== 'manage-item')
                 name="{{ $inputName }}"
             @endif
 

@@ -1,10 +1,16 @@
-<button type="button"
+<button
+type="{{ $isSubmit ?? false ? 'submit' : 'button' }}"
 class="button {{ $buttonType }}{{ ($buttonDisabled ?? false) ? 'disabled' : '' }}"
-id="{{ $buttonId }}"
-@if ($buttonModal ?? true)
+id="{{ $buttonVar }}-{{ $buttonSrc ?? null }}"
+@if ($buttonModal ?? false)
     data-bs-toggle="modal"
     data-bs-target="#{{ $buttonTarget ?? null }}"
-@endif>
+@endif
+
+@if ($isModalClose ?? false)
+    data-bs-dismiss="modal"
+@endif
+>
     
     @if (!empty($buttonIcon))
     <span class="button-icon">
