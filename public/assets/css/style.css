@@ -67,3 +67,24 @@ header {
 .header-logo:hover {
     filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
 }
+
+.auth-option {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.auth-option .option-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+}
+
+.auth-option .option-button:hover {
+    background-color: white;
+    color: #0D2C42;
+    border-radius: 50%;
+}

@@ -91,11 +91,11 @@
                     'Units worked',
                 ],
                 'tableData' => [
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
+                    ['LAST NAME, FIRST NAME M.I.', 'Weekly', 'P500', '3 weeks'],
+                    ['LAST NAME, FIRST NAME M.I.', 'Monthly', 'P600', '5 days'],
+                    ['LAST NAME, FIRST NAME M.I.', 'Daily', 'P300', '6 days'],
+                    ['LAST NAME, FIRST NAME M.I.', 'Daily', 'P400', '3 days'],
+                    ['LAST NAME, FIRST NAME M.I.', 'Monthly', 'P500', '10 days'],
                 ],
             ])
 
