@@ -13,6 +13,12 @@ class AppController extends Controller
     // index
     public function index()
     {
+        /*
+        $payrollInfo = DB::table('')
+                        ->select('', '')
+                        ->orderBy('id')
+                        ->get(); */
+
         return view('pages.index', [
             'title' => 'Home',
             'pageClass' => 'index',

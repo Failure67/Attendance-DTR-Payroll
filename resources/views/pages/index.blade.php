@@ -11,7 +11,7 @@
         <div class="container {{ $pageClass }}">
 
             @include('components.dashboard-count', [
-                'countClass' => 'employees-count',
+                'countClass' => 'employees-current',
                 'countLabel' => 'Employees',
                 'countSublabel' => 'As of ' . date('F d, Y'),
                 'countIcon' => '<i class="fa-solid fa-users"></i>',
@@ -19,26 +19,25 @@
             ])
 
             @include('components.dashboard-count', [
-                'countClass' => 'employees-present',
-                'countLabel' => 'Present',
-                'countSublabel' => 'today',
-                'countIcon' => '<i class="fa-solid fa-user-check"></i>',
+                'countClass' => 'payroll-budget',
+                'countLabel' => 'Payroll Budget',
+                'countSublabel' => 'As of ' . date('F d, Y'),
+                'countIcon' => '<i class="fa-solid fa-money-bills"></i>',
                 'countValue' => '0',    
             ])
 
             @include('components.dashboard-count', [
-                'countClass' => 'employees-paid',
-                'countLabel' => 'Absent',
-                'countSublabel' => 'today',
-                'countIcon' => '<i class="fa-solid fa-user-xmark"></i>',
+                'countClass' => 'payroll-due',
+                'countLabel' => 'Payroll Due',
+                'countIcon' => '<i class="fa-solid fa-money-bill-trend-up"></i>',
                 'countValue' => '0',    
             ])
 
             @include('components.dashboard-count', [
-                'countClass' => 'employees-ca-form',
-                'countLabel' => 'Late',
-                'countSublabel' => 'today',
-                'countIcon' => '<i class="fa-solid fa-person-circle-question"></i>',
+                'countClass' => 'payroll-paid',
+                'countLabel' => 'Payroll Paid',
+                'countSublabel' => 'As of ' . date('F d, Y'),
+                'countIcon' => '<i class="fa-solid fa-money-bill-transfer"></i>',
                 'countValue' => '0',    
             ])
 
