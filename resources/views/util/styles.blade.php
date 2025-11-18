@@ -5,6 +5,7 @@
 
 {{-- components --}}
 <link rel="stylesheet" href="{{ asset('assets/components/css/button.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/components/css/confirm.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/dashboard-card.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/dashboard-count.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/input-field.css') }}">
@@ -19,6 +20,7 @@
 <link rel="stylesheet" href="{{ asset('assets/css/index.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/attendance.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/payroll.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/users.css') }}">
 
 {{-- main assets --}}
 <link rel="stylesheet" href="{{ asset('assets/css/menu.css') }}">

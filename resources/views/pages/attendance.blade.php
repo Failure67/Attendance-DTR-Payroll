@@ -19,14 +19,16 @@
 
                 @include('components.button', [
                     'buttonType' => 'main',
-                    'buttonId' => 'attendance-add',
+                    'buttonVar' => 'add',
+                    'buttonSrc' => 'attendance',
                     'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
                     'buttonLabel' => 'New',
                 ])
 
                 @include('components.button', [
                     'buttonType' => 'danger',
-                    'buttonId' => 'attendance-delete',
+                    'buttonVar' => 'delete',
+                    'buttonSrc' => 'attendance',
                     'buttonIcon' => '<i class="fa-solid fa-trash"></i>',
                     'buttonLabel' => 'Delete',
                 ])

@@ -25,7 +25,7 @@
             id="{{ $inputVar }}-{{ $inputSrc }}"
             autocomplete="off"
             inputmode="decimal"
-            pattern="-?[0-9]*[.,]?[0-9]*">
+            {{--pattern="-?[0-9]*[.,]?[0-9]*"--}}>
 
         </div>
     @endif
@@ -63,7 +63,7 @@
             @endif
             
             inputmode="decimal"
-            pattern="-?[0-9]*[.,]?[0-9]*">
+            {{--pattern="-?[0-9]*[.,]?[0-9]*"--}}>
 
             @if ($inputNumberWithLabel ?? true)
                 <span class="input-number-label">

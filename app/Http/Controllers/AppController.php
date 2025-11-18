@@ -127,12 +127,34 @@ class AppController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Payroll added successfully.');
+            return redirect()->route('payroll.store')->with('success', 'Payroll added successfully.');
             
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors(['error' => 'An error occured while adding payroll: ' . $e->getMessage()]);
         }
+    }
+
+    public function deletePayroll(Request $request, $id)
+    {
+        $payroll = Payroll::findOrFail($id);
+        $payroll->delete();
+
+        return redirect()->route('payroll')->with('success', 'Payroll successfully deleted.');
+    }
+
+    public function deleteMultiplePayroll(Request $request)
+    {
+        $validated = $request->validate([
+            'payroll_ids' => 'required|array',
+            'payroll_ids.*' => 'exists:payrolls,id',
+        ]);
+
+        $payroll = Payroll::whereIn('id', $validated['payroll_ids'])->get();
+
+        $payroll->delete();
+
+        return redirect()->route('payroll')->with('success', 'Selected payrolls successfully deleted.');
     }
 
     // users

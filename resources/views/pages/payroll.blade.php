@@ -78,6 +78,7 @@
 
 @endsection
 
+{{-- add modal --}}
 @section('modal')
 
     @include('components.modal', [
@@ -107,7 +108,7 @@
                 'inputInDecrement' => false,
             ])->render() . '
             ' . view('components.select', [
-                'selectType' => 'long',
+                'selectType' => 'normal',
                 'selectSrc' => 'payroll',
                 'selectVar' => 'wage-type',
                 'selectName' => 'wage_type',
@@ -118,6 +119,7 @@
                     'weekly' => 'Weekly',
                     'monthly' => 'Monthly',
                 ],
+                'isShort' => false,
             ])->render() .'
             ' . view('components.input-field', [
                 'inputType' => 'amount',
@@ -145,7 +147,7 @@
                     ])->render() . '
 
                 ' . view('components.select', [
-                    'selectType' => 'short',
+                    'selectType' => 'normal',
                     'selectSrc' => 'payroll',
                     'selectVar' => 'wage-unit',
                     'selectData' => [
@@ -153,7 +155,8 @@
                         'week' => 'week/s',
                         'month' => 'month/s',
                     ],
-                    'selectStyle' => 'width: 170px;'
+                    'selectStyle' => 'width: 170px;',
+                    'isShort' => true,
                 ])->render() .'
 
             </div>
@@ -171,6 +174,18 @@
                 'manageItemName' => 'deductions',
                 'manageItems' => []
             ])->render() . '
+            ' . view('components.select', [
+                'selectLabel' => 'Payroll status',
+                'selectType' => 'normal',
+                'selectSrc' => 'payroll',
+                'selectVar' => 'payroll-status',
+                'selectData' => [
+                    'Pending' => 'Pending',
+                    'Cancelled' => 'Cancelled',
+                    'Completed' => 'Completed',
+                ],
+                'isShort' => false,
+            ])->render() .'
             {{--' .view('components.modal-console'
                 
             )->render() . '--}}
@@ -190,6 +205,22 @@
                 'buttonLabel' => 'Submit',
                 'isSubmit' => true,
             ])->render() . '
+        ',
+    ])
+
+{{-- confirm modal --}}
+
+{{-- delete --}}
+    @include('components.confirm', [
+        'confirmClass' => 'delete-payroll',
+        'confirmModalId' => 'deletePayrollModal',
+        'confirmType' => 'delete',
+        'confirmRoute' => 'payroll.delete',
+        'confirmRouteParams' => ['id' => 0],
+        'confirmModalBody' => '
+            
+            test
+
         ',
     ])
 

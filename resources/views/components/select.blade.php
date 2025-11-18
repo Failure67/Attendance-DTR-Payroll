@@ -6,7 +6,7 @@
         </label>
     @endif
 
-    @if ($selectType === 'long')
+    @if ($selectType === 'select2')
         <div class="select-option-container">
 
             <select class="select select2 {{ $selectType }} {{ $selectSrc }} {{ $selectClass ?? null }}"
@@ -30,10 +30,11 @@
         </div>
     @endif
     
-    @if ($selectType === 'short')
+    @if ($selectType === 'normal')
         <div class="select-option-container">
 
-            <select class="select {{ $selectType }} {{ $selectSrc }} {{ $selectClass ?? null }}"
+            <select class="select {{ $selectSrc }} {{ $selectClass ?? null }} @if ($isShort === false) {{ $selectType }} @endif
+            "
 
             @if (!empty($selectName))
                 name="{{ $selectName }}"

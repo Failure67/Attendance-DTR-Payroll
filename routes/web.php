@@ -24,8 +24,11 @@ Route::get('/', [AppController::class, 'index'])->name('index');
 
 Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
 
+
 Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
 Route::post('/payroll/create', [AppController::class, 'storePayroll'])->name('payroll.store');
+Route::delete('/payroll/{id}', [AppController::class, ''])->name('payroll.delete');
+Route::delete('/payroll', [AppController::class, 'deletePayroll'])->name('payroll.delete.multiple');
 
 Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
 
