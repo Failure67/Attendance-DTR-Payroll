@@ -40,6 +40,12 @@
     border-radius: 10px;
     outline: none;
     color: #757575;
+    transition: all 0.2s ease-in-out;
+}
+
+.select:focus {
+    border-color: #5a85a4;
+    box-shadow: 0 0 5px 1px rgba(90, 133, 164, 0.8);
 }
 
 .select option {

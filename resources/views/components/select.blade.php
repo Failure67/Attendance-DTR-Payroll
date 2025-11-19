@@ -50,7 +50,7 @@
                 <option selected disabled data-label="disabled">{{ $selectPlaceholder ?? 'Select..' }}</option>
 
                 @foreach ($selectData as $value => $label)
-                    <option value="{{ $value }}">{{ $label }}</option>
+                    <option value="{{ $value }}" data-label="selected">{{ $label }}</option>
                 @endforeach
 
             </select>

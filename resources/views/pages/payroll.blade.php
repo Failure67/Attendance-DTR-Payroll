@@ -186,9 +186,10 @@
                 ],
                 'isShort' => false,
             ])->render() .'
-            {{--' .view('components.modal-console'
-                
-            )->render() . '--}}
+            ' .view('components.modal-console', [
+                'consoleLabel' => 'Net pay',
+                'consoleValue' => '₱0.00',
+            ])->render() . '
         ',
         'modalFooter' => '
             ' . view('components.button', [
