@@ -39,6 +39,15 @@
     border: 2px solid #afafaf;
     border-radius: 10px;
     outline: none;
+    color: #757575;
+}
+
+.select option {
+    color: #212121;
+}
+
+.select option[data-label="disabled"] {
+    display: none;
 }
 
 .select.normal {

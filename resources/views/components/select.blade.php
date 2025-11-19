@@ -9,7 +9,7 @@
     @if ($selectType === 'select2')
         <div class="select-option-container">
 
-            <select class="select select2 {{ $selectType }} {{ $selectSrc }} {{ $selectClass ?? null }}"
+            <select class="select {{ $selectType }} {{ $selectSrc }} {{ $selectClass ?? null }}"
 
             @if (!empty($selectName))
                 name="{{ $selectName }}"
@@ -47,7 +47,7 @@
             @endif
             >
 
-                <option selected disabled>{{ $selectPlaceholder ?? 'Select..' }}</option>
+                <option selected disabled data-label="disabled">{{ $selectPlaceholder ?? 'Select..' }}</option>
 
                 @foreach ($selectData as $value => $label)
                     <option value="{{ $value }}">{{ $label }}</option>

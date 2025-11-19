@@ -1,2 +1,64 @@
 /* © 2025 Romar Jabez */
 
+.modal-dialog.confirm {
+    max-width: 600px;
+    margin-top: 30vh;
+}
+
+.modal-body.confirm {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.modal-container.confirm {
+    display: flex;
+    gap: 10px;
+    font-size: 21.5px;
+    font-weight: 600;
+}
+
+.modal-container.confirm .confirm-icon {
+    font-size: 50px;
+    color: #205173;
+    background-color: #D1E1F3;
+    border-radius: 50%;
+    padding: 8px;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-container.confirm .confirm-icon.delete {
+    background-color: #f8c5c5;
+    color: #863333;
+}
+
+.modal-body.confirm .modal-container.confirm-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    font-size: 18.5px;
+    align-items: center;
+    margin-top: 5px;
+}
+
+@media (max-width: 520px) {
+    .modal-container.confirm, .modal-body.confirm .modal-container.confirm-buttons {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .modal-body.confirm .modal-container.confirm-buttons {
+        flex-direction: column-reverse;
+    }
+
+    #cancel-delete-payroll, #confirm-delete-payroll {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+}

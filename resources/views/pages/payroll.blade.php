@@ -217,11 +217,22 @@
         'confirmType' => 'delete',
         'confirmRoute' => 'payroll.delete',
         'confirmRouteParams' => ['id' => 0],
-        'confirmModalBody' => '
-            
-            test
-
-        ',
+        'confirmLabel' => 'delete',
+        'confirmButtons' =>
+            view('components.button', [
+                'buttonType' => 'secondary',
+                'buttonVar' => 'cancel-delete',
+                'buttonSrc' => 'payroll',
+                'buttonLabel' => 'Cancel',
+                'isModalClose' => true,
+            ])->render() .
+            view('components.button', [
+                'buttonType' => 'danger',
+                'buttonVar' => 'confirm-delete',
+                'buttonSrc' => 'payroll',
+                'buttonLabel' => 'Delete',
+                'isSubmit' => true,
+            ])
     ])
 
 @endsection
