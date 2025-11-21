@@ -10,6 +10,14 @@ id="{{ $buttonVar }}-{{ $buttonSrc ?? null }}"
 @if ($isModalClose ?? false)
     data-bs-dismiss="modal"
 @endif
+
+@if ($hideBtn ?? false)
+    style="display: none;"
+@endif
+
+@if (!empty($btnAttribute))
+    {!! $btnAttribute !!}
+@endif
 >
     
     @if (!empty($buttonIcon))

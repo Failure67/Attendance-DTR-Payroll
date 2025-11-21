@@ -7,7 +7,12 @@
                     {!! $modalHeader !!}
                 </div>
                 <div class="modal-body">
-                    {!! $modalBody !!}
+                    <div class="modal-body-container {{ $modalBody1Class ?? null }}">
+                        {!! $modalBody1 !!}
+                    </div>
+                    <div class="modal-body-container {{ $modalBody2Class ?? null }}">
+                        {!! $modalBody2 !!}
+                    </div>
                 </div>
                 <div class="modal-footer">
                     {!! $modalFooter !!}
