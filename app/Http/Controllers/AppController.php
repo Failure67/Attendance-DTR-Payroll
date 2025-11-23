@@ -63,7 +63,23 @@ class AppController extends Controller
             'deductions' => 'nullable|array',
             'deductions.*.name' => 'required_with:deductions|string|max:30',
             'deductions.*.amount' => 'required_with:deductions|numeric|min:0',
-        ]);
+        ], /*[
+            'user_id.required' => 'Employee name is required.',
+            'user_id.exists' => 'Selected employee does not exist.',
+            'wage_type.required' => 'Wage type is required.',
+            'wage_type.in' => 'Invalid wage type selected.',
+            'min_wage.required' => 'Minimum wage is required.',
+            'min_wage.numeric' => 'Minimum wage must be a valid number.',
+            'min_wage.min' => 'Minimum wage cannot be negative.',
+            'units_worked.required' => 'Units worked is required.',
+            'units_worked.numeric' => 'Units worked must be a valid number.',
+            'units_worked.min' => 'Units worked cannot be negative.',
+            'deductions.*.name.required_with' => 'Deduction name is required.',
+            'deductions.*.name.max' => 'Deduction name cannot exceed 30 characters.',
+            'deductions.*.amount.required_with' => 'Deduction amount is required.',
+            'deductions.*.amount.numeric' => 'Deduction amount must be a valid number.',
+            'deductions.*.amount.min' => 'Deduction amount cannot be negative.',
+        ]*/);
 
         DB::beginTransaction();
 
@@ -131,7 +147,7 @@ class AppController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'An error occured while adding payroll: ' . $e->getMessage()]);
+            return redirect()->back()->withInput()->withErrors(['error' => 'An error occured while adding payroll: ' . $e->getMessage()]);
         }
     }
 

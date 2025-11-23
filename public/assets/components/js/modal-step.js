@@ -6,7 +6,7 @@ class ModalStep {
             totalSteps: config.totalSteps || 2,
             nextButton: '[data-action="next"]',
             previousButton: '[data-action="back"]',
-            submitButton: '[data-action"submit"]',
+            submitButton: '[data-action="submit"]',
             discardButton: '[data-action="discard"]',
             stepContainer: '.modal-body-container',
             onStepChange: null,

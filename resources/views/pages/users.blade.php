@@ -40,3 +40,27 @@
     </div>
 
 @endsection
+
+@section('modal')
+
+    @include('components.modal', [
+        'modalClass' => 'users-modal',
+        'modalId' => 'addUsersModal',
+        'modalForm' => 'addUsersForm',
+        'modalRoute' => 'users.store', 
+        'modalBody1Class' => 'input-fields',
+        'modalBody2Class' => 'review-fields',
+        'modalHeader' => '
+            <div class="modal-title">
+                New User
+            </div>
+        ',
+        'modalBody1' => '
+        
+        ',
+        'modalBody2' => '
+        
+        ',
+    ])
+
+@endsection

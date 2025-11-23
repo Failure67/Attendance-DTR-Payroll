@@ -101,8 +101,9 @@
         ',
         'modalBody1' => '
             {{-- error handling --}}
-            
-            {{-- employee name --}}
+            ' . view('components.modal-error')->render() . '
+
+            {{--
             ' . view('components.input-field', [
                 'inputType' => 'text',
                 'inputSrc' => 'payroll',
@@ -112,6 +113,19 @@
                 'inputPlaceholder' => 'Employee name',
                 'inputInDecrement' => false,
             ])->render() . '
+            --}}
+            
+            {{-- employee name --}}
+            ' . view('components.select', [
+                'selectType' => 'select2',
+                'selectSrc' => 'payroll',
+                'selectVar' => 'employee-name',
+                'selectName' => 'employee_name',
+                'selectLabel' => 'Name of employee',
+                'selectPlaceholder' => 'Select employee',
+                'selectData' => [],
+                'isShort' => false,
+            ])->render() .'
             {{-- wage type --}}
             ' . view('components.select', [
                 'selectType' => 'normal',
@@ -225,7 +239,7 @@
                 'buttonSrc' => 'payroll',
                 'buttonLabel' => 'Discard',
                 'isModalClose' => true,
-                'btnAttribute' => '',
+                'btnAttribute' => 'data-action="discard"',
             ])->render() . '
             ' . view('components.button', [
                 'buttonType' => 'secondary',
@@ -233,14 +247,14 @@
                 'buttonSrc' => 'payroll',
                 'buttonLabel' => 'Go back',
                 'hideBtn' => true,
-                'btnAttribute' => '',
+                'btnAttribute' => 'data-action="back"',
             ])->render() . '
             ' . view('components.button', [
                 'buttonType' => 'main',
                 'buttonVar' => 'next',
                 'buttonSrc' => 'payroll',
                 'buttonLabel' => 'Proceed',
-                'btnAttribute' => '',
+                'btnAttribute' => 'data-action="next"',
             ])->render() . '
             ' . view('components.button', [
                 'buttonType' => 'main',
@@ -249,7 +263,7 @@
                 'buttonLabel' => 'Submit',
                 'isSubmit' => true,
                 'hideBtn' => true,
-                'btnAttribute' => '',
+                'btnAttribute' => 'data-action="submit"',
             ])->render() . '
         ',
     ])  
