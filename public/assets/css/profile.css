@@ -1,0 +1,323 @@
+/* © 2025 Romar Jabez - Profile Page Styling */
+
+.wrapper.profile {
+    padding: 25px 20px 0 0;
+}
+
+.container.profile {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+    padding: 0;
+}
+
+/* Profile Picture Card */
+.profile-picture-card {
+    background-color: #d1e1f3;
+    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+    padding: 25px;
+    border-radius: 10px;
+    border-bottom: 4px solid #0D2C42;
+    width: 100%;
+}
+
+.profile-picture-header {
+    margin-bottom: 20px;
+}
+
+.profile-picture-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #0D2C42;
+}
+
+.profile-picture-content {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+}
+
+.profile-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-width: 200px;
+    width: 200px;
+    height: 200px;
+    flex-shrink: 0;
+    padding-top: 0;
+}
+
+.profile-image {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #0D2C42;
+    display: block;
+}
+
+.upload-form {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.profile-upload-area {
+    border: 2px dashed #0D2C42;
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    background-color: rgba(13, 44, 66, 0.02);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-upload-area:hover {
+    background-color: rgba(13, 44, 66, 0.05);
+    border-color: #0a1f2e;
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.upload-placeholder i {
+    font-size: 32px;
+    color: #0D2C42;
+}
+
+.upload-placeholder p {
+    margin: 0;
+    font-weight: 600;
+    color: #0D2C42;
+    font-size: 14px;
+}
+
+.upload-placeholder small {
+    display: block;
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.file-input {
+    display: none;
+}
+
+/* Profile Form Section */
+.profile-form-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+}
+
+.profile-info-card,
+.change-password-card {
+    background-color: #d1e1f3;
+    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+    padding: 25px;
+    border-radius: 10px;
+    border-bottom: 4px solid #0D2C42;
+    width: 100%;
+}
+
+.card-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #bdd2e8;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #0D2C42;
+}
+
+.profile-form,
+.password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0D2C42;
+    margin: 0;
+}
+
+.form-control {
+    padding: 12px 15px;
+    border: 1.5px solid #bdd2e8;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    background-color: #fafbfc;
+    width: 100%;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #0D2C42;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(13, 44, 66, 0.1);
+}
+
+.form-control.is-invalid {
+    border-color: #dc2626;
+    background-color: rgba(220, 38, 38, 0.05);
+}
+
+.form-control.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.invalid-feedback {
+    font-size: 12px;
+    color: #dc2626;
+    margin-top: 4px;
+    display: block;
+}
+
+.btn {
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    text-align: center;
+    width: fit-content;
+}
+
+.btn-primary {
+    background-color: #0D2C42;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background-color: #0a1f2e;
+    box-shadow: 0 4px 12px rgba(13, 44, 66, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: #9fb1c5;
+    color: #ffffff;
+}
+
+.btn-secondary:hover {
+    background-color: #8a9db3;
+    box-shadow: 0 4px 12px rgba(159, 177, 197, 0.3);
+    transform: translateY(-2px);
+}
+
+.alert {
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid;
+    margin-bottom: 20px;
+    font-size: 14px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-success {
+    background-color: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #166534;
+}
+
+.alert-danger {
+    background-color: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.3);
+    color: #7f1d1d;
+}
+
+.btn-close {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+    padding: 0.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .profile-picture-content {
+        flex-direction: column;
+    }
+
+    .profile-form-section {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-picture-card,
+    .profile-info-card,
+    .change-password-card {
+        padding: 20px;
+    }
+
+    .upload-placeholder {
+        padding: 30px 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container.profile {
+        max-width: 100%;
+    }
+
+    .profile-picture-card,
+    .profile-info-card,
+    .change-password-card {
+        border-radius: 8px;
+        padding: 15px;
+    }
+
+    .form-control {
+        font-size: 16px;
+    }
+}

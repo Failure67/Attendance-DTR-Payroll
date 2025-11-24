@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -16,21 +17,41 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// auth
-Route::get('/login', [AppController::class, 'login'])->name('login');
+// auth routes
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('auth.login.show');
+    Route::post('/login', [AuthController::class, 'handleLogin'])->name('auth.login.handle');
+    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('auth.register.show');
+    Route::post('/register', [AuthController::class, 'handleRegister'])->name('auth.register.handle');
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPasswordForm'])->name('auth.forgot-password.show');
+    Route::post('/forgot-password', [AuthController::class, 'handleForgotPassword'])->name('auth.forgot-password.handle');
+    Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('auth.reset.show');
+    Route::post('/reset-password', [AuthController::class, 'handleReset'])->name('auth.reset.handle');
+});
 
-// pages
-Route::get('/', [AppController::class, 'index'])->name('index');
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
-Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
+    // profile and settings
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
+    Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/picture', [\App\Http\Controllers\ProfileController::class, 'uploadPicture'])->name('profile.picture.upload');
+    
+    Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'show'])->name('settings.show');
+    Route::put('/settings/password', [\App\Http\Controllers\SettingsController::class, 'updatePassword'])->name('settings.password.update');
 
+    // pages
+    Route::get('/', [AppController::class, 'index'])->name('index');
 
-Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
-Route::post('/payroll/create', [AppController::class, 'storePayroll'])->name('payroll.store');
-Route::delete('/payroll/{id}', [AppController::class, ''])->name('payroll.delete');
-Route::delete('/payroll', [AppController::class, 'deletePayroll'])->name('payroll.delete.multiple');
+    Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
 
-Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
+    Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
+    Route::post('/payroll/create', [AppController::class, 'storePayroll'])->name('payroll.store');
+    Route::delete('/payroll/{id}', [AppController::class, ''])->name('payroll.delete');
+    Route::delete('/payroll', [AppController::class, 'deletePayroll'])->name('payroll.delete.multiple');
+
+    Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
+});
 
 // require javascript
 Route::get('/require', [AppController::class, 'require'])->name('require');

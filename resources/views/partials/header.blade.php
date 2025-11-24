@@ -9,11 +9,15 @@
         <div class="auth-option">
             
             <div class="user-image">
-                <img src="{{ asset('assets/img/defaults/user_image.webp') }}" alt="User" width="40">
+                @if(Auth::user()->profile_picture && file_exists(public_path('uploads/profiles/' . Auth::user()->profile_picture)))
+                    <img src="{{ asset('uploads/profiles/' . Auth::user()->profile_picture) }}" alt="User" width="40">
+                @else
+                    <img src="{{ asset('assets/img/defaults/user_image.webp') }}" alt="User" width="40">
+                @endif
             </div>
 
             <div class="user-name">
-                LAST NAME, FIRST NAME M.I.
+                {{ Auth::user()->username ?? 'User' }}
             </div>
 
             <div class="option-button" data-bs-toggle="dropdown">
@@ -22,9 +26,16 @@
 
             {{-- dropdown --}}
             <ul class="dropdown-menu">
-                <li><a href="#" class="dropdown-item">Profile</a></li>
-                <li><a href="#" class="dropdown-item">Settings</a></li>
-                <li><a href="#" class="dropdown-item">Logout</a></li>
+                <li><a href="{{ route('profile.show') }}" class="dropdown-item">Profile</a></li>
+                <li><a href="{{ route('settings.show') }}" class="dropdown-item">Settings</a></li>
+                <li>
+                    <form method="POST" action="{{ route('auth.logout') }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="dropdown-item" style="background: none; border: none; cursor: pointer; width: 100%; text-align: left;">
+                            Logout
+                        </button>
+                    </form>
+                </li>
             </ul>
 
         </div>

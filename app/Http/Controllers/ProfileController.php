@@ -2,59 +2,75 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
     /**
-     * Display the user's profile form.
+     * Show user profile
      */
-    public function edit(Request $request): View
+    public function show()
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
+        $user = Auth::user();
+        return view('profile.show', compact('user'));
     }
 
     /**
-     * Update the user's profile information.
+     * Update user profile
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(Request $request)
     {
-        $request->user()->fill($request->validated());
+        $user = Auth::user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        $validated = $request->validate([
+            'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update($validated);
+
+        return Redirect::route('profile.show')
+                       ->with('success', 'Profile updated successfully!');
+    }
+
+    /**
+     * Upload profile picture
+     */
+    public function uploadPicture(Request $request)
+    {
+        $user = Auth::user();
+
+        try {
+            $validated = $request->validate([
+                'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            ]);
+
+            // Create uploads directory if it doesn't exist
+            $uploadPath = public_path('uploads/profiles');
+            if (!is_dir($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+
+            // Delete old picture if exists
+            if ($user->profile_picture && file_exists(public_path('uploads/profiles/' . $user->profile_picture))) {
+                @unlink(public_path('uploads/profiles/' . $user->profile_picture));
+            }
+
+            // Store new picture
+            $file = $request->file('profile_picture');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file->getClientOriginalName());
+            $file->move($uploadPath, $filename);
+
+            // Update user record
+            $user->update(['profile_picture' => $filename]);
+
+            return Redirect::route('profile.show')
+                           ->with('success', 'Profile picture updated successfully!');
+        } catch (\Exception $e) {
+            return Redirect::route('profile.show')
+                           ->withErrors(['profile_picture' => 'Error uploading picture: ' . $e->getMessage()]);
         }
-
-        $request->user()->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
-    }
-
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
-        ]);
-
-        $user = $request->user();
-
-        Auth::logout();
-
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
     }
 }
