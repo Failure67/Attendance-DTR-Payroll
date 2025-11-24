@@ -29,8 +29,15 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $request->filled('remember'))) {
             $request->session()->regenerate();
+            $user = Auth::user();
 
-            return redirect()->intended(route('index'));
+            // Redirect based on role
+            if ($user->role === 'admin') {
+                return redirect()->intended(route('admin.dashboard'));
+            }
+
+            // Default: worker dashboard
+            return redirect()->intended(route('worker.dashboard'));
         }
 
         return back()->withErrors([
@@ -61,11 +68,13 @@ class AuthController extends Controller
             'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'role' => 'worker',
         ]);
 
         Auth::login($user);
 
-        return redirect()->intended(route('index'));
+        // Newly registered users are always workers
+        return redirect()->intended(route('worker.dashboard'));
     }
 
     /**

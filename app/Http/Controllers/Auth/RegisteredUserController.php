@@ -31,21 +31,24 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'full_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        // Create user with worker role by default
         $user = User::create([
-            'name' => $request->name,
+            'username' => strtolower(str_replace(' ', '.', $request->full_name)),
+            'full_name' => $request->full_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => 'worker',
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return redirect(RouteServiceProvider::HOME);
+        // Don't log in automatically, redirect to login with success message
+        return redirect()->route('login')
+            ->with('status', 'Registration successful! Please wait for admin approval.');
     }
 }

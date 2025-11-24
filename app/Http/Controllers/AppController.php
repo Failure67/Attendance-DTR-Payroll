@@ -176,10 +176,73 @@ class AppController extends Controller
     // users
     public function viewUsers()
     {
+        $users = User::all();
+        
         return view('pages.users', [
             'title' => 'Users',
             'pageClass' => 'users',
+        ], compact('users'));
+    }
+
+    public function storeUser(Request $request)
+    {
+        $validated = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'role' => 'required|in:Admin,HR Manager,Accounting,Payroll Officer,Project Manager,Supervisor,Worker',
+            'password' => 'required|string|min:8',
         ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Generate unique username
+            $baseUsername = strtolower(str_replace(' ', '.', $validated['full_name']));
+            $username = $baseUsername;
+            $counter = 1;
+
+            // If username already exists, append a number
+            while (User::where('username', $username)->exists()) {
+                $username = $baseUsername . $counter;
+                $counter++;
+            }
+
+            $user = User::create([
+                'username' => $username,
+                'full_name' => $validated['full_name'],
+                'email' => $validated['email'],
+                'password' => \Hash::make($validated['password']),
+                'role' => $validated['role'],
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('users')->with('success', 'User added successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withInput()->withErrors(['error' => 'An error occurred while adding user: ' . $e->getMessage()]);
+        }
+    }
+
+    public function deleteUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return redirect()->route('users')->with('success', 'User successfully deleted.');
+    }
+
+    public function deleteMultipleUsers(Request $request)
+    {
+        $validated = $request->validate([
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+        ]);
+
+        $users = User::whereIn('id', $validated['user_ids'])->get();
+        $users->each->delete();
+
+        return redirect()->route('users')->with('success', 'Selected users successfully deleted.');
     }
 
     // require js

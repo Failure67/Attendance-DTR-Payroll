@@ -1,1 +1,6 @@
 *.sqlite*
+/public/uploads/
+/node_modules/
+/vendor/
+*.log
+*.env

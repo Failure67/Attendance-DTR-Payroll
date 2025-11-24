@@ -2,6 +2,8 @@
 
 @section('content')
 
+@if(Auth::user()->role === 'admin')
+
 @include('partials.menu')
 
 <div class="wrapper profile">
@@ -196,6 +198,200 @@
 
     </div>
 </div>
+
+@else
+
+<div class="wrapper profile">
+    <h1>Profile</h1>
+
+    <div class="container profile">
+        {{-- Profile Picture Section --}}
+        <div class="profile-picture-card">
+            <div class="profile-picture-header">
+                <span class="profile-picture-title">Profile Picture</span>
+            </div>
+
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
+            @if ($errors->has('profile_picture'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ $errors->first('profile_picture') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
+            <div class="profile-picture-content">
+                <div class="profile-image-container">
+                    @if($user->profile_picture)
+                        <img src="{{ asset('uploads/profiles/' . $user->profile_picture) }}" alt="User Profile" class="profile-image">
+                    @else
+                        <img src="{{ asset('assets/img/defaults/user_image.webp') }}" alt="User Profile" class="profile-image">
+                    @endif
+                </div>
+
+                <form method="POST" action="{{ route('profile.picture.upload') }}" enctype="multipart/form-data" class="upload-form" id="pictureUploadForm">
+                    @csrf
+                    <div class="profile-upload-area" onclick="document.getElementById('pictureInput').click()">
+                        <div class="upload-placeholder">
+                            <i class="fa-solid fa-image"></i>
+                            <p>Click to upload a new picture</p>
+                            <small>Max size: 5MB (JPEG, PNG, JPG, GIF)</small>
+                        </div>
+                        <input type="file" id="pictureInput" name="profile_picture" class="file-input" accept="image/*">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="uploadBtn">
+                        <i class="fa-solid fa-upload"></i> Upload Picture
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {{-- Profile Information & Change Password --}}
+        <div class="profile-form-section">
+            {{-- Profile Information --}}
+            <div class="profile-info-card">
+                <div class="card-header">
+                    <span class="card-title">Profile Information</span>
+                </div>
+
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('profile.update') }}" class="profile-form">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="form-group">
+                        <label for="username" class="form-label">Username</label>
+                        <input 
+                            type="text" 
+                            class="form-control @error('username') is-invalid @enderror" 
+                            id="username" 
+                            name="username" 
+                            value="{{ old('username', Auth::user()->username) }}"
+                            required
+                        >
+                        @error('username')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input 
+                            type="email" 
+                            class="form-control @error('email') is-invalid @enderror" 
+                            id="email" 
+                            name="email" 
+                            value="{{ old('email', Auth::user()->email) }}"
+                            required
+                        >
+                        @error('email')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-save"></i> Update Profile
+                    </button>
+                </form>
+            </div>
+
+            {{-- Change Password --}}
+            <div class="change-password-card">
+                <div class="card-header">
+                    <span class="card-title">Change Password</span>
+                </div>
+
+                @if (session('password_success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('password_success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if ($errors->any() && $errors->has('current_password'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        @if ($errors->has('current_password'))
+                            {{ $errors->first('current_password') }}
+                        @elseif ($errors->has('password'))
+                            {{ $errors->first('password') }}
+                        @else
+                            Error updating password
+                        @endif
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('settings.password.update') }}" class="password-form">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="form-group">
+                        <label for="current_password" class="form-label">Current Password</label>
+                        <input 
+                            type="password" 
+                            class="form-control @error('current_password') is-invalid @enderror" 
+                            id="current_password" 
+                            name="current_password" 
+                            placeholder="Enter your current password"
+                            required
+                        >
+                        @error('current_password')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">New Password</label>
+                        <input 
+                            type="password" 
+                            class="form-control @error('password') is-invalid @enderror" 
+                            id="password" 
+                            name="password" 
+                            placeholder="Enter new password"
+                            required
+                        >
+                        @error('password')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password_confirmation" class="form-label">Confirm New Password</label>
+                        <input 
+                            type="password" 
+                            class="form-control @error('password_confirmation') is-invalid @enderror" 
+                            id="password_confirmation" 
+                            name="password_confirmation" 
+                            placeholder="Confirm your new password"
+                            required
+                        >
+                        @error('password_confirmation')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-lock"></i> Change Password
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@endif
 
 <script>
 document.getElementById('pictureInput').addEventListener('change', function() {

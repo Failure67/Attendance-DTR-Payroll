@@ -102,4 +102,40 @@
         </div>
     @endif
 
+    {{-- email input --}}
+    @if (($inputType ?? null) === 'email')
+        <div class="input-field-container {{ $inputType }}">
+
+            <input type="email"   
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
+            placeholder="{{ $inputPlaceholder }}"
+
+            @if (!empty($inputName) && $inputSrc !== 'manage-item')
+                name="{{ $inputName }}"
+            @endif
+
+            id="{{ $inputVar }}-{{ $inputSrc }}"
+            autocomplete="off">
+
+        </div>
+    @endif
+
+    {{-- password input --}}
+    @if (($inputType ?? null) === 'password')
+        <div class="input-field-container {{ $inputType }}">
+
+            <input type="password"   
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
+            placeholder="{{ $inputPlaceholder }}"
+
+            @if (!empty($inputName) && $inputSrc !== 'manage-item')
+                name="{{ $inputName }}"
+            @endif
+
+            id="{{ $inputVar }}-{{ $inputSrc }}"
+            autocomplete="off">
+
+        </div>
+    @endif
+
 </div>

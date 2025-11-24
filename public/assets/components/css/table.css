@@ -1,33 +1,45 @@
 /* © 2025 Romar Jabez */
 
 .table-container {
-    border: 1px solid #505050;
+    border: 1px solid #bdd2e8;
     border-radius: 10px;
     overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .table-container table {
     width: 100%;
-    border-collapse: separate;
+    border-collapse: collapse;
     border-spacing: 0;
 }
 
 .table-container table thead tr th {
-    padding: 5px 10px;
+    padding: 14px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    vertical-align: middle;
 }
 
 .table-container table tbody tr td {
-    padding: 15px 10px;
+    padding: 14px 12px;
+    font-size: 14px;
+    vertical-align: middle;
 }
 
+.table-container table thead tr th,
 .table-container table thead tr th.table-col {
-    background-color: #205173;
-    color: #f1f1f1;
+    background-color: #0D2C42;
+    color: #ffffff;
 }
 
 .table-container table tbody tr:nth-child(even) {
-    background-color: #d8d7d7;
+    background-color: #ffffff;
 }
 .table-container table tbody tr:nth-child(odd) {
-    background-color: #f1f1f1;
+    background-color: #f9fafb;
+}
+
+.table-container table tbody tr:hover {
+    background-color: #f0f4f8;
 }

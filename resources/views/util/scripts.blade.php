@@ -16,6 +16,9 @@
 {{-- page specified scripts --}}
 <script src="{{ asset('assets/js/payroll-console.js') }}"></script>
 <script src="{{ asset('assets/js/payroll-modal-step.js') }}"></script>
+<script src="{{ asset('assets/js/users-console.js') }}"></script>
+<script src="{{ asset('assets/js/users-modal-step.js') }}"></script>
+<script src="{{ asset('assets/js/users-delete.js') }}"></script>
 
 {{-- custom scripts --}}
 

@@ -17,7 +17,7 @@
             </div>
 
             <div class="user-name">
-                {{ Auth::user()->username ?? 'User' }}
+                {{ Auth::user()->full_name ?? Auth::user()->username ?? 'User' }}
             </div>
 
             <div class="option-button" data-bs-toggle="dropdown">
@@ -27,7 +27,9 @@
             {{-- dropdown --}}
             <ul class="dropdown-menu">
                 <li><a href="{{ route('profile.show') }}" class="dropdown-item">Profile</a></li>
-                <li><a href="{{ route('settings.show') }}" class="dropdown-item">Settings</a></li>
+                @if(Auth::user()->role === 'admin')
+                    <li><a href="{{ route('settings.show') }}" class="dropdown-item">Settings</a></li>
+                @endif
                 <li>
                     <form method="POST" action="{{ route('auth.logout') }}" class="d-inline">
                         @csrf

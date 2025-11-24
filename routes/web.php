@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/reset-password', [AuthController::class, 'handleReset'])->name('auth.reset.handle');
 });
 
+// Admin + worker authenticated routes
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
@@ -40,17 +42,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'show'])->name('settings.show');
     Route::put('/settings/password', [\App\Http\Controllers\SettingsController::class, 'updatePassword'])->name('settings.password.update');
 
-    // pages
-    Route::get('/', [AppController::class, 'index'])->name('index');
+    // Admin dashboard and pages (admin-only)
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/dashboard', [AppController::class, 'index'])->name('admin.dashboard');
+        Route::get('/', [AppController::class, 'index'])->name('index');
 
-    Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
+        Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
+        Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
+        Route::post('/payroll/create', [AppController::class, 'storePayroll'])->name('payroll.store');
+        Route::delete('/payroll/{id}', [AppController::class, ''])->name('payroll.delete');
+        Route::delete('/payroll', [AppController::class, 'deletePayroll'])->name('payroll.delete.multiple');
 
-    Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
-    Route::post('/payroll/create', [AppController::class, 'storePayroll'])->name('payroll.store');
-    Route::delete('/payroll/{id}', [AppController::class, ''])->name('payroll.delete');
-    Route::delete('/payroll', [AppController::class, 'deletePayroll'])->name('payroll.delete.multiple');
+        Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
+        Route::post('/users/create', [AppController::class, 'storeUser'])->name('users.store');
+        Route::delete('/users/{id}', [AppController::class, 'deleteUser'])->name('users.delete');
+        Route::delete('/users', [AppController::class, 'deleteMultipleUsers'])->name('users.delete.multiple');
+    });
 
-    Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
+    // Worker dashboard + pages (worker-only)
+    Route::middleware('role:worker')->group(function () {
+        Route::get('/worker', [WorkerController::class, 'overview'])->name('worker.dashboard');
+        Route::get('/worker/payroll-history', [WorkerController::class, 'payrollHistory'])->name('worker.payroll-history');
+        Route::get('/worker/attendance', [WorkerController::class, 'attendance'])->name('worker.attendance');
+    });
 });
 
 // require javascript

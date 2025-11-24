@@ -4,3 +4,39 @@
     display: flex;
     justify-content: space-between;
 }
+
+/* Checkbox column styling */
+.checkbox-column {
+    width: 45px;
+    text-align: center;
+    padding: 0 !important;
+}
+
+.table-container table thead tr th.checkbox-column {
+    background-color: #0D2C42;
+    padding: 14px 0 !important;
+}
+
+.table-container table tbody tr td.checkbox-column {
+    padding: 14px 0 !important;
+    background-color: inherit;
+}
+
+.checkbox-column input[type="checkbox"] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: #0D2C42;
+    margin: 0 auto;
+    display: block;
+}
+
+.users-table tbody tr {
+    cursor: pointer;
+}
+
+/* Disabled delete button */
+#users-delete-users:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
