@@ -1,16 +1,23 @@
 {{-- plugins --}}
-<script src="{{ asset('assets/js/popper.min.js') }}"></script>
+<script src="{{ asset('assets/js/plugins/popper.min.js') }}"></script>
 <script src="{{ asset('assets/bootstrap/js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('assets/js/chart.min.js') }}"></script>
+<script src="{{ asset('assets/js/plugins/chart.min.js') }}"></script>
 <script src="{{ asset('assets/fontawesome/js/all.min.js') }}"></script>
-<script src="{{ asset('assets/js/jquery-3.7.1.min.js') }}"></script>
+<script src="{{ asset('assets/js/plugins/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ asset('assets/select2/dist/js/select2.full.min.js') }}"></script>
 
 {{-- components --}}
 <script src="{{ asset('assets/components/js/input-field.js') }}"></script>
 <script src="{{ asset('assets/components/js/manage-item.js') }}"></script>
+<script src="{{ asset('assets/components/js/modal-console.js') }}"></script>
+<script src="{{ asset('assets/components/js/modal-step.js') }}"></script>
 <script src="{{ asset('assets/components/js/select-option.js') }}"></script>
 
+{{-- page specified scripts --}}
+<script src="{{ asset('assets/js/payroll-console.js') }}"></script>
+<script src="{{ asset('assets/js/payroll-modal-step.js') }}"></script>
+
+{{-- custom scripts --}}
 
 <script>
     $(document).ready(function(){

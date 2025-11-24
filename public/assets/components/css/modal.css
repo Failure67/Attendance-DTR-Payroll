@@ -16,7 +16,7 @@
     font-weight: 600;
 }
 
-.modal-body {
+.modal-body-container, .modal-body {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -27,5 +27,16 @@
     border: 1px solid #12293a;
     border-radius: 8px;
     color: #12293a;
-    padding: 20px 18px;
+    padding: 20px 23px;
+    user-select: none;
+}
+
+.modal-console .console-item {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.modal-console .console-item .console-value {
+    font-weight: 600;
 }
