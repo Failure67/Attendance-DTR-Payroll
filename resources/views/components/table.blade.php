@@ -1,5 +1,10 @@
 <div class="table-container {{ $tableClass }}">
 
+    @php
+        // Columns that should render raw HTML instead of escaped text
+        $rawColumns = $rawColumns ?? [];
+    @endphp
+
     <table>
 
         <thead>
@@ -17,7 +22,11 @@
                 <tr>
                     @foreach ($row as $index => $data)
                         <td class="table-data {{ $tableClass }} {{ $tableCol[$index] }}">
-                            {{ $data }}
+                            @if (in_array($tableCol[$index], $rawColumns))
+                                {!! $data !!}
+                            @else
+                                {{ $data }}
+                            @endif
                         </td>
                     @endforeach
                 </tr>

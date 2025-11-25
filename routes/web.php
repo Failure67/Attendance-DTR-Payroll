@@ -53,9 +53,14 @@ Route::middleware('auth')->group(function () {
         Route::delete('/payroll/{id}', [AppController::class, ''])->name('payroll.delete');
         Route::delete('/payroll', [AppController::class, 'deletePayroll'])->name('payroll.delete.multiple');
 
+        // User management routes
         Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
-        Route::post('/users/create', [AppController::class, 'storeUser'])->name('users.store');
-        Route::delete('/users/{id}', [AppController::class, 'deleteUser'])->name('users.delete');
+        Route::post('/users', [AppController::class, 'storeUser'])->name('users.store');
+        
+        // Archive/restore/delete user routes
+        Route::post('/users/{user}/archive', [AppController::class, 'archiveUser'])->name('users.archive');
+        Route::post('/users/{user}/restore', [AppController::class, 'restoreUser'])->name('users.restore');
+        Route::delete('/users/{user}', [AppController::class, 'deleteUser'])->name('users.delete');
         Route::delete('/users', [AppController::class, 'deleteMultipleUsers'])->name('users.delete.multiple');
     });
 

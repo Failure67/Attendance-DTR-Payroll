@@ -176,12 +176,15 @@ class AppController extends Controller
     // users
     public function viewUsers()
     {
-        $users = User::all();
+        $users = User::whereNull('deleted_at')->get();
+        $archivedUsers = User::onlyTrashed()->get();
         
         return view('pages.users', [
             'title' => 'Users',
             'pageClass' => 'users',
-        ], compact('users'));
+            'users' => $users,
+            'archivedUsers' => $archivedUsers
+        ]);
     }
 
     public function storeUser(Request $request)
@@ -224,12 +227,31 @@ class AppController extends Controller
         }
     }
 
+    public function archiveUser(User $user)
+    {
+        $user->delete();
+        return response()->json(['success' => true]);
+    }
+
+    public function restoreUser($id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+        return response()->json(['success' => true]);
+    }
+
     public function deleteUser(Request $request, $id)
     {
-        $user = User::findOrFail($id);
-        $user->delete();
+        $user = User::withTrashed()->findOrFail($id);
+        
+        // If user is soft deleted, force delete it
+        if ($user->trashed()) {
+            $user->forceDelete();
+        } else {
+            $user->delete();
+        }
 
-        return redirect()->route('users')->with('success', 'User successfully deleted.');
+        return response()->json(['success' => true]);
     }
 
     public function deleteMultipleUsers(Request $request)
