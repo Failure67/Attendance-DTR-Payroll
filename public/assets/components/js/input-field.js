@@ -94,5 +94,30 @@ $(document).ready(function() {
         if (v === '-' || v === '.' || v === '-.') this.value = '';
         else if (v.endsWith('.')) this.value = v.slice(0, -1);
     });
+
+    // increment / decrement buttons for numeric fields (e.g., Units worked)
+    $(document).on('click', '.button.icon.decrement', function () {
+        const $container = $(this).closest('.input-field-container.number.inDecrement');
+        const $input = $container.find('.input-field.number').first();
+        if (!$input.length) return;
+
+        let value = parseFloat($input.val()) || 0;
+        value = Math.max(0, value - 1);
+
+        $input.val(value);
+        $input.trigger('input').trigger('change');
+    });
+
+    $(document).on('click', '.button.icon.increment', function () {
+        const $container = $(this).closest('.input-field-container.number.inDecrement');
+        const $input = $container.find('.input-field.number').first();
+        if (!$input.length) return;
+
+        let value = parseFloat($input.val()) || 0;
+        value = value + 1;
+
+        $input.val(value);
+        $input.trigger('input').trigger('change');
+    });
     
 });

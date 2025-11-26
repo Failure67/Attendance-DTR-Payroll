@@ -33,8 +33,8 @@
         }
 
         .worker-id {
-            font-size: 0.9rem;
-            color: #64748b;
+            font-size: 0.95rem;
+            color: #4b5563;
         }
 
         .worker-tabs {
@@ -84,7 +84,7 @@
         .worker-table table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
         }
 
         .worker-table thead {
@@ -148,8 +148,8 @@
     <div class="worker-dashboard payroll-history">
         <div class="worker-header">
             <div class="worker-profile">
-                <div class="worker-name">John Smith</div>
-                <div class="worker-id">ID: EMP-2024-001</div>
+                <div class="worker-name">{{ $user->full_name ?? $user->username }}</div>
+                <div class="worker-id">ID: EMP-{{ str_pad($user->id, 4, '0', STR_PAD_LEFT) }}</div>
             </div>
             <div class="worker-tabs">
                 <a href="{{ route('worker.dashboard') }}" class="tab">Overview</a>
@@ -165,68 +165,41 @@
                     <thead>
                         <tr>
                             <th>Period</th>
-                            <th>Basic Salary</th>
-                            <th>Overtime</th>
-                            <th>Allowances</th>
+                            <th>Gross pay</th>
                             <th>Deductions</th>
-                            <th>Net Pay</th>
+                            <th>Net pay</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>November 2024</td>
-                            <td>$4,500</td>
-                            <td>$450</td>
-                            <td>$300</td>
-                            <td>$250</td>
-                            <td>$5,000</td>
-                            <td><span class="status paid">Paid</span></td>
-                            <td>
-                                <button class="icon-btn view">👁</button>
-                                <button class="icon-btn download">⬇</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>October 2024</td>
-                            <td>$4,500</td>
-                            <td>$375</td>
-                            <td>$300</td>
-                            <td>$250</td>
-                            <td>$4,925</td>
-                            <td><span class="status paid">Paid</span></td>
-                            <td>
-                                <button class="icon-btn view">👁</button>
-                                <button class="icon-btn download">⬇</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>September 2024</td>
-                            <td>$4,500</td>
-                            <td>$300</td>
-                            <td>$300</td>
-                            <td>$250</td>
-                            <td>$4,850</td>
-                            <td><span class="status paid">Paid</span></td>
-                            <td>
-                                <button class="icon-btn view">👁</button>
-                                <button class="icon-btn download">⬇</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>August 2024</td>
-                            <td>$4,500</td>
-                            <td>$525</td>
-                            <td>$300</td>
-                            <td>$250</td>
-                            <td>$5,075</td>
-                            <td><span class="status paid">Paid</span></td>
-                            <td>
-                                <button class="icon-btn view">👁</button>
-                                <button class="icon-btn download">⬇</button>
-                            </td>
-                        </tr>
+                        @forelse ($payrolls as $payroll)
+                            @php
+                                $period = ($payroll->period_start && $payroll->period_end)
+                                    ? $payroll->period_start->format('Y-m-d') . ' to ' . $payroll->period_end->format('Y-m-d')
+                                    : ($payroll->created_at ? $payroll->created_at->format('Y-m-d') : 'N/A');
+                                $gross = '₱ ' . number_format((float) ($payroll->gross_pay ?? 0), 2);
+                                $deductions = '₱ ' . number_format((float) ($payroll->total_deductions ?? 0), 2);
+                                $net = '₱ ' . number_format((float) ($payroll->net_pay ?? 0), 2);
+                                $status = $payroll->status ?? 'Pending';
+                            @endphp
+                            <tr>
+                                <td>{{ $period }}</td>
+                                <td>{{ $gross }}</td>
+                                <td>{{ $deductions }}</td>
+                                <td>{{ $net }}</td>
+                                <td>
+                                    <span class="status paid">{{ $status }}</span>
+                                </td>
+                                <td>
+                                    <a href="{{ route('worker.payslip', $payroll->id) }}" class="btn btn-sm btn-outline-primary">View payslip</a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6">No payroll records found.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

@@ -12,9 +12,9 @@ class SettingsController extends Controller
     /**
      * Show settings page
      */
-    public function show()
+    public function show(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->resolveSettingsUser($request);
         return view('settings.show', compact('user'));
     }
 
@@ -23,7 +23,7 @@ class SettingsController extends Controller
      */
     public function updatePassword(Request $request)
     {
-        $user = Auth::user();
+        $user = $this->resolveSettingsUser($request);
 
         $validated = $request->validate([
             'current_password' => ['required', function ($attribute, $value, $fail) use ($user) {
@@ -36,7 +36,42 @@ class SettingsController extends Controller
 
         $user->update(['password' => Hash::make($validated['password'])]);
 
-        return Redirect::route('profile.show')
-                       ->with('password_success', 'Password changed successfully!');
+        return Redirect::route('profile.show', [
+                'guard' => $user->role === 'admin' ? 'admin' : 'worker',
+            ])
+            ->with('password_success', 'Password changed successfully!');
+    }
+
+    /**
+     * Resolve which guard's user record should be used for settings.
+     */
+    private function resolveSettingsUser(Request $request)
+    {
+        // Prefer explicit guard hints first (query string or form input)
+        $guardHint = $request->query('guard') ?? $request->input('guard');
+
+        if ($guardHint === 'admin' && Auth::guard('admin')->check()) {
+            return Auth::guard('admin')->user();
+        }
+
+        if ($guardHint === 'worker' && Auth::guard('web')->check()) {
+            return Auth::guard('web')->user();
+        }
+
+        // Worker area URLs ("/worker" prefix) should always use the worker guard
+        if ($request->is('worker*') && Auth::guard('web')->check()) {
+            return Auth::guard('web')->user();
+        }
+
+        // Default priority when both are logged in: prefer admin for non-worker pages
+        if (Auth::guard('admin')->check()) {
+            return Auth::guard('admin')->user();
+        }
+
+        if (Auth::guard('web')->check()) {
+            return Auth::guard('web')->user();
+        }
+
+        abort(403);
     }
 }

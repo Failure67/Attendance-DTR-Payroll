@@ -24,6 +24,11 @@
 
             id="{{ $inputVar }}-{{ $inputSrc }}"
             autocomplete="off"
+
+            @if (!empty($inputReadonly))
+                readonly
+            @endif
+
             inputmode="decimal"
             {{--pattern="-?[0-9]*[.,]?[0-9]*"--}}>
 
@@ -57,6 +62,10 @@
 
             id="{{ $inputVar }}-{{ $inputSrc }}"
             autocomplete="off"
+
+            @if (!empty($inputReadonly))
+                readonly
+            @endif
 
             @if (!empty($inputStyle))
                 style="{{ $inputStyle ?? null }}"

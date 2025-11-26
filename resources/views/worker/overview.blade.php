@@ -87,21 +87,21 @@
         }
 
         .worker-card .label {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #94a3b8;
+            color: #6b7280;
         }
 
         .worker-card .value {
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             font-weight: 700;
-            color: #0f172a;
+            color: #0b1120;
         }
 
         .worker-card .sub {
-            font-size: 0.85rem;
-            color: #64748b;
+            font-size: 0.9rem;
+            color: #4b5563;
         }
 
         .worker-payroll-summary {
@@ -132,7 +132,7 @@
         .summary-col .row {
             display: flex;
             justify-content: space-between;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #0f172a;
         }
 
@@ -149,11 +149,11 @@
         }
 
         .summary-col .row.highlight {
-            background: linear-gradient(90deg, #2563eb, #3b82f6);
+            background: #e0f2fe;
             padding: 0.55rem 0.75rem;
-            border-radius: 999px;
-            color: #ffffff;
-            font-weight: 600;
+            border-radius: 12px;
+            color: #0b1120;
+            font-weight: 700;
         }
 
         @media (max-width: 1024px) {
@@ -188,8 +188,8 @@
     <div class="worker-dashboard overview">
         <div class="worker-header">
             <div class="worker-profile">
-                <div class="worker-name">John Smith</div>
-                <div class="worker-id">ID: EMP-2024-001</div>
+                <div class="worker-name">{{ $user->full_name ?? $user->username }}</div>
+                <div class="worker-id">ID: EMP-{{ str_pad($user->id, 4, '0', STR_PAD_LEFT) }}</div>
             </div>
             <div class="worker-tabs">
                 <a href="{{ route('worker.dashboard') }}" class="tab active">Overview</a>
@@ -200,54 +200,99 @@
 
         <div class="worker-content">
             <div class="worker-cards">
+                @php
+                    $latestNet = $latestPayroll ? number_format((float) $latestPayroll->net_pay, 2) : null;
+                    $latestPeriod = $latestPayroll && $latestPayroll->period_start && $latestPayroll->period_end
+                        ? $latestPayroll->period_start->format('Y-m-d') . ' to ' . $latestPayroll->period_end->format('Y-m-d')
+                        : null;
+                @endphp
+
                 <div class="worker-card">
-                    <div class="label">Latest Payment</div>
-                    <div class="value">$5,000</div>
-                    <div class="sub">November 2024</div>
+                    <div class="label">Latest payment</div>
+                    <div class="value">
+                        @if ($latestNet)
+                            ₱ {{ $latestNet }}
+                        @else
+                            N/A
+                        @endif
+                    </div>
+                    <div class="sub">
+                        @if ($latestPeriod)
+                            Period {{ $latestPeriod }}
+                        @else
+                            No payroll records yet
+                        @endif
+                    </div>
                 </div>
+
                 <div class="worker-card">
-                    <div class="label">Hours Worked</div>
-                    <div class="value">176h</div>
+                    <div class="label">Hours worked</div>
+                    <div class="value">{{ number_format($monthHours ?? 0, 2) }}h</div>
                     <div class="sub">This month</div>
                 </div>
+
                 <div class="worker-card">
                     <div class="label">Overtime</div>
-                    <div class="value">12h</div>
-                    <div class="sub">Extra hours</div>
+                    <div class="value">{{ number_format($monthOvertime ?? 0, 2) }}h</div>
+                    <div class="sub">This month</div>
                 </div>
+
                 <div class="worker-card">
-                    <div class="label">Position</div>
-                    <div class="value">Site Worker</div>
-                    <div class="sub">Construction</div>
+                    <div class="label">CA balance</div>
+                    <div class="value">₱ {{ number_format($caBalance ?? 0, 2) }}</div>
+                    <div class="sub">Outstanding cash advance</div>
                 </div>
             </div>
 
             <div class="worker-payroll-summary">
-                <div class="section-title">Latest Payroll Breakdown</div>
-                <div class="summary-grid">
-                    <div class="summary-col">
-                        <div class="row">
-                            <span>Basic Salary</span><span>$4,500</span>
+                <div class="section-title">Latest payroll breakdown</div>
+
+                @if ($latestPayroll)
+                    @php
+                        $gross = number_format((float) $latestPayroll->gross_pay, 2);
+                        $deductions = number_format((float) $latestPayroll->total_deductions, 2);
+                        $net = number_format((float) $latestPayroll->net_pay, 2);
+                    @endphp
+
+                    <div class="summary-grid">
+                        <div class="summary-col">
+                            <div class="row">
+                                <span>Gross pay</span><span>₱ {{ $gross }}</span>
+                            </div>
+                            <div class="row">
+                                <span>CA balance after payroll</span><span>₱ {{ number_format($caBalance ?? 0, 2) }}</span>
+                            </div>
                         </div>
-                        <div class="row positive">
-                            <span>Overtime Pay</span><span>+$450</span>
-                        </div>
-                        <div class="row positive">
-                            <span>Allowances</span><span>+$300</span>
+                        <div class="summary-col">
+                            <div class="row negative">
+                                <span>Total deductions</span><span>-₱ {{ $deductions }}</span>
+                            </div>
+                            <div class="row highlight">
+                                <span>Net pay</span><span>₱ {{ $net }}</span>
+                            </div>
+                            <div class="row">
+                                <span>Period</span>
+                                <span>{{ $latestPeriod ?? 'N/A' }}</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="summary-col">
-                        <div class="row negative">
-                            <span>Deductions</span><span>-$250</span>
+                @else
+                    <div class="summary-grid">
+                        <div class="summary-col">
+                            <div class="row">
+                                <span>Gross pay</span><span>N/A</span>
+                            </div>
                         </div>
-                        <div class="row highlight">
-                            <span>Net Pay</span><span>$5,000</span>
-                        </div>
-                        <div class="row">
-                            <span>Payment Date</span><span>2024-11-01</span>
+                        <div class="summary-col">
+                            <div class="row highlight">
+                                <span>Net pay</span><span>N/A</span>
+                            </div>
+                            <div class="row">
+                                <span>Period</span><span>No payroll data yet</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endif
             </div>
         </div>
     </div>

@@ -22,27 +22,34 @@ class AuthController extends Controller
      */
     public function handleLogin(Request $request)
     {
-        $credentials = $request->validate([
+        $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string|min:8',
         ]);
 
-        if (Auth::attempt($credentials, $request->filled('remember'))) {
-            $request->session()->regenerate();
-            $user = Auth::user();
+        $user = User::where('email', $validated['email'])->first();
 
-            // Redirect based on role
-            if ($user->role === 'admin') {
-                return redirect()->intended(route('admin.dashboard'));
-            }
-
-            // Default: worker dashboard
-            return redirect()->intended(route('worker.dashboard'));
+        if (!$user || !Hash::check($validated['password'], $user->password)) {
+            return back()->withErrors([
+                'email' => 'The provided credentials do not match our records.',
+            ])->onlyInput('email');
         }
 
-        return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ])->onlyInput('email');
+        $remember = $request->filled('remember');
+
+        if ($user->role === 'admin') {
+            // Log in on the dedicated admin guard so admin and worker sessions can coexist
+            Auth::guard('admin')->login($user, $remember);
+            $request->session()->regenerate();
+
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
+        // Default: worker login on the main web guard
+        Auth::login($user, $remember);
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('worker.dashboard'));
     }
 
     /**
@@ -82,10 +89,46 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        Auth::logout();
+        // Log out from both admin and worker guards, if active
+        if (Auth::guard('admin')->check()) {
+            Auth::guard('admin')->logout();
+        }
+
+        if (Auth::guard('web')->check()) {
+            Auth::guard('web')->logout();
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        return redirect(route('auth.login.show'));
+    }
+
+    /**
+     * Logout only the admin guard (keeps worker session if any).
+     */
+    public function logoutAdmin(Request $request)
+    {
+        if (Auth::guard('admin')->check()) {
+            Auth::guard('admin')->logout();
+        }
+
+        // Keep other guard sessions but refresh the session ID for safety
+        $request->session()->regenerate();
+
+        return redirect(route('auth.login.show'));
+    }
+
+    /**
+     * Logout only the worker (web) guard (keeps admin session if any).
+     */
+    public function logoutWorker(Request $request)
+    {
+        if (Auth::guard('web')->check()) {
+            Auth::guard('web')->logout();
+        }
+
+        $request->session()->regenerate();
 
         return redirect(route('auth.login.show'));
     }

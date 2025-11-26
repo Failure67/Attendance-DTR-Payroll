@@ -31,10 +31,15 @@ Route::middleware('guest')->group(function () {
 });
 
 // Admin + worker authenticated routes
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:admin,web')->group(function () {
+    // Global logout (clears both guards)
     Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
 
-    // profile and settings
+    // Guard-specific logouts
+    Route::post('/logout/admin', [AuthController::class, 'logoutAdmin'])->name('auth.logout.admin');
+    Route::post('/logout/worker', [AuthController::class, 'logoutWorker'])->name('auth.logout.worker');
+
+    // profile and settings (accessible to any authenticated user)
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/picture', [\App\Http\Controllers\ProfileController::class, 'uploadPicture'])->name('profile.picture.upload');
@@ -43,15 +48,29 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/password', [\App\Http\Controllers\SettingsController::class, 'updatePassword'])->name('settings.password.update');
 
     // Admin dashboard and pages (admin-only)
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware(['auth:admin', 'role:admin'])->group(function () {
         Route::get('/dashboard', [AppController::class, 'index'])->name('admin.dashboard');
         Route::get('/', [AppController::class, 'index'])->name('index');
 
         Route::get('/attendance', [AppController::class, 'viewAttendance'])->name('attendance');
+        Route::post('/attendance', [AppController::class, 'storeAttendance'])->name('attendance.store');
+        Route::put('/attendance/{id}', [AppController::class, 'updateAttendance'])->name('attendance.update');
+        Route::delete('/attendance/{id}', [AppController::class, 'deleteAttendance'])->name('attendance.delete');
+        Route::get('/attendance/export', [AppController::class, 'exportAttendance'])->name('attendance.export');
+
         Route::get('/payroll', [AppController::class, 'viewPayroll'])->name('payroll');
         Route::post('/payroll/create', [AppController::class, 'storePayroll'])->name('payroll.store');
-        Route::delete('/payroll/{id}', [AppController::class, ''])->name('payroll.delete');
-        Route::delete('/payroll', [AppController::class, 'deletePayroll'])->name('payroll.delete.multiple');
+        Route::get('/payroll/export', [AppController::class, 'exportPayroll'])->name('payroll.export');
+        Route::get('/payroll/process', [AppController::class, 'viewProcessPayroll'])->name('payroll.process');
+        Route::post('/payroll/process', [AppController::class, 'runProcessPayroll'])->name('payroll.process.run');
+        Route::get('/payroll/{id}', [AppController::class, 'showPayroll'])->name('payroll.show');
+        Route::put('/payroll/{id}', [AppController::class, 'updatePayroll'])->name('payroll.update');
+        Route::patch('/payroll/{id}/status', [AppController::class, 'updatePayrollStatus'])->name('payroll.update-status');
+        Route::delete('/payroll/{id}', [AppController::class, 'deletePayroll'])->name('payroll.delete');
+        Route::delete('/payroll', [AppController::class, 'deleteMultiplePayroll'])->name('payroll.delete.multiple');
+
+        Route::get('/cash-advances', [AppController::class, 'viewCashAdvances'])->name('cash-advances');
+        Route::post('/cash-advances', [AppController::class, 'storeCashAdvance'])->name('cash-advances.store');
 
         // User management routes
         Route::get('/users', [AppController::class, 'viewUsers'])->name('users');
@@ -65,9 +84,11 @@ Route::middleware('auth')->group(function () {
     });
 
     // Worker dashboard + pages (worker-only)
-    Route::middleware('role:worker')->group(function () {
+    Route::middleware(['auth:web', 'role:worker'])->group(function () {
         Route::get('/worker', [WorkerController::class, 'overview'])->name('worker.dashboard');
         Route::get('/worker/payroll-history', [WorkerController::class, 'payrollHistory'])->name('worker.payroll-history');
+        Route::get('/worker/payroll-history/{id}', [WorkerController::class, 'payslip'])->name('worker.payslip');
+        Route::get('/worker/payroll-history/{id}/download', [WorkerController::class, 'downloadPayslip'])->name('worker.payslip.download');
         Route::get('/worker/attendance', [WorkerController::class, 'attendance'])->name('worker.attendance');
     });
 });

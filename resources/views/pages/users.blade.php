@@ -40,8 +40,8 @@
             }
 
             function applyFilters() {
-                const query = searchInput ? searchInput.value.toLowerCase() : '';
-                const role = roleFilter ? roleFilter.value.toLowerCase() : '';
+                const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+                const role = roleFilter ? roleFilter.value.trim().toLowerCase() : '';
 
                 [activeSection, archivedSection].forEach(section => {
                     if (!section) return;
@@ -49,22 +49,55 @@
                     if (!table) return;
 
                     table.querySelectorAll('tbody tr').forEach(row => {
+                        // full text search
                         const text = row.innerText.toLowerCase();
-                        const cells = row.querySelectorAll('td');
-                        const roleText = cells[2] ? cells[2].innerText.trim().toLowerCase() : '';
+
+                        // Find the role text robustly:
+                        // 1) prefer an element with data-role attribute
+                        // 2) else try to use the 3rd td (cells[2]) as a fallback
+                        let roleText = '';
+                        const roleNode = row.querySelector('[data-role]');
+                        if (roleNode) {
+                            roleText = roleNode.innerText.trim().toLowerCase();
+                        } else {
+                            const cells = row.querySelectorAll('td');
+                            if (cells && cells.length >= 3) {
+                                roleText = cells[2].innerText.trim().toLowerCase();
+                            } else {
+                                roleText = '';
+                            }
+                        }
 
                         const matchesSearch = !query || text.includes(query);
-                        const matchesRole = !role || roleText === role;
+                        const matchesRole = !role || (roleText && (roleText === role || roleText.includes(role)));
 
                         row.style.display = (matchesSearch && matchesRole) ? '' : 'none';
                     });
                 });
             }
 
+            // If archiveToggleBtn isn't found by id (older markup), try to find a button by text as a fallback
+            if (!archiveToggleBtn) {
+                const allButtons = Array.from(document.querySelectorAll('button, a'));
+                const fallback = allButtons.find(el => (el.innerText || '').trim().toLowerCase().includes('view archived') || (el.innerText || '').trim().toLowerCase().includes('back to users'));
+                if (fallback) {
+                    // assign id so other code can reuse it
+                    fallback.id = 'archive-toggle-users';
+                }
+            }
+
             if (archiveToggleBtn) {
                 archiveToggleBtn.addEventListener('click', function () {
                     setView(!showingArchived);
                 });
+            } else {
+                // try again after potential fallback assignment
+                const maybeBtn = document.getElementById('archive-toggle-users');
+                if (maybeBtn) {
+                    maybeBtn.addEventListener('click', function () {
+                        setView(!showingArchived);
+                    });
+                }
             }
 
             if (searchInput) {
@@ -197,6 +230,13 @@
         <div class="container {{ $pageClass }} tab">
 
             <div class="d-flex align-items-center" style="gap: 10px;">
+                {{-- SEARCH FIRST (swapped) --}}
+                @include('components.search', [
+                    'searchClass' => 'users',
+                    'searchId' => 'users-search',
+                ])
+
+                {{-- ROLE DROPDOWN SECOND (swapped) --}}
                 <select id="role-filter" class="form-select form-select-sm" style="width: 170px; max-width: 190px;">
                     <option value="">All roles</option>
                     <option value="Admin">Admin</option>
@@ -207,11 +247,6 @@
                     <option value="Supervisor">Supervisor</option>
                     <option value="Worker">Worker</option>
                 </select>
-
-                @include('components.search', [
-                    'searchClass' => 'users',
-                    'searchId' => 'users-search',    
-                ])
             </div>
 
             <div class="crud-buttons">
@@ -226,6 +261,7 @@
                     'buttonTarget' => 'addUsersModal'
                 ])
 
+                {{-- Ensure archive toggle has an ID the JS can find --}}
                 @include('components.button', [
                     'buttonType' => 'danger',
                     'buttonVar' => 'archive-toggle',
@@ -233,6 +269,7 @@
                     'buttonIcon' => '<i class="fa-solid fa-clock-rotate-left"></i>',
                     'buttonLabel' => 'View archived',
                     'buttonModal' => false,
+                    'btnAttribute' => 'id="archive-toggle-users"'
                 ])
 
             </div>
@@ -266,19 +303,19 @@
                                 . '<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;font-size:12px;font-weight:600;">'
                                     . substr($user->full_name ?? $user->username, 0, 2)
                                 . '</div>'
-                                . '<span class="fw-semibold">' . ($user->full_name ?? $user->username) . '</span>'
+                                . '<span class="fw-semibold">' . e($user->full_name ?? $user->username) . '</span>'
                             . '</div>',
                             // Email
-                            $user->email,
-                            // Role pill
-                            '<span class="badge rounded-pill ' 
+                            e($user->email),
+                            // Role pill with data-role attribute for reliable JS lookup
+                            '<span data-role="' . e($user->role) . '" class="badge rounded-pill ' 
                                 . ($user->role === 'Admin'
                                     ? 'bg-warning text-dark'
                                     : ($user->role === 'Superadmin'
                                         ? 'bg-danger'
                                         : 'bg-primary'))
                                 . '">'
-                                . ($user->role ?? 'N/A')
+                                . e($user->role ?? 'N/A')
                             . '</span>',
                             // Registered date
                             now()->parse($user->created_at)->format('M d, Y'),
@@ -324,11 +361,12 @@
                                 . '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;font-size:12px;font-weight:600;">'
                                     . substr($user->full_name ?? $user->username, 0, 2)
                                 . '</div>'
-                                . '<span class="text-muted">' . ($user->full_name ?? $user->username) . '</span>'
+                                . '<span class="text-muted">' . e($user->full_name ?? $user->username) . '</span>'
                             . '</div>',
-                            '<span class="text-muted">' . $user->email . '</span>',
-                            '<span class="badge rounded-pill bg-secondary text-dark">'
-                                . ($user->role ?? 'N/A')
+                            '<span class="text-muted">' . e($user->email) . '</span>',
+                            // Role with data-role attribute
+                            '<span data-role="' . e($user->role) . '" class="badge rounded-pill bg-secondary text-dark">'
+                                . e($user->role ?? 'N/A')
                             . '</span>',
                             '<span class="text-muted">' . now()->parse($user->deleted_at)->format('M d, Y') . '</span>',
                             '<div class="users-actions d-flex align-items-center gap-1">'
@@ -357,7 +395,7 @@
         'modalClass' => 'users-modal',
         'modalId' => 'addUsersModal',
         'modalForm' => 'addUsersForm',
-        'modalRoute' => 'users.store', 
+        'modalRoute' => 'users.store',
         'modalBody1Class' => 'input-fields',
         'modalBody2Class' => 'review-fields',
         'modalHeader' => '

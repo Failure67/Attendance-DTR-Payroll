@@ -5,30 +5,26 @@
     justify-content: space-between;
 }
 
-/* Checkbox column styling */
+/* Checkbox column styling - Hidden */
 .checkbox-column {
-    width: 45px;
-    text-align: center;
+    display: none !important;
+    width: 0 !important;
     padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
 }
 
-.table-container table thead tr th.checkbox-column {
-    background-color: #0D2C42;
-    padding: 14px 0 !important;
+/* Adjust the first visible column to have proper left padding */
+.table-container table thead tr th:not(.checkbox-column):first-child,
+.table-container table tbody tr td:not(.checkbox-column):first-child {
+    padding-left: 15px !important;
+    vertical-align: middle;
+    height: 40px;
 }
 
-.table-container table tbody tr td.checkbox-column {
-    padding: 14px 0 !important;
-    background-color: inherit;
-}
-
-.checkbox-column input[type="checkbox"] {
-    cursor: pointer;
-    width: 18px;
-    height: 18px;
-    accent-color: #0D2C42;
-    margin: 0 auto;
-    display: block;
+/* Hide any checkbox inputs in the first column */
+.table-container table tbody tr td:first-child input[type="checkbox"] {
+    display: none !important;
 }
 
 .users-table tbody tr {

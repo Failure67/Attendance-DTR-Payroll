@@ -33,8 +33,8 @@
         }
 
         .worker-id {
-            font-size: 0.9rem;
-            color: #64748b;
+            font-size: 0.95rem;
+            color: #4b5563;
         }
 
         .worker-tabs {
@@ -84,7 +84,7 @@
         .worker-table table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
         }
 
         .worker-table thead {
@@ -151,8 +151,8 @@
     <div class="worker-dashboard attendance">
         <div class="worker-header">
             <div class="worker-profile">
-                <div class="worker-name">John Smith</div>
-                <div class="worker-id">ID: EMP-2024-001</div>
+                <div class="worker-name">{{ $user->full_name ?? $user->username }}</div>
+                <div class="worker-id">ID: EMP-{{ str_pad($user->id, 4, '0', STR_PAD_LEFT) }}</div>
             </div>
             <div class="worker-tabs">
                 <a href="{{ route('worker.dashboard') }}" class="tab">Overview</a>
@@ -168,62 +168,36 @@
                     <thead>
                         <tr>
                             <th>Date</th>
-                            <th>Check In</th>
-                            <th>Check Out</th>
+                            <th>Check in</th>
+                            <th>Check out</th>
                             <th>Hours</th>
                             <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>2024-11-22</td>
-                            <td>07:58 AM</td>
-                            <td>05:02 PM</td>
-                            <td>9h</td>
-                            <td><span class="status present">Present</span></td>
-                        </tr>
-                        <tr>
-                            <td>2024-11-21</td>
-                            <td>08:02 AM</td>
-                            <td>05:05 PM</td>
-                            <td>9h</td>
-                            <td><span class="status present">Present</span></td>
-                        </tr>
-                        <tr>
-                            <td>2024-11-20</td>
-                            <td>07:55 AM</td>
-                            <td>06:30 PM</td>
-                            <td>10.5h</td>
-                            <td><span class="status present">Present</span></td>
-                        </tr>
-                        <tr>
-                            <td>2024-11-19</td>
-                            <td>08:00 AM</td>
-                            <td>05:00 PM</td>
-                            <td>9h</td>
-                            <td><span class="status present">Present</span></td>
-                        </tr>
-                        <tr>
-                            <td>2024-11-18</td>
-                            <td>08:05 AM</td>
-                            <td>05:03 PM</td>
-                            <td>9h</td>
-                            <td><span class="status present">Present</span></td>
-                        </tr>
-                        <tr>
-                            <td>2024-11-15</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>0h</td>
-                            <td><span class="status weekend">Weekend</span></td>
-                        </tr>
-                        <tr>
-                            <td>2024-11-14</td>
-                            <td>08:00 AM</td>
-                            <td>05:00 PM</td>
-                            <td>9h</td>
-                            <td><span class="status present">Present</span></td>
-                        </tr>
+                        @forelse ($attendances as $attendance)
+                            @php
+                                $date = $attendance->date
+                                    ? $attendance->date->format('Y-m-d')
+                                    : ($attendance->time_in ? $attendance->time_in->format('Y-m-d') : 'N/A');
+                                $timeIn = $attendance->time_in ? $attendance->time_in->format('H:i') : '—';
+                                $timeOut = $attendance->time_out ? $attendance->time_out->format('H:i') : '—';
+                                $hours = number_format((float) ($attendance->total_hours ?? 0), 2) . 'h';
+                                $status = $attendance->status ?? 'Present';
+                                $statusClass = in_array($status, ['Present', 'Late', 'On leave'], true) ? 'present' : 'weekend';
+                            @endphp
+                            <tr>
+                                <td>{{ $date }}</td>
+                                <td>{{ $timeIn }}</td>
+                                <td>{{ $timeOut }}</td>
+                                <td>{{ $hours }}</td>
+                                <td><span class="status {{ $statusClass }}">{{ $status }}</span></td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5">No attendance records found.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

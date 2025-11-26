@@ -27,3 +27,6 @@
 {{-- main assets --}}
 <link rel="stylesheet" href="{{ asset('assets/css/menu.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+
+{{-- fixes --}}
+<link rel="stylesheet" href="{{ asset('assets/css/fixes.css') }}">

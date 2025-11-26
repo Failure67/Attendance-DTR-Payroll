@@ -15,6 +15,19 @@
                 'searchId' => 'payroll-search',
             ])
 
+            @php
+                $currentFilters = $filters ?? [];
+                $exportQuery = array_filter([
+                    'employee_id' => $currentFilters['employee_id'] ?? null,
+                    'status' => $currentFilters['status'] ?? null,
+                    'period_start' => $currentFilters['period_start'] ?? null,
+                    'period_end' => $currentFilters['period_end'] ?? null,
+                ], function ($value) {
+                    return !is_null($value) && $value !== '';
+                });
+                $exportUrl = route('payroll.export') . (count($exportQuery) ? ('?' . http_build_query($exportQuery)) : '');
+            @endphp
+
             <div class="crud-buttons">
 
                 @include('components.button', [
@@ -25,6 +38,33 @@
                     'buttonLabel' => 'New',
                     'buttonModal' => true,
                     'buttonTarget' => 'addPayrollModal'
+                ])
+
+                @include('components.button', [
+                    'buttonType' => 'secondary',
+                    'buttonVar' => 'payroll-edit',
+                    'buttonSrc' => 'payroll',
+                    'buttonIcon' => '<i class="fa-solid fa-pen"></i>',
+                    'buttonLabel' => 'Edit',
+                    'buttonModal' => false,
+                ])
+
+                @include('components.button', [
+                    'buttonType' => 'secondary',
+                    'buttonVar' => 'payroll-process',
+                    'buttonSrc' => 'payroll',
+                    'buttonIcon' => '<i class="fa-solid fa-gears"></i>',
+                    'buttonLabel' => 'Process from attendance',
+                    'btnAttribute' => 'onclick="window.location.href=\'' . route('payroll.process') . '\'"',
+                ])
+
+                @include('components.button', [
+                    'buttonType' => 'secondary',
+                    'buttonVar' => 'payroll-export',
+                    'buttonSrc' => 'payroll',
+                    'buttonIcon' => '<i class="fa-solid fa-file-export"></i>',
+                    'buttonLabel' => 'Export CSV',
+                    'btnAttribute' => 'onclick="window.location.href=\'' . $exportUrl . '\'"',
                 ])
 
                 @include('components.button', [
@@ -40,7 +80,99 @@
 
         </div>
 
+        <div class="container {{ $pageClass }} mb-1">
+            <form method="GET" action="{{ route('payroll') }}" class="row g-3 align-items-end payroll-filter-row">
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="employee_id" class="form-label mb-1">Employee</label>
+                    <select name="employee_id" id="employee_id" class="form-select">
+                        <option value="">All employees</option>
+                        @foreach (($employeeOptions ?? []) as $id => $name)
+                            <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="period_start" class="form-label mb-1">Period start</label>
+                    <input type="date" name="period_start" id="period_start" class="form-control" value="{{ $filters['period_start'] ?? '' }}">
+                </div>
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="period_end" class="form-label mb-1">Period end</label>
+                    <input type="date" name="period_end" id="period_end" class="form-control" value="{{ $filters['period_end'] ?? '' }}">
+                </div>
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="status" class="form-label mb-1">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All</option>
+                        <option value="Pending" @if(($filters['status'] ?? '') === 'Pending') selected @endif>Pending</option>
+                        <option value="Released" @if(($filters['status'] ?? '') === 'Released') selected @endif>Completed</option>
+                        <option value="Cancelled" @if(($filters['status'] ?? '') === 'Cancelled') selected @endif>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
+                    <button type="submit" class="btn btn-primary w-100 w-lg-auto">Filter</button>
+                </div>
+            </form>
+        </div>
+
         <div class="container {{ $pageClass }} table-component">
+
+            @php
+                $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) {
+                    $employeeName = $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : 'Unknown employee';
+
+                    $minWage = '₱ ' . number_format($payroll->min_wage ?? 0, 2);
+
+                    $units = $payroll->hours_worked ?? $payroll->days_worked ?? 0;
+                    $unitLabelMap = [
+                        'Hourly' => 'hour/s',
+                        'Daily' => 'day/s',
+                        'Weekly' => 'week/s',
+                        'Monthly' => 'month/s',
+                        'Piece rate' => 'unit/s',
+                    ];
+                    $unitLabel = $unitLabelMap[$payroll->wage_type] ?? 'unit/s';
+                    $unitsWorked = $units . ' ' . $unitLabel;
+
+                    $grossPay = '₱ ' . number_format($payroll->gross_pay ?? 0, 2);
+                    $totalDeductions = '₱ ' . number_format($payroll->total_deductions ?? 0, 2);
+                    $netPay = '₱ ' . number_format($payroll->net_pay ?? 0, 2);
+
+                    $statusLabelMap = [
+                        'Pending' => 'Pending',
+                        'Released' => 'Completed',
+                        'Cancelled' => 'Cancelled',
+                    ];
+                    $statusLabel = $statusLabelMap[$payroll->status] ?? ($payroll->status ?? 'Pending');
+
+                    $statusClass = match ($statusLabel) {
+                        'Completed' => 'bg-success',
+                        'Cancelled' => 'bg-secondary',
+                        default => 'bg-warning text-dark',
+                    };
+
+                    $actionsHtml = '';
+
+                    if ($statusLabel === 'Pending') {
+                        $actionsHtml =
+                            '<div class="payroll-actions d-flex align-items-center gap-2">'
+                            . '<button type="button" class="btn btn-outline-success btn-sm payroll-action complete" data-id="' . $payroll->id . '">Complete</button>'
+                            . '<button type="button" class="btn btn-outline-secondary btn-sm payroll-action cancel" data-id="' . $payroll->id . '">Cancel</button>'
+                            . '</div>';
+                    }
+
+                    return [
+                        '<span class="payroll-employee" data-payroll-id="' . $payroll->id . '">' . e($employeeName) . '</span>',
+                        e($payroll->wage_type ?? 'N/A'),
+                        e($minWage),
+                        e($unitsWorked),
+                        e($grossPay),
+                        e($totalDeductions),
+                        e($netPay),
+                        '<span class="badge rounded-pill ' . $statusClass . '">' . e($statusLabel) . '</span>',
+                        $actionsHtml,
+                    ];
+                })->toArray();
+            @endphp
 
             @include('components.table', [
                 'tableClass' => 'payroll-table',
@@ -53,6 +185,7 @@
                     'deductions',
                     'net-pay',
                     'status',
+                    'actions',
                 ],
                 'tableLabel' => [
                     'Name of employee',
@@ -63,13 +196,10 @@
                     'Deductions',
                     'Net pay',
                     'Status',
+                    'Actions',
                 ],
-                'tableData' => [
-                    ['CELESTIAL, ROMAR JABEZ M.', 'Weekly', 'P600', '3 days', 'P1,800', 'P0', 'P1,800', 'Pending'],
-                    ['CELESTIAL, ROMAR JABEZ M.', 'Weekly', 'P600', '3 days', 'P1,800', 'P0', 'P1,800', 'Pending'],
-                    ['CELESTIAL, ROMAR JABEZ M.', 'Weekly', 'P600', '3 days', 'P1,800', 'P0', 'P1,800', 'Pending'],
-                    ['CELESTIAL, ROMAR JABEZ M.', 'Weekly', 'P600', '3 days', 'P1,800', 'P0', 'P1,800', 'Pending'],
-                ]
+                'tableData' => $payrollTableData,
+                'rawColumns' => ['employee-name', 'status', 'actions'],
             ])
 
         </div>
@@ -120,10 +250,10 @@
                 'selectType' => 'select2',
                 'selectSrc' => 'payroll',
                 'selectVar' => 'employee-name',
-                'selectName' => 'employee_name',
+                'selectName' => 'user_id',
                 'selectLabel' => 'Name of employee',
                 'selectPlaceholder' => 'Select employee',
-                'selectData' => [],
+                'selectData' => $employeeOptions ?? [],
                 'isShort' => false,
             ])->render() .'
             {{-- wage type --}}
@@ -134,10 +264,11 @@
                 'selectName' => 'wage_type',
                 'selectLabel' => 'Type of wage',
                 'selectData' => [
-                    'daily' => 'Daily',
-                    'hourly' => 'Hourly',
-                    'weekly' => 'Weekly',
-                    'monthly' => 'Monthly',
+                    'Hourly' => 'Hourly',
+                    'Daily' => 'Daily',
+                    'Weekly' => 'Weekly',
+                    'Monthly' => 'Monthly',
+                    'Piece rate' => 'Piece rate (per unit/item)',
                 ],
                 'isShort' => false,
             ])->render() .'
@@ -165,22 +296,10 @@
                         'inputName' => 'units_worked',
                         'inputPlaceholder' => '0',
                         'inputInDecrement' => true,
-                        'inputStyle' => 'width: 80px;'
+                        'inputStyle' => 'width: 80px;',
+                        'inputNumberWithLabel' => true,
+                        'inputNumberLabel' => 'unit/s',
                     ])->render() . '
-
-                ' . view('components.select', [
-                    'selectType' => 'normal',
-                    'selectSrc' => 'payroll',
-                    'selectVar' => 'wage-unit',
-                    'selectName' => 'wage_unit',
-                    'selectData' => [
-                        'day' => 'day/s',
-                        'week' => 'week/s',
-                        'month' => 'month/s',
-                    ],
-                    'selectStyle' => 'width: 170px;',
-                    'isShort' => true,
-                ])->render() .'
 
             </div>
             {{-- gross pay --}}
@@ -192,6 +311,7 @@
                 'inputLabel' => 'Gross pay',
                 'inputPlaceholder' => '0.00',
                 'inputInDecrement' => false,
+                'inputReadonly' => true,
             ])->render() . '
             {{-- deductions --}}
             ' . view('components.manage-item', [
@@ -208,8 +328,8 @@
                 'selectName' => 'status',
                 'selectData' => [
                     'Pending' => 'Pending',
-                    'Cancelled' => 'Cancelled',
                     'Completed' => 'Completed',
+                    'Cancelled' => 'Cancelled',
                 ],
                 'isShort' => false,
             ])->render() .'

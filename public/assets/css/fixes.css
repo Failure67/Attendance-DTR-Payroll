@@ -1,0 +1,15 @@
+/* Fix for table header flash */
+.table-container {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.table-container.initialized {
+    opacity: 1;
+}
+
+/* Ensure proper spacing in tables */
+table th, table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}

@@ -4,25 +4,72 @@ $(document).ready(function() {
         currencySymbol: '₱'
     });
 
-    payrollConsole.bindField('employee_name', 'Employee name');
+    payrollConsole.bindSelect('user_id', 'Employee name');
 
     payrollConsole.bindSelect('wage_type', 'Wage type');
+
+    const wageUnitLabelMap = {
+        'Hourly': 'hour/s',
+        'Daily': 'day/s',
+        'Weekly': 'week/s',
+        'Monthly': 'month/s',
+        'Piece rate': 'unit/s',
+    };
+
+    function getCurrentUnitLabel() {
+        const wageType = payrollConsole.$modal.find('[name="wage_type"]').val();
+        return wageUnitLabelMap[wageType] || 'unit/s';
+    }
+
+    function updateUnitsLabelAndConsole() {
+        const label = getCurrentUnitLabel();
+        const $unitsInput = payrollConsole.$modal.find('#units-worked-payroll');
+
+        if ($unitsInput.length) {
+            const $container = $unitsInput.closest('.input-field-container');
+            const $labelSpan = $container.find('.input-number-label');
+            if ($labelSpan.length) {
+                $labelSpan.text(label);
+            }
+        }
+
+        const units = payrollConsole.$modal.find('[name="units_worked"]').val() || '0';
+        payrollConsole.updateConsole('Units worked', `${units} ${label}`);
+    }
+
+    function recalculateGrossPay() {
+        const minRaw = payrollConsole.$modal.find('[name="min_wage"]').val().replace(/,/g, '');
+        const unitsRaw = payrollConsole.$modal.find('[name="units_worked"]').val();
+
+        const min = parseFloat(minRaw) || 0;
+        const units = parseFloat(unitsRaw) || 0;
+
+        const gross = min * units;
+        const $grossInput = payrollConsole.$modal.find('[name="gross_pay"]');
+
+        if (gross > 0) {
+            $grossInput.val(gross.toFixed(2));
+        } else {
+            $grossInput.val('');
+        }
+
+        $grossInput.trigger('input');
+    }
 
     payrollConsole.$modal.on('input', '[name="min_wage"]', function() {
         const rawValue = $(this).val().replace(/,/g, '');
         payrollConsole.updateConsole('Minimum wage', payrollConsole.formatAmount(rawValue));
+        recalculateGrossPay();
     });
 
     payrollConsole.$modal.on('input', '[name="units_worked"]', function() {
-        const units = $(this).val() || '0';
-        const unitType = payrollConsole.$modal.find('[name="wage_unit"] option:selected').text() || 'day/s';
-        payrollConsole.updateConsole('Units worked', `${units} ${unitType}`);
+        recalculateGrossPay();
+        updateUnitsLabelAndConsole();
     });
 
-    payrollConsole.$modal.on('change', '[name="wage_unit"]', function() {
-        const units = payrollConsole.$modal.find('[name="units_worked"]').val() || '0';
-        const unitType = $(this).find('option:selected').text();
-        payrollConsole.updateConsole('Units worked', `${units} ${unitType}`);
+    payrollConsole.$modal.on('change', '[name="wage_type"]', function() {
+        updateUnitsLabelAndConsole();
+        recalculateGrossPay();
     });
 
     payrollConsole.$modal.on('input', '[name="gross_pay"]', function() {
@@ -70,6 +117,12 @@ $(document).ready(function() {
         });
 
         $('#addPayrollForm')[0].reset();
+
+        updateUnitsLabelAndConsole();
+        recalculateGrossPay();
     });
+
+    // initial sync
+    updateUnitsLabelAndConsole();
     
 });

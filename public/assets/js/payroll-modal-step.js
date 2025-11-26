@@ -5,12 +5,12 @@ $(document).ready(function() {
 
         onBeforeNext: function(currentStep) {
             if (currentStep === 1) {
-                const employeeName = this.$modal.find('[name="employee_name"]').val();
+                const employeeId = this.$modal.find('[name="user_id"]').val();
                 const wageType = this.$modal.find('[name="wage_type"]').val();
                 const grossPay = this.$modal.find('[name="gross_pay"]').val().replace(/,/g, '');
 
-                if (!employeeName) {
-                    alert('Please enter the name of employee.');
+                if (!employeeId) {
+                    alert('Please select the name of employee.');
                     return false;
                 }
                 if (!wageType || wageType === '') {

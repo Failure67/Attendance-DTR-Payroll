@@ -1,12 +1,10 @@
 <div class="table-container {{ $tableClass }}">
-
     @php
         // Columns that should render raw HTML instead of escaped text
         $rawColumns = $rawColumns ?? [];
     @endphp
 
     <table>
-
         <thead>
             <tr>
                 @foreach ($tableLabel as $index => $label)
@@ -32,7 +30,5 @@
                 </tr>
             @endforeach
         </tbody>
-
     </table>
-
 </div>

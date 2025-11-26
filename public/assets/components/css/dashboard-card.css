@@ -72,3 +72,13 @@
 .dashboard-card-table .recent-attendance.date-modified {
     width: 140px;
 }
+
+.dashboard-card-chart {
+    flex: 1;
+    margin-top: 10px;
+}
+
+.dashboard-card-chart canvas {
+    width: 100%;
+    max-height: 260px;
+}

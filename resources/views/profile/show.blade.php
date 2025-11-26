@@ -2,7 +2,11 @@
 
 @section('content')
 
-@if(Auth::user()->role === 'admin')
+@php
+    $guardParam = $user->role === 'admin' ? 'admin' : 'worker';
+@endphp
+
+@if($user->role === 'admin')
 
 @include('partials.menu')
 
@@ -40,8 +44,9 @@
                     @endif
                 </div>
 
-                <form method="POST" action="{{ route('profile.picture.upload') }}" enctype="multipart/form-data" class="upload-form" id="pictureUploadForm">
+                <form method="POST" action="{{ route('profile.picture.upload', ['guard' => $guardParam]) }}" enctype="multipart/form-data" class="upload-form" id="pictureUploadForm">
                     @csrf
+                    <input type="hidden" name="guard" value="{{ $guardParam }}">
                     <div class="profile-upload-area" onclick="document.getElementById('pictureInput').click()">
                         <div class="upload-placeholder">
                             <i class="fa-solid fa-image"></i>
@@ -73,9 +78,10 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('profile.update') }}" class="profile-form">
+                <form method="POST" action="{{ route('profile.update', ['guard' => $guardParam]) }}" class="profile-form">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="guard" value="{{ $guardParam }}">
 
                     <div class="form-group">
                         <label for="username" class="form-label">Username</label>
@@ -84,7 +90,7 @@
                             class="form-control @error('username') is-invalid @enderror" 
                             id="username" 
                             name="username" 
-                            value="{{ old('username', Auth::user()->username) }}"
+                            value="{{ old('username', $user->username) }}"
                             required
                         >
                         @error('username')
@@ -99,7 +105,7 @@
                             class="form-control @error('email') is-invalid @enderror" 
                             id="email" 
                             name="email" 
-                            value="{{ old('email', Auth::user()->email) }}"
+                            value="{{ old('email', $user->email) }}"
                             required
                         >
                         @error('email')
@@ -139,9 +145,10 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('settings.password.update') }}" class="password-form">
+                <form method="POST" action="{{ route('settings.password.update', ['guard' => $guardParam]) }}" class="password-form">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="guard" value="{{ $guardParam }}">
 
                     <div class="form-group">
                         <label for="current_password" class="form-label">Current Password</label>
@@ -234,8 +241,9 @@
                     @endif
                 </div>
 
-                <form method="POST" action="{{ route('profile.picture.upload') }}" enctype="multipart/form-data" class="upload-form" id="pictureUploadForm">
+                <form method="POST" action="{{ route('profile.picture.upload', ['guard' => $guardParam]) }}" enctype="multipart/form-data" class="upload-form" id="pictureUploadForm">
                     @csrf
+                    <input type="hidden" name="guard" value="{{ $guardParam }}">
                     <div class="profile-upload-area" onclick="document.getElementById('pictureInput').click()">
                         <div class="upload-placeholder">
                             <i class="fa-solid fa-image"></i>
@@ -266,9 +274,10 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('profile.update') }}" class="profile-form">
+                <form method="POST" action="{{ route('profile.update', ['guard' => $guardParam]) }}" class="profile-form">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="guard" value="{{ $guardParam }}">
 
                     <div class="form-group">
                         <label for="username" class="form-label">Username</label>
@@ -277,7 +286,7 @@
                             class="form-control @error('username') is-invalid @enderror" 
                             id="username" 
                             name="username" 
-                            value="{{ old('username', Auth::user()->username) }}"
+                            value="{{ old('username', $user->username) }}"
                             required
                         >
                         @error('username')
@@ -292,7 +301,7 @@
                             class="form-control @error('email') is-invalid @enderror" 
                             id="email" 
                             name="email" 
-                            value="{{ old('email', Auth::user()->email) }}"
+                            value="{{ old('email', $user->email) }}"
                             required
                         >
                         @error('email')
@@ -332,9 +341,10 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('settings.password.update') }}" class="password-form">
+                <form method="POST" action="{{ route('settings.password.update', ['guard' => $guardParam]) }}" class="password-form">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="guard" value="{{ $guardParam }}">
 
                     <div class="form-group">
                         <label for="current_password" class="form-label">Current Password</label>

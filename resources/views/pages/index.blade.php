@@ -43,6 +43,38 @@
 
         </div>
 
+        <div class="container {{ $pageClass }} mt-3">
+
+            <div class="dashboard-card index-attendance-chart">
+
+                <div class="dashboard-card-container">
+                    <span class="dashboard-card-title">
+                        Attendance (last 14 days)
+                    </span>
+                </div>
+
+                <div class="dashboard-card-chart">
+                    <canvas id="attendanceTrendChart"></canvas>
+                </div>
+
+            </div>
+
+            <div class="dashboard-card index-payroll-chart">
+
+                <div class="dashboard-card-container">
+                    <span class="dashboard-card-title">
+                        Payroll net pay (last 6 months)
+                    </span>
+                </div>
+
+                <div class="dashboard-card-chart">
+                    <canvas id="payrollTrendChart"></canvas>
+                </div>
+
+            </div>
+
+        </div>
+
         <div class="container {{ $pageClass }}">
 
             @include('components.dashboard-card', [
@@ -102,4 +134,137 @@
 
     </div>
 
+@endsection
+
+@section('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const attendanceChartData = @json($attendanceChart ?? null);
+        const payrollChartData = @json($payrollChart ?? null);
+
+        if (window.Chart && attendanceChartData && attendanceChartData.labels && attendanceChartData.labels.length) {
+            const attendanceCanvas = document.getElementById('attendanceTrendChart');
+            if (attendanceCanvas) {
+                const ctx = attendanceCanvas.getContext('2d');
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: attendanceChartData.labels,
+                        datasets: [
+                            {
+                                label: 'Total hours',
+                                data: attendanceChartData.totalHours || [],
+                                borderColor: '#0d6efd',
+                                backgroundColor: 'rgba(13, 110, 253, 0.15)',
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 3,
+                            },
+                            {
+                                label: 'Overtime hours',
+                                data: attendanceChartData.overtimeHours || [],
+                                borderColor: '#fd7e14',
+                                backgroundColor: 'rgba(253, 126, 20, 0.15)',
+                                tension: 0.3,
+                                fill: true,
+                                pointRadius: 3,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 7,
+                                },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Hours',
+                                },
+                            },
+                        },
+                    },
+                });
+            }
+        }
+
+        if (window.Chart && payrollChartData && payrollChartData.labels && payrollChartData.labels.length) {
+            const payrollCanvas = document.getElementById('payrollTrendChart');
+            if (payrollCanvas) {
+                const ctx2 = payrollCanvas.getContext('2d');
+
+                new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: payrollChartData.labels,
+                        datasets: [
+                            {
+                                label: 'Net pay',
+                                data: payrollChartData.netPay || [],
+                                backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                                borderColor: '#198754',
+                                borderWidth: 1,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const value = context.parsed.y ?? 0;
+                                        return '₱ ' + value.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        });
+                                    },
+                                },
+                            },
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 6,
+                                },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Net pay (₱)',
+                                },
+                            },
+                        },
+                    },
+                });
+            }
+        }
+    });
+</script>
 @endsection

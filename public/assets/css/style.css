@@ -24,6 +24,10 @@ main {
     max-width: 1100px;
 }
 
+.wrapper.payroll-process {
+    max-width: 1250px;
+}
+
 .container {
     padding: 0 !important;
 }

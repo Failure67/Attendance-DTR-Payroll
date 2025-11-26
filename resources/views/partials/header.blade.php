@@ -2,22 +2,55 @@
     
     <div class="header-container">
 
-        <a class="header-logo" href="{{ route('index') }}">
+        @php
+            $guardHint = request()->query('guard');
+
+            // Explicit guard hints from query string (used on profile pages)
+            if ($guardHint === 'admin' && Auth::guard('admin')->check()) {
+                $currentUser = Auth::guard('admin')->user();
+            } elseif ($guardHint === 'worker' && Auth::guard('web')->check()) {
+                $currentUser = Auth::guard('web')->user();
+
+            // Worker area URLs ("/worker" prefix) should always use the worker guard
+            } elseif (request()->is('worker*') && Auth::guard('web')->check()) {
+                $currentUser = Auth::guard('web')->user();
+
+            // Default priority when both are logged in: prefer admin for non-worker pages
+            } elseif (Auth::guard('admin')->check()) {
+                $currentUser = Auth::guard('admin')->user();
+            } elseif (Auth::guard('web')->check()) {
+                $currentUser = Auth::guard('web')->user();
+            } else {
+                $currentUser = Auth::user();
+            }
+
+            $currentRole = $currentUser->role ?? null;
+            $logoutRoute = $currentRole === 'admin' ? 'auth.logout.admin' : 'auth.logout.worker';
+            $profileParams = $currentRole === 'admin' ? ['guard' => 'admin'] : ['guard' => 'worker'];
+            $logoRouteName = $currentRole === 'admin' ? 'admin.dashboard' : 'worker.dashboard';
+        @endphp
+
+        <a class="header-logo" href="{{ route($logoRouteName) }}">
             <img src="{{ asset('assets/img/logo/logo.webp') }}" alt="Logo" width="200">
         </a>
 
         <div class="auth-option">
-            
+
             <div class="user-image">
-                @if(Auth::user()->profile_picture && file_exists(public_path('uploads/profiles/' . Auth::user()->profile_picture)))
-                    <img src="{{ asset('uploads/profiles/' . Auth::user()->profile_picture) }}" alt="User" width="40">
+                @if($currentUser && $currentUser->profile_picture && file_exists(public_path('uploads/profiles/' . $currentUser->profile_picture)))
+                    <img src="{{ asset('uploads/profiles/' . $currentUser->profile_picture) }}" alt="User" width="40">
                 @else
                     <img src="{{ asset('assets/img/defaults/user_image.webp') }}" alt="User" width="40">
                 @endif
             </div>
 
             <div class="user-name">
-                {{ Auth::user()->full_name ?? Auth::user()->username ?? 'User' }}
+                {{ $currentUser->full_name ?? $currentUser->username ?? 'User' }}
+                @if($currentRole)
+                    <span class="d-block" style="font-size: 0.8rem; color: #6c757d;">
+                        {{ ucfirst($currentRole) }}
+                    </span>
+                @endif
             </div>
 
             <div class="option-button" data-bs-toggle="dropdown">
@@ -26,12 +59,12 @@
 
             {{-- dropdown --}}
             <ul class="dropdown-menu">
-                <li><a href="{{ route('profile.show') }}" class="dropdown-item">Profile</a></li>
-                @if(Auth::user()->role === 'admin')
-                    <li><a href="{{ route('settings.show') }}" class="dropdown-item">Settings</a></li>
+                <li><a href="{{ route('profile.show', $profileParams) }}" class="dropdown-item">Profile</a></li>
+                @if($currentRole === 'admin')
+                    <li><a href="{{ route('settings.show', $profileParams) }}" class="dropdown-item">Settings</a></li>
                 @endif
                 <li>
-                    <form method="POST" action="{{ route('auth.logout') }}" class="d-inline">
+                    <form method="POST" action="{{ route($logoutRoute) }}" class="d-inline">
                         @csrf
                         <button type="submit" class="dropdown-item" style="background: none; border: none; cursor: pointer; width: 100%; text-align: left;">
                             Logout

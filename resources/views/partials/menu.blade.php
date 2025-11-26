@@ -16,6 +16,20 @@
             </span>
         </a>
 
+        <a href="{{ route('cash-advances') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'cash-advances' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-money-bill-wave"></i>
+                </span>
+
+                <span class="menu-label">
+                    Cash advances
+                </span>
+
+            </span>
+        </a>
+
         <a href="{{ route('attendance') }}">
             <span class="menu-item {{ Route::currentRouteName() == 'attendance' ? 'selected' : '' }}">
                 
@@ -31,7 +45,7 @@
         </a>
 
         <a href="{{ route('payroll') }}">
-            <span class="menu-item {{ Route::currentRouteName() == 'payroll' ? 'selected' : '' }}">
+            <span class="menu-item {{ Route::is('payroll*') ? 'selected' : '' }}">
                 
                 <span class="menu-icon">
                     <i class="fa-solid fa-receipt"></i>

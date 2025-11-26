@@ -4,3 +4,31 @@
     display: flex;
     justify-content: space-between;
 }
+
+.container.attendance.summary {
+    display: flex;
+    gap: 20px;
+    justify-content: flex-start;
+}
+
+.container.attendance.summary .dashboard-count .item-title {
+    font-size: 18px;
+}
+
+.container.attendance.summary .dashboard-count .item-sub-title {
+    font-size: 12px;
+}
+
+@media (min-width: 992px) {
+    .container.attendance.summary .dashboard-count .item-title {
+        white-space: nowrap;
+    }
+}
+
+/* Normalize height of attendance filter controls */
+.attendance-filter-row .form-select,
+.attendance-filter-row input[type="date"] {
+    height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
