@@ -28,7 +28,6 @@
 
 <script>
     $(document).ready(function(){
-        $('#addPayrollModal').modal('show');
         //$('#deletePayrollModal').modal('show');
     });
 </script>

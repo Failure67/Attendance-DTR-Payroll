@@ -1,8 +1,8 @@
-/* © 2025 Romar Jabez */
+/* 2025 Romar Jabez */
 
 .menu {
-    padding: 20px;
-    height: 100vh;
+    padding: 20px 20px 0 20px;
+    min-height: 100vh;
     box-sizing: border-box;
 }
 

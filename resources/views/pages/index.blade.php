@@ -15,30 +15,31 @@
                 'countLabel' => 'Employees',
                 'countSublabel' => 'As of ' . date('F d, Y'),
                 'countIcon' => '<i class="fa-solid fa-users"></i>',
-                'countValue' => '0',
+                'countValue' => number_format($employeesCount ?? 0),
             ])
 
             @include('components.dashboard-count', [
                 'countClass' => 'payroll-budget',
                 'countLabel' => 'Payroll Budget',
-                'countSublabel' => 'As of ' . date('F d, Y'),
+                'countSublabel' => 'This month',
                 'countIcon' => '<i class="fa-solid fa-money-bills"></i>',
-                'countValue' => '0',    
+                'countValue' => '₱ ' . number_format($payrollBudgetAmount ?? 0, 2),
             ])
 
             @include('components.dashboard-count', [
                 'countClass' => 'payroll-due',
                 'countLabel' => 'Payroll Due',
+                'countSublabel' => 'Pending (this month)',
                 'countIcon' => '<i class="fa-solid fa-money-bill-trend-up"></i>',
-                'countValue' => '0',    
+                'countValue' => '₱ ' . number_format($payrollDueAmount ?? 0, 2),
             ])
 
             @include('components.dashboard-count', [
                 'countClass' => 'payroll-paid',
                 'countLabel' => 'Payroll Paid',
-                'countSublabel' => 'As of ' . date('F d, Y'),
+                'countSublabel' => 'Released (this month)',
                 'countIcon' => '<i class="fa-solid fa-money-bill-transfer"></i>',
-                'countValue' => '0',    
+                'countValue' => '₱ ' . number_format($payrollPaidAmount ?? 0, 2),
             ])
 
         </div>
@@ -77,57 +78,57 @@
 
         <div class="container {{ $pageClass }}">
 
+            @php
+                $todaySummary = $todayAttendanceSummary ?? [
+                    'date_label' => date('F d, Y'),
+                    'records' => 0,
+                    'present' => 0,
+                    'late' => 0,
+                    'absent' => 0,
+                    'leave' => 0,
+                    'anomaly_count' => 0,
+                ];
+
+                $todayAttendanceTable = [
+                    ['Total records', $todaySummary['records']],
+                    ['Present', $todaySummary['present']],
+                    ['Late', $todaySummary['late']],
+                    ['Absent', $todaySummary['absent']],
+                    ['On leave', $todaySummary['leave']],
+                    ['Anomalies detected', $todaySummary['anomaly_count']],
+                ];
+            @endphp
+
             @include('components.dashboard-card', [
-                'cardClass' => 'recent-attendance',
-                'label' => 'Recent Attendance',
+                'cardClass' => 'today-attendance-summary',
+                'label' => 'Today\'s attendance (' . ($todaySummary['date_label'] ?? date('F d, Y')) . ')',
                 'viewAll' => route('attendance'),
                 'tableCol' => [
-                    'employee-name',
-                    'time-in',
-                    'time-out',
-                    'date-modified',
+                    'metric',
+                    'value',
                 ],
                 'tableLabel' => [
-                    'Name of employee',
-                    'Time-in',
-                    'Time-out',
-                    'Date modified',
+                    'Metric',
+                    'Value',
                 ],
-                'tableData' => [
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                    ['LAST NAME, FIRST NAME M.I.', '08:00 AM', '05:00 PM', 'November 1, 2025'],
-                ],
+                'tableData' => $todayAttendanceTable,
             ])
 
             @include('components.dashboard-card', [
-                'cardClass' => 'recent-payroll',
-                'label' => 'Recent Payroll',
-                'viewAll' => route('payroll'),
+                'cardClass' => 'pending-payroll',
+                'label' => 'Pending payrolls (this month)',
+                'viewAll' => route('payroll', ['status' => 'Pending']),
                 'tableCol' => [
                     'employee-name',
-                    'wage-type',
-                    'min-wage',
-                    'units-worked',
-                    'gross-pay',
-                    'deductions',
                     'net-pay',
+                    'period-end',
                 ],
                 'tableLabel' => [
                     'Name of employee',
-                    'Type of wage',
-                    'Minimum wage',
-                    'Units worked',
+                    'Net pay',
+                    'Period end',
                 ],
-                'tableData' => [
-                    ['LAST NAME, FIRST NAME M.I.', 'Weekly', 'P500', '3 weeks'],
-                    ['LAST NAME, FIRST NAME M.I.', 'Monthly', 'P600', '5 days'],
-                    ['LAST NAME, FIRST NAME M.I.', 'Daily', 'P300', '6 days'],
-                    ['LAST NAME, FIRST NAME M.I.', 'Daily', 'P400', '3 days'],
-                    ['LAST NAME, FIRST NAME M.I.', 'Monthly', 'P500', '10 days'],
-                ],
+                'tableData' => $pendingPayrollTable ?? [],
             ])
 
         </div>
