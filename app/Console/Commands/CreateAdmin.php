@@ -15,25 +15,25 @@ class CreateAdmin extends Command
      * @var string
      */
     protected $signature = 'make:admin
-                        {--name= : The name of the admin user}
-                        {--email= : The email of the admin user}
-                        {--password= : The password for the admin user (min: 8 characters)}';
+                        {--name= : The name of the superadmin user}
+                        {--email= : The email of the superadmin user}
+                        {--password= : The password for the superadmin user (min: 8 characters)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Create a new admin user with the given credentials';
+    protected $description = 'Create a new superadmin user with the given credentials';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $name = $this->option('name') ?: $this->ask('Enter admin name');
-        $email = $this->option('email') ?: $this->ask('Enter admin email');
-        $password = $this->option('password') ?: $this->secret('Enter admin password (min: 8 characters)');
+        $name = $this->option('name') ?: $this->ask('Enter superadmin name');
+        $email = $this->option('email') ?: $this->ask('Enter superadmin email');
+        $password = $this->option('password') ?: $this->secret('Enter superadmin password (min: 8 characters)');
 
         // Validate input
         $validator = Validator::make(
@@ -56,16 +56,16 @@ class CreateAdmin extends Command
             return 1;
         }
 
-        // Create admin user
+        // Create superadmin user
         $user = User::create([
             'username' => strtolower(str_replace(' ', '.', $name)),
             'full_name' => $name,
             'email' => $email,
             'password' => Hash::make($password),
-            'role' => 'admin',
+            'role' => 'Superadmin',
         ]);
 
-        $this->info('Admin user created successfully!');
+        $this->info('Superadmin user created successfully!');
         $this->line('Name: ' . $user->full_name);
         $this->line('Email: ' . $user->email);
         $this->line('Role: ' . $user->role);

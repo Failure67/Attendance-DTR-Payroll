@@ -4,7 +4,7 @@
 
     @include('partials.menu')
 
-    <div class="wrapper {{ $pageClass }}">
+    <div class="wrapper {{ $pageClass }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}">
 
         <h1>{{ $title }}</h1>
 
@@ -87,20 +87,49 @@
                 ])
 
                 @include('components.button', [
-                    'buttonType' => 'secondary',
-                    'buttonVar' => 'export',
-                    'buttonSrc' => 'attendance',
-                    'buttonIcon' => '<i class="fa-solid fa-file-export"></i>',
-                    'buttonLabel' => 'Export',
-                ])
-
-                @include('components.button', [
                     'buttonType' => 'danger',
                     'buttonVar' => 'delete',
                     'buttonSrc' => 'attendance',
-                    'buttonIcon' => '<i class="fa-solid fa-trash"></i>',
-                    'buttonLabel' => 'Delete',
+                    'buttonIcon' => '<i class="fa-solid fa-clock-rotate-left"></i>',
+                    'buttonLabel' => ($showArchived ?? false) ? 'Back to attendance' : 'View archived',
                 ])
+
+                <div class="dropdown">
+                    @include('components.button', [
+                        'buttonType' => 'secondary',
+                        'buttonVar' => 'more',
+                        'buttonSrc' => 'attendance',
+                        'buttonIcon' => '<i class="fa-solid fa-caret-down"></i>',
+                        'buttonLabel' => 'More actions',
+                        'btnAttribute' => 'data-bs-toggle="dropdown" aria-expanded="false"',
+                    ])
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <button type="button" class="dropdown-item" id="attendance-more-generate-defaults">Generate defaults</button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="summary-attendance">
+                                <span class="button-label">Summary view</span>
+                            </button>
+                        </li>
+                        <li>
+                            <a href="{{ route('attendance.bulk') }}" class="dropdown-item">Bulk sheet</a>
+                        </li>
+                        <li>
+                            <a href="{{ route('attendance.daily', ['date' => $filters['period_end'] ?? ($filters['period_start'] ?? now()->toDateString()), 'employee_id' => $filters['employee_id'] ?? null]) }}" class="dropdown-item">Daily sheet</a>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="attendance-more-import">Import CSV</button>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="export-attendance">Export detailed CSV</button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="attendance-more-summary-export">Export summary CSV</button>
+                        </li>
+                    </ul>
+                </div>
 
             </div>
 
@@ -108,6 +137,7 @@
         
         @php
             $filters = $filters ?? [];
+            $employeeSummaryTableData = $employeeSummaryTableData ?? [];
         @endphp
 
         <div class="container {{ $pageClass }} mb-1">
@@ -145,11 +175,31 @@
             </form>
         </div>
 
+        <form id="attendance-generate-defaults-form" method="POST" action="{{ route('attendance.generate-defaults') }}" style="display: none;">
+            @csrf
+            <input type="hidden" name="period_start" value="{{ $filters['period_start'] ?? '' }}">
+            <input type="hidden" name="period_end" value="{{ $filters['period_end'] ?? '' }}">
+            <input type="hidden" name="employee_id" value="{{ $filters['employee_id'] ?? '' }}">
+        </form>
+
+        <div class="container {{ $pageClass }} mb-3" style="display: none;">
+            <form id="attendance-import-form" method="POST" action="{{ route('attendance.import') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+                @csrf
+                <div class="col-12 col-md-8">
+                    <label for="attendance_import_file" class="form-label mb-1">Import attendance from CSV</label>
+                    <input type="file" name="file" id="attendance_import_file" class="form-control" accept=".csv,text/csv" required>
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end">
+                    <button type="submit" class="btn btn-secondary w-100 w-md-auto">Import CSV</button>
+                </div>
+            </form>
+        </div>
+
         <div class="container {{ $pageClass }} table-component">
-            
-            @include('components.table', [
-                'tableClass' => 'attendance-table',
-                'tableCol' => [
+
+            @php
+                $isArchivedView = $showArchived ?? false;
+                $attendanceTableCols = [
                     'employee-name',
                     'date',
                     'time-in',
@@ -157,8 +207,8 @@
                     'total-hours',
                     'overtime-hours',
                     'status',
-                ],
-                'tableLabel' => [
+                ];
+                $attendanceTableLabels = [
                     'Name of employee',
                     'Date',
                     'Time-in',
@@ -166,10 +216,71 @@
                     'Total hours',
                     'Overtime',
                     'Status',
-                ],
-                'tableData' => $attendanceTableData ?? [],
-                'rawColumns' => ['employee-name', 'status'],
-            ])
+                ];
+
+                if ($isArchivedView) {
+                    $attendanceTableCols[] = 'actions';
+                    $attendanceTableLabels[] = 'Actions';
+                }
+            @endphp
+
+            <div class="attendance-table-views">
+
+                <div class="attendance-view attendance-view-detail">
+
+                    @include('components.table', [
+                        'tableClass' => 'attendance-table attendance-table-detail' . ($isArchivedView ? ' archived' : ''),
+                        'tableCol' => $attendanceTableCols,
+                        'tableLabel' => $attendanceTableLabels,
+                        'tableData' => $attendanceTableData ?? [],
+                        'rawColumns' => $isArchivedView
+                            ? ['employee-name', 'time-in', 'time-out', 'status', 'actions']
+                            : ['employee-name', 'time-in', 'time-out', 'status'],
+                        'sortableColumns' => [
+                            'employee-name' => 'name',
+                            'date' => 'date',
+                        ],
+                        'currentSortBy' => $sortBy ?? null,
+                        'currentSortDir' => $sortDir ?? 'asc',
+                    ])
+
+                </div>
+
+                <div class="attendance-view attendance-view-summary">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h2 class="h6 mb-0">Summary by employee (for {{ $summary['period_label'] ?? 'selected period' }})</h2>
+                    </div>
+
+                    @include('components.table', [
+                        'tableClass' => 'attendance-summary-table attendance-table-summary',
+                        'tableCol' => [
+                            'employee-id',
+                            'employee-name',
+                            'days-present',
+                            'days-late',
+                            'days-absent',
+                            'days-on-leave',
+                            'total-hours',
+                            'overtime-hours',
+                        ],
+                        'tableLabel' => [
+                            'Employee ID',
+                            'Employee',
+                            'Present',
+                            'Late',
+                            'Absent',
+                            'On leave',
+                            'Total hours',
+                            'Overtime hours',
+                        ],
+                        'tableData' => $employeeSummaryTableData,
+                        'rawColumns' => [],
+                    ])
+
+                </div>
+
+            </div>
 
         </div>
 
@@ -279,14 +390,14 @@
         </div>
     </div>
 
-    {{-- delete confirm modal --}}
+    {{-- delete / archive confirm modal --}}
     @include('components.confirm', [
         'confirmClass' => 'delete-attendance',
         'confirmModalId' => 'deleteAttendanceModal',
-        'confirmType' => 'delete',
+        'confirmType' => 'archive',
         'confirmRoute' => 'attendance.delete',
         'confirmRouteParams' => ['id' => 0],
-        'confirmLabel' => 'delete',
+        'confirmLabel' => 'archive',
         'confirmButtons' =>
             view('components.button', [
                 'buttonType' => 'secondary',

@@ -24,6 +24,8 @@ class ProfileController extends Controller
     {
         $user = $this->resolveProfileUser($request);
 
+        $roleKey = strtolower($user->role ?? '');
+
         $validated = $request->validate([
             'username' => 'required|string|max:255|unique:users,username,' . $user->id,
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
@@ -31,8 +33,12 @@ class ProfileController extends Controller
 
         $user->update($validated);
 
+        $guard = $roleKey === 'superadmin'
+            ? 'superadmin'
+            : (in_array($roleKey, ['admin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor']) ? 'admin' : 'worker');
+
         return Redirect::route('profile.show', [
-                'guard' => $user->role === 'admin' ? 'admin' : 'worker',
+                'guard' => $guard,
             ])
             ->with('success', 'Profile updated successfully!');
     }
@@ -43,6 +49,8 @@ class ProfileController extends Controller
     public function uploadPicture(Request $request)
     {
         $user = $this->resolveProfileUser($request);
+
+        $roleKey = strtolower($user->role ?? '');
 
         try {
             $validated = $request->validate([
@@ -68,13 +76,21 @@ class ProfileController extends Controller
             // Update user record
             $user->update(['profile_picture' => $filename]);
 
+            $guard = $roleKey === 'superadmin'
+                ? 'superadmin'
+                : (in_array($roleKey, ['admin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor']) ? 'admin' : 'worker');
+
             return Redirect::route('profile.show', [
-                    'guard' => $user->role === 'admin' ? 'admin' : 'worker',
+                    'guard' => $guard,
                 ])
                 ->with('success', 'Profile picture updated successfully!');
         } catch (\Exception $e) {
+            $guard = $roleKey === 'superadmin'
+                ? 'superadmin'
+                : (in_array($roleKey, ['admin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor']) ? 'admin' : 'worker');
+
             return Redirect::route('profile.show', [
-                    'guard' => $user->role === 'admin' ? 'admin' : 'worker',
+                    'guard' => $guard,
                 ])
                 ->withErrors(['profile_picture' => 'Error uploading picture: ' . $e->getMessage()]);
         }
@@ -84,6 +100,10 @@ class ProfileController extends Controller
     {
         // Prefer explicit guard hints first (query string or form input)
         $guardHint = $request->query('guard') ?? $request->input('guard');
+
+        if ($guardHint === 'superadmin' && Auth::guard('superadmin')->check()) {
+            return Auth::guard('superadmin')->user();
+        }
 
         if ($guardHint === 'admin' && Auth::guard('admin')->check()) {
             return Auth::guard('admin')->user();
@@ -99,6 +119,10 @@ class ProfileController extends Controller
         }
 
         // Default priority when both are logged in: prefer admin for non-worker pages
+        if (Auth::guard('superadmin')->check()) {
+            return Auth::guard('superadmin')->user();
+        }
+
         if (Auth::guard('admin')->check()) {
             return Auth::guard('admin')->user();
         }

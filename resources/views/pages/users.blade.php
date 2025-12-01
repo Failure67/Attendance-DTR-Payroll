@@ -241,9 +241,7 @@
                     <option value="">All roles</option>
                     <option value="Admin">Admin</option>
                     <option value="HR Manager">HR Manager</option>
-                    <option value="Accounting">Accounting</option>
                     <option value="Payroll Officer">Payroll Officer</option>
-                    <option value="Project Manager">Project Manager</option>
                     <option value="Supervisor">Supervisor</option>
                     <option value="Worker">Worker</option>
                 </select>
@@ -445,9 +443,7 @@
                 'selectData' => [
                     'Admin' => 'Admin',
                     'HR Manager' => 'HR Manager',
-                    'Accounting' => 'Accounting',
                     'Payroll Officer' => 'Payroll Officer',
-                    'Project Manager' => 'Project Manager',
                     'Supervisor' => 'Supervisor',
                     'Worker' => 'Worker',
                 ],

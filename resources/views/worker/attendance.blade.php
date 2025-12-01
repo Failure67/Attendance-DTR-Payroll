@@ -180,8 +180,8 @@
                                 $date = $attendance->date
                                     ? $attendance->date->format('Y-m-d')
                                     : ($attendance->time_in ? $attendance->time_in->format('Y-m-d') : 'N/A');
-                                $timeIn = $attendance->time_in ? $attendance->time_in->format('H:i') : '—';
-                                $timeOut = $attendance->time_out ? $attendance->time_out->format('H:i') : '—';
+                                $timeIn = $attendance->time_in ? $attendance->time_in->format('g:i A') : '—';
+                                $timeOut = $attendance->time_out ? $attendance->time_out->format('g:i A') : '—';
                                 $hours = number_format((float) ($attendance->total_hours ?? 0), 2) . 'h';
                                 $status = $attendance->status ?? 'Present';
                                 $statusClass = in_array($status, ['Present', 'Late', 'On leave'], true) ? 'present' : 'weekend';

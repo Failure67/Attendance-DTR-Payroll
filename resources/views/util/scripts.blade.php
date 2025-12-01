@@ -18,6 +18,7 @@
 <script src="{{ asset('assets/js/payroll-modal-step.js') }}"></script>
 <script src="{{ asset('assets/js/payroll-table.js') }}"></script>
 <script src="{{ asset('assets/js/attendance-table.js') }}"></script>
+<script src="{{ asset('assets/js/attendance-bulk.js') }}"></script>
 <script src="{{ asset('assets/js/users-console.js') }}"></script>
 <script src="{{ asset('assets/js/users-modal-step.js') }}"></script>
 <script src="{{ asset('assets/js/users-delete.js') }}"></script>

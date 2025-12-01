@@ -24,24 +24,40 @@ class CheckUserRole
      */
     public function handle(Request $request, Closure $next, ...$roles)
     {
-        // Check if user is authenticated
-        if (!Auth::check()) {
-            return redirect()->route('login');
+        if ($request->is('worker*') && Auth::guard('web')->check()) {
+            $user = Auth::guard('web')->user();
+        } elseif (Auth::guard('superadmin')->check()) {
+            $user = Auth::guard('superadmin')->user();
+        } elseif (Auth::guard('admin')->check()) {
+            $user = Auth::guard('admin')->user();
+        } elseif (Auth::guard('web')->check()) {
+            $user = Auth::guard('web')->user();
+        } else {
+            $user = null;
         }
 
-        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('auth.login.show');
+        }
 
-        // Check if user has any of the required roles
-        if (in_array($user->role, $roles)) {
+        $userRole = strtolower(trim((string) $user->role));
+
+        $normalizedRoles = array_map(function ($role) {
+            return strtolower(trim((string) $role));
+        }, $roles);
+
+        if (in_array($userRole, $normalizedRoles, true)) {
             return $next($request);
         }
 
-        // Redirect based on user role
-        if ($user->role === 'admin') {
+        if (in_array($userRole, ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager'], true)) {
             return redirect()->route('admin.dashboard');
         }
 
-        // Default redirect for workers or other roles
+        if ($userRole === 'supervisor') {
+            return redirect()->route('attendance');
+        }
+
         return redirect()->route('worker.dashboard');
     }
 }

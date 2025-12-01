@@ -22,12 +22,15 @@ class RedirectIfAuthenticated
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
                 $user = Auth::user();
-                
+
+                $roleKey = strtolower($user->role ?? '');
+                $backOfficeRoles = ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor'];
+
                 // Redirect based on user role
-                if ($user->role === 'admin') {
+                if (in_array($roleKey, $backOfficeRoles, true)) {
                     return redirect()->route('admin.dashboard');
                 }
-                
+
                 // Default redirect for workers
                 return redirect()->route('worker.dashboard');
             }

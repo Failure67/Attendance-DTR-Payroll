@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Payroll;
 use App\Models\PayrollDeduction;
 use App\Models\Attendance;
+use App\Models\CrewAssignment;
 use App\Models\User;
 use App\Models\CashAdvance;
 use App\Models\ContributionBracket;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class AppController extends Controller
 {
@@ -250,13 +252,17 @@ class AppController extends Controller
         $status = $request->input('status');
         $periodStart = $request->input('period_start');
         $periodEnd = $request->input('period_end');
+        $showArchived = $request->boolean('archived');
+
+        $sortBy = $request->input('sort_by', 'name');
+        $sortDir = $request->input('sort_dir', 'asc');
 
         if (empty($periodStart) && empty($periodEnd)) {
             $periodStart = now()->subDays(30)->toDateString();
             $periodEnd = now()->toDateString();
         }
 
-        $baseQuery = Attendance::query();
+        $baseQuery = $showArchived ? Attendance::onlyTrashed() : Attendance::query();
 
         if (!empty($employeeId)) {
             $baseQuery->where('user_id', $employeeId);
@@ -285,21 +291,86 @@ class AppController extends Controller
             });
         }
 
-        $summaryAttendances = (clone $baseQuery)->get();
+        $summaryAttendances = (clone $baseQuery)->with('user')->get();
 
-        $tableQuery = $baseQuery->with('user')->orderByDesc('time_in');
+        $tableQuery = (clone $baseQuery)
+            ->with('user')
+            ->leftJoin('users', 'attendances.user_id', '=', 'users.id');
+
+        // Normalize and apply sorting
+        $allowedSorts = ['name', 'date', 'time_in', 'total_hours', 'overtime_hours', 'status'];
+        if (!in_array($sortBy, $allowedSorts, true)) {
+            $sortBy = 'name';
+        }
+        $sortDir = $sortDir === 'desc' ? 'desc' : 'asc';
+
+        switch ($sortBy) {
+            case 'date':
+                $tableQuery
+                    ->orderBy('attendances.date', $sortDir)
+                    ->orderBy('attendances.time_in', $sortDir === 'asc' ? 'asc' : 'desc')
+                    ->orderByRaw('COALESCE(users.full_name, users.username) ASC');
+                break;
+            case 'time_in':
+                $tableQuery
+                    ->orderBy('attendances.time_in', $sortDir)
+                    ->orderBy('attendances.date', $sortDir === 'asc' ? 'asc' : 'desc')
+                    ->orderByRaw('COALESCE(users.full_name, users.username) ASC');
+                break;
+            case 'total_hours':
+                $tableQuery
+                    ->orderBy('attendances.total_hours', $sortDir)
+                    ->orderBy('attendances.overtime_hours', $sortDir)
+                    ->orderByRaw('COALESCE(users.full_name, users.username) ASC');
+                break;
+            case 'overtime_hours':
+                $tableQuery
+                    ->orderBy('attendances.overtime_hours', $sortDir)
+                    ->orderBy('attendances.total_hours', $sortDir)
+                    ->orderByRaw('COALESCE(users.full_name, users.username) ASC');
+                break;
+            case 'status':
+                $tableQuery
+                    ->orderBy('attendances.status', $sortDir)
+                    ->orderByRaw('COALESCE(users.full_name, users.username) ASC')
+                    ->orderByDesc('attendances.date')
+                    ->orderByDesc('attendances.time_in');
+                break;
+            case 'name':
+            default:
+                $tableQuery
+                    ->orderByRaw('COALESCE(users.full_name, users.username) ' . $sortDir)
+                    ->orderByDesc('attendances.date')
+                    ->orderByDesc('attendances.time_in');
+                break;
+        }
+
+        $tableQuery->select('attendances.*');
 
         $attendances = $tableQuery->paginate(10)->appends($request->query());
 
-        $attendanceTableData = $attendances->map(function ($attendance) {
+        $employeeSummaryTableData = $this->buildAttendanceEmployeeSummary($summaryAttendances);
+
+        $attendanceTableData = $attendances->map(function ($attendance) use ($showArchived) {
             $employeeName = $attendance->user ? ($attendance->user->full_name ?? $attendance->user->username) : 'Unknown employee';
 
             $date = $attendance->date
                 ? $attendance->date->format('Y-m-d')
                 : ($attendance->time_in ? $attendance->time_in->format('Y-m-d') : 'N/A');
 
-            $timeIn = $attendance->time_in ? $attendance->time_in->format('H:i') : '—';
-            $timeOut = $attendance->time_out ? $attendance->time_out->format('H:i') : '—';
+            $timeInText = $attendance->time_in ? $attendance->time_in->format('g:i A') : '—';
+            $timeOutText = $attendance->time_out ? $attendance->time_out->format('g:i A') : '—';
+
+            $timeIn24 = $attendance->time_in ? $attendance->time_in->format('H:i') : '';
+            $timeOut24 = $attendance->time_out ? $attendance->time_out->format('H:i') : '';
+
+            $timeIn = $attendance->time_in
+                ? '<span class="attendance-time-in" data-time-24="' . e($timeIn24) . '">' . e($timeInText) . '</span>'
+                : '—';
+
+            $timeOut = $attendance->time_out
+                ? '<span class="attendance-time-out" data-time-24="' . e($timeOut24) . '">' . e($timeOutText) . '</span>'
+                : '—';
 
             $totalHours = number_format((float) $attendance->total_hours, 2);
             $overtimeHours = number_format((float) $attendance->overtime_hours, 2);
@@ -337,15 +408,44 @@ class AppController extends Controller
 
             $employeeCell = '<span class="attendance-employee" data-attendance-id="' . $attendance->id . '" data-user-id="' . $attendance->user_id . '" data-overtime-approved="' . ($attendance->overtime_approved ? '1' : '0') . '" data-leave-approved="' . ($attendance->leave_approved ? '1' : '0') . '">' . e($employeeName) . '</span>';
 
-            return [
+            $row = [
                 $employeeCell,
                 e($date),
-                e($timeIn),
-                e($timeOut),
+                $timeIn,
+                $timeOut,
                 $totalHours,
                 $overtimeHours,
                 $statusHtml,
             ];
+
+            if ($showArchived) {
+                $csrf = csrf_token();
+
+                $restoreForm = "<form method=\"POST\" action=\"" . route('attendance.restore', ['attendance' => $attendance->id]) . "\" style=\"display:inline-block;margin-right:4px;\" onsubmit=\"return confirm('Recover this attendance record?');\">"
+                    . '<input type="hidden" name="_token" value="' . $csrf . '">' .
+                    '<button type="submit" class="btn btn-outline-success btn-sm" title="Recover">'
+                    . '<i class="fa-solid fa-rotate-left"></i>' .
+                    '</button>' .
+                    '</form>';
+
+                $deleteForm = "<form method=\"POST\" action=\"" . route('attendance.delete', ['id' => $attendance->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Permanently delete this attendance record? This cannot be undone.');\">"
+                    . '<input type="hidden" name="_token" value="' . $csrf . '">' .
+                    '<input type="hidden" name="_method" value="DELETE">'
+                    . '<input type="hidden" name="archived" value="1">'
+                    . '<button type="submit" class="btn btn-outline-danger btn-sm" title="Delete permanently">'
+                    . '<i class="fa-solid fa-trash"></i>' .
+                    '</button>' .
+                    '</form>';
+
+                $actionsHtml = '<div class="attendance-archive-actions d-flex align-items-center gap-1">'
+                    . $restoreForm
+                    . $deleteForm
+                    . '</div>';
+
+                $row[] = $actionsHtml;
+            }
+
+            return $row;
         })->toArray();
 
         $totalHours = (float) $summaryAttendances->sum('total_hours');
@@ -387,6 +487,10 @@ class AppController extends Controller
             'attendanceSummary' => $summary,
             'employeeOptions' => $employeeOptions,
             'attendances' => $attendances,
+            'employeeSummaryTableData' => $employeeSummaryTableData,
+            'showArchived' => $showArchived,
+            'sortBy' => $sortBy,
+            'sortDir' => $sortDir,
             'filters' => [
                 'employee_id' => $employeeId,
                 'status' => $status,
@@ -396,47 +500,364 @@ class AppController extends Controller
         ]);
     }
 
+    public function viewAttendanceBulk(Request $request)
+    {
+        $currentUser = auth()->user();
+        $currentRole = strtolower($currentUser->role ?? '');
+
+        $dateInput = $request->input('date');
+        $date = $dateInput ? Carbon::parse($dateInput)->startOfDay() : now()->startOfDay();
+
+        $employeeQuery = User::whereNull('deleted_at')
+            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
+
+        if ($currentRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+            if ($crewWorkerIds->isNotEmpty()) {
+                $employeeQuery->whereIn('id', $crewWorkerIds);
+            } else {
+                $employeeQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $filterEmployeeId = $request->input('employee_id');
+        if (!empty($filterEmployeeId)) {
+            $employeeQuery->where('id', $filterEmployeeId);
+        }
+
+        $employees = $employeeQuery
+            ->orderBy('full_name')
+            ->orderBy('username')
+            ->get();
+
+        $employeeOptions = $employees->mapWithKeys(function ($user) {
+            return [$user->id => $user->full_name ?? $user->username];
+        })->toArray();
+
+        $attendanceByUser = Attendance::whereDate('date', $date->toDateString())
+            ->whereIn('user_id', $employees->pluck('id'))
+            ->get()
+            ->keyBy('user_id');
+
+        $defaultTimeIn = config('attendance.default_shift_start', '08:00');
+        $defaultTimeOut = config('attendance.default_shift_end', '17:00');
+
+        $rows = $employees->map(function ($employee) use ($attendanceByUser, $defaultTimeIn, $defaultTimeOut) {
+            $attendance = $attendanceByUser->get($employee->id);
+
+            return [
+                'user_id' => $employee->id,
+                'attendance_id' => $attendance ? $attendance->id : null,
+                'name' => $employee->full_name ?? $employee->username,
+                'time_in' => $attendance && $attendance->time_in ? $attendance->time_in->format('H:i') : $defaultTimeIn,
+                'time_out' => $attendance && $attendance->time_out ? $attendance->time_out->format('H:i') : $defaultTimeOut,
+                'status' => $attendance ? ($attendance->status ?? null) : null,
+            ];
+        })->values();
+
+        return view('pages.attendance-bulk', [
+            'title' => 'Bulk attendance',
+            'pageClass' => 'attendance-bulk',
+            'bulkDate' => $date->toDateString(),
+            'rows' => $rows,
+            'employeeOptions' => $employeeOptions,
+            'filters' => [
+                'employee_id' => $filterEmployeeId,
+                'date' => $date->toDateString(),
+            ],
+        ]);
+    }
+
+    public function storeAttendanceBulk(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'records' => 'required|array',
+            'records.*.user_id' => 'required|exists:users,id',
+            'records.*.time_in' => 'nullable|date_format:H:i',
+            'records.*.time_out' => 'nullable|date_format:H:i',
+            'records.*.status' => 'nullable|in:Present,Absent,Late,On leave',
+            'records.*.attendance_id' => 'nullable|integer',
+        ]);
+
+        $date = Carbon::parse($validated['date'])->startOfDay();
+
+        $currentUser = auth()->user();
+        $currentRole = strtolower($currentUser->role ?? '');
+
+        $allowedWorkerQuery = User::whereNull('deleted_at')
+            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
+
+        if ($currentRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+            if ($crewWorkerIds->isNotEmpty()) {
+                $allowedWorkerQuery->whereIn('id', $crewWorkerIds);
+            } else {
+                $allowedWorkerQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $allowedWorkerIds = $allowedWorkerQuery->pluck('id')->all();
+
+        $records = $validated['records'];
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($records as $record) {
+                $userId = (int) ($record['user_id'] ?? 0);
+                if (!$userId || !in_array($userId, $allowedWorkerIds, true)) {
+                    continue;
+                }
+
+                $timeInStr = $record['time_in'] ?? null;
+                $timeOutStr = $record['time_out'] ?? null;
+                $statusInput = $record['status'] ?? null;
+
+                if ($timeInStr === null && $timeOutStr === null && $statusInput === null) {
+                    continue;
+                }
+
+                $calculated = $this->calculateAttendanceMetrics($date, $timeInStr, $timeOutStr, $statusInput);
+
+                $attendanceId = $record['attendance_id'] ?? null;
+
+                if ($attendanceId) {
+                    $attendance = Attendance::where('id', $attendanceId)
+                        ->where('user_id', $userId)
+                        ->first();
+                } else {
+                    $attendance = Attendance::where('user_id', $userId)
+                        ->whereDate('date', $date->toDateString())
+                        ->first();
+                }
+
+                if ($attendance) {
+                    $attendance->update([
+                        'date' => $date->format('Y-m-d'),
+                        'time_in' => $calculated['time_in'],
+                        'time_out' => $calculated['time_out'],
+                        'total_hours' => $calculated['total_hours'],
+                        'overtime_hours' => $calculated['overtime_hours'],
+                        'status' => $calculated['status'],
+                    ]);
+                } else {
+                    Attendance::create([
+                        'user_id' => $userId,
+                        'date' => $date->format('Y-m-d'),
+                        'time_in' => $calculated['time_in'],
+                        'time_out' => $calculated['time_out'],
+                        'total_hours' => $calculated['total_hours'],
+                        'overtime_hours' => $calculated['overtime_hours'],
+                        'status' => $calculated['status'],
+                        'overtime_approved' => false,
+                        'leave_approved' => false,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('attendance.bulk', ['date' => $date->toDateString()])
+                ->with('success', 'Bulk attendance saved successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'An error occurred while saving bulk attendance: ' . $e->getMessage()]);
+        }
+    }
+
+    public function viewAttendanceDaily(Request $request)
+    {
+        $currentUser = auth()->user();
+        $currentRole = strtolower($currentUser->role ?? '');
+
+        $dateInput = $request->input('date');
+        $date = $dateInput ? Carbon::parse($dateInput)->startOfDay() : now()->startOfDay();
+
+        $employeeQuery = User::whereNull('deleted_at')
+            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
+
+        if ($currentRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+            if ($crewWorkerIds->isNotEmpty()) {
+                $employeeQuery->whereIn('id', $crewWorkerIds);
+            } else {
+                $employeeQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $filterEmployeeId = $request->input('employee_id');
+        if (!empty($filterEmployeeId)) {
+            $employeeQuery->where('id', $filterEmployeeId);
+        }
+
+        $employees = $employeeQuery
+            ->orderBy('full_name')
+            ->orderBy('username')
+            ->get();
+
+        $employeeOptions = $employees->mapWithKeys(function ($user) {
+            return [$user->id => $user->full_name ?? $user->username];
+        })->toArray();
+
+        $attendanceByUser = Attendance::whereDate('date', $date->toDateString())
+            ->whereIn('user_id', $employees->pluck('id'))
+            ->get()
+            ->keyBy('user_id');
+
+        $dailyTableData = [];
+
+        foreach ($employees as $employee) {
+            $attendance = $attendanceByUser->get($employee->id);
+
+            $employeeName = $employee->full_name ?? $employee->username;
+
+            if ($attendance) {
+                $timeInText = $attendance->time_in ? $attendance->time_in->format('g:i A') : '—';
+                $timeOutText = $attendance->time_out ? $attendance->time_out->format('g:i A') : '—';
+                $status = $attendance->status ?? 'Present';
+                $totalHours = number_format((float) $attendance->total_hours, 2);
+                $overtimeHours = number_format((float) $attendance->overtime_hours, 2);
+            } else {
+                $timeInText = '—';
+                $timeOutText = '—';
+                $status = 'No record';
+                $totalHours = number_format(0, 2);
+                $overtimeHours = number_format(0, 2);
+            }
+
+            $dailyTableData[] = [
+                e($employeeName),
+                e($timeInText),
+                e($timeOutText),
+                e($status),
+                $totalHours,
+                $overtimeHours,
+            ];
+        }
+
+        if (empty($dailyTableData)) {
+            $dailyTableData[] = [
+                'No employees found for selected date.',
+                '',
+                '',
+                '',
+                '',
+                '',
+            ];
+        }
+
+        return view('pages.attendance-daily', [
+            'title' => 'Daily attendance sheet',
+            'pageClass' => 'attendance-daily',
+            'dailyDate' => $date->toDateString(),
+            'dailyTableData' => $dailyTableData,
+            'employeeOptions' => $employeeOptions,
+            'filters' => [
+                'employee_id' => $filterEmployeeId,
+                'date' => $date->toDateString(),
+            ],
+        ]);
+    }
+
+    public function generateDefaultAttendance(Request $request)
+    {
+        $validated = $request->validate([
+            'period_start' => 'required|date',
+            'period_end' => 'required|date|after_or_equal:period_start',
+            'employee_id' => 'nullable|exists:users,id',
+        ]);
+
+        $start = Carbon::parse($validated['period_start'])->startOfDay();
+        $end = Carbon::parse($validated['period_end'])->endOfDay();
+
+        $employeeQuery = User::whereNull('deleted_at')
+            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
+
+        if (!empty($validated['employee_id'])) {
+            $employeeQuery->where('id', $validated['employee_id']);
+        }
+
+        $employees = $employeeQuery->get();
+
+        $shiftStartStr = config('attendance.default_shift_start', '08:00');
+        $shiftEndStr = config('attendance.default_shift_end', '17:00');
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($employees as $employee) {
+                for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+                    $existing = Attendance::where('user_id', $employee->id)
+                        ->whereDate('date', $date->toDateString())
+                        ->first();
+
+                    if ($existing) {
+                        continue;
+                    }
+
+                    $calculated = $this->calculateAttendanceMetrics($date, $shiftStartStr, $shiftEndStr, null);
+
+                    Attendance::create([
+                        'user_id' => $employee->id,
+                        'date' => $date->format('Y-m-d'),
+                        'time_in' => $calculated['time_in'],
+                        'time_out' => $calculated['time_out'],
+                        'total_hours' => $calculated['total_hours'],
+                        'overtime_hours' => $calculated['overtime_hours'],
+                        'status' => $calculated['status'],
+                        'overtime_approved' => false,
+                        'leave_approved' => false,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('attendance')
+                ->with('success', 'Default attendance generated for selected period.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'An error occurred while generating default attendance: ' . $e->getMessage()]);
+        }
+    }
+
     public function storeAttendance(Request $request)
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'date' => 'required|date',
-            'time_in' => 'required_unless:status,Absent,On leave|nullable|date_format:H:i',
+            'time_in' => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i|after:time_in',
-            'status' => 'required|in:Present,Absent,Late,On leave',
+            'status' => 'nullable|in:Present,Absent,Late,On leave',
         ]);
 
         $date = Carbon::parse($validated['date'])->startOfDay();
 
-        $timeIn = null;
-        $timeOut = null;
-        $totalHours = 0;
-        $overtimeHours = 0;
+        $calculated = $this->calculateAttendanceMetrics(
+            $date,
+            $validated['time_in'] ?? null,
+            $validated['time_out'] ?? null,
+            $validated['status'] ?? null
+        );
 
-        if (!empty($validated['time_in'])) {
-            $timeIn = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $validated['time_in']);
-
-            if (!empty($validated['time_out'])) {
-                $timeOut = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $validated['time_out']);
-
-                $minutes = max(0, $timeIn->diffInMinutes($timeOut, false));
-                $totalHours = round($minutes / 60, 2);
-                $standardDailyHours = 8;
-                $overtimeHours = max(0, $totalHours - $standardDailyHours);
-            }
-        }
-
-        $overtimeApproved = $request->boolean('overtime_approved') && $overtimeHours > 0;
-        $leaveApproved = $request->boolean('leave_approved') && ($validated['status'] === 'On leave');
+        $overtimeApproved = $request->boolean('overtime_approved') && $calculated['overtime_hours'] > 0;
+        $leaveApproved = $request->boolean('leave_approved') && ($calculated['status'] === 'On leave');
 
         Attendance::create([
             'user_id' => $validated['user_id'],
             'date' => $date->format('Y-m-d'),
-            'time_in' => $timeIn,
-            'time_out' => $timeOut,
-            'total_hours' => $totalHours,
-            'overtime_hours' => $overtimeHours,
-            'status' => $validated['status'],
+            'time_in' => $calculated['time_in'],
+            'time_out' => $calculated['time_out'],
+            'total_hours' => $calculated['total_hours'],
+            'overtime_hours' => $calculated['overtime_hours'],
+            'status' => $calculated['status'],
             'overtime_approved' => $overtimeApproved,
             'leave_approved' => $leaveApproved,
         ]);
@@ -451,42 +872,31 @@ class AppController extends Controller
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'date' => 'required|date',
-            'time_in' => 'required_unless:status,Absent,On leave|nullable|date_format:H:i',
+            'time_in' => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i|after:time_in',
-            'status' => 'required|in:Present,Absent,Late,On leave',
+            'status' => 'nullable|in:Present,Absent,Late,On leave',
         ]);
 
         $date = Carbon::parse($validated['date'])->startOfDay();
 
-        $timeIn = null;
-        $timeOut = null;
-        $totalHours = 0;
-        $overtimeHours = 0;
+        $calculated = $this->calculateAttendanceMetrics(
+            $date,
+            $validated['time_in'] ?? null,
+            $validated['time_out'] ?? null,
+            $validated['status'] ?? $attendance->status
+        );
 
-        if (!empty($validated['time_in'])) {
-            $timeIn = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $validated['time_in']);
-
-            if (!empty($validated['time_out'])) {
-                $timeOut = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $validated['time_out']);
-
-                $minutes = max(0, $timeIn->diffInMinutes($timeOut, false));
-                $totalHours = round($minutes / 60, 2);
-                $standardDailyHours = 8;
-                $overtimeHours = max(0, $totalHours - $standardDailyHours);
-            }
-        }
-
-        $overtimeApproved = $request->boolean('overtime_approved') && $overtimeHours > 0;
-        $leaveApproved = $request->boolean('leave_approved') && ($validated['status'] === 'On leave');
+        $overtimeApproved = $request->boolean('overtime_approved') && $calculated['overtime_hours'] > 0;
+        $leaveApproved = $request->boolean('leave_approved') && ($calculated['status'] === 'On leave');
 
         $attendance->update([
             'user_id' => $validated['user_id'],
             'date' => $date->format('Y-m-d'),
-            'time_in' => $timeIn,
-            'time_out' => $timeOut,
-            'total_hours' => $totalHours,
-            'overtime_hours' => $overtimeHours,
-            'status' => $validated['status'],
+            'time_in' => $calculated['time_in'],
+            'time_out' => $calculated['time_out'],
+            'total_hours' => $calculated['total_hours'],
+            'overtime_hours' => $calculated['overtime_hours'],
+            'status' => $calculated['status'],
             'overtime_approved' => $overtimeApproved,
             'leave_approved' => $leaveApproved,
         ]);
@@ -496,17 +906,106 @@ class AppController extends Controller
 
     public function deleteAttendance(Request $request, $id)
     {
-        $attendance = Attendance::findOrFail($id);
-        $attendance->delete();
+        $attendance = Attendance::withTrashed()->findOrFail($id);
 
-        return redirect()->route('attendance')->with('success', 'Attendance record deleted successfully.');
+        $stayOnArchived = $request->boolean('archived');
+
+        if ($attendance->trashed()) {
+            $attendance->forceDelete();
+            $message = 'Attendance record permanently deleted.';
+        } else {
+            $attendance->delete();
+            $message = 'Attendance record archived successfully.';
+        }
+
+        $routeParams = $stayOnArchived ? ['archived' => 1] : [];
+
+        return redirect()->route('attendance', $routeParams)->with('success', $message);
+    }
+
+    public function restoreAttendance($id)
+    {
+        $attendance = Attendance::withTrashed()->findOrFail($id);
+        if ($attendance->trashed()) {
+            $attendance->restore();
+        }
+
+        return redirect()->route('attendance')->with('success', 'Attendance record recovered successfully.');
+    }
+
+    public function deleteMultipleAttendance(Request $request)
+    {
+        $validated = $request->validate([
+            'attendance_ids' => 'required|array',
+            'attendance_ids.*' => 'exists:attendances,id',
+        ]);
+
+        $stayOnArchived = $request->boolean('archived');
+
+        $attendances = Attendance::withTrashed()->whereIn('id', $validated['attendance_ids'])->get();
+
+        foreach ($attendances as $attendance) {
+            if ($attendance->trashed()) {
+                $attendance->forceDelete();
+            } else {
+                $attendance->delete();
+            }
+        }
+
+        $routeParams = $stayOnArchived ? ['archived' => 1] : [];
+
+        return redirect()->route('attendance', $routeParams)->with('success', 'Selected attendance records processed successfully.');
     }
 
     public function exportAttendance(Request $request)
     {
-        $attendances = Attendance::with('user')
-            ->orderByDesc('time_in')
-            ->limit(1000)
+        // Use similar filters as the main attendance view
+        $employeeId = $request->input('employee_id');
+        $status = $request->input('status');
+        $periodStart = $request->input('period_start');
+        $periodEnd = $request->input('period_end');
+        $includeArchived = $request->boolean('archived');
+
+        if (empty($periodStart) && empty($periodEnd)) {
+            // Default export to last 30 days if no period specified
+            $periodStart = now()->subDays(30)->toDateString();
+            $periodEnd = now()->toDateString();
+        }
+
+        $query = $includeArchived
+            ? Attendance::withTrashed()->with('user')
+            : Attendance::with('user');
+
+        if (!empty($employeeId)) {
+            $query->where('user_id', $employeeId);
+        }
+
+        if (!empty($status)) {
+            $query->where('status', $status);
+        }
+
+        if (!empty($periodStart)) {
+            $start = Carbon::parse($periodStart)->startOfDay();
+
+            $query->where(function ($q) use ($start) {
+                $q->whereDate('date', '>=', $start->toDateString())
+                    ->orWhere('time_in', '>=', $start);
+            });
+        }
+
+        if (!empty($periodEnd)) {
+            $end = Carbon::parse($periodEnd)->endOfDay();
+
+            $query->where(function ($q) use ($end) {
+                $q->whereDate('date', '<=', $end->toDateString())
+                    ->orWhere('time_in', '<=', $end);
+            });
+        }
+
+        $attendances = $query
+            ->orderBy('date')
+            ->orderBy('time_in')
+            ->orderBy('user_id')
             ->get();
 
         $filename = 'attendance_export_' . now()->format('Ymd_His') . '.csv';
@@ -516,10 +1015,13 @@ class AppController extends Controller
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
-        $callback = function () use ($attendances) {
+        $includeArchivedColumn = $includeArchived;
+
+        $callback = function () use ($attendances, $includeArchivedColumn) {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, [
+            $header = [
+                'Employee ID',
                 'Employee',
                 'Date',
                 'Time in',
@@ -527,20 +1029,31 @@ class AppController extends Controller
                 'Total hours',
                 'Overtime hours',
                 'Status',
-            ]);
+                'Overtime approved',
+                'Leave approved',
+            ];
+
+            if ($includeArchivedColumn) {
+                $header[] = 'Archived';
+            }
+
+            fputcsv($handle, $header);
 
             foreach ($attendances as $attendance) {
                 $employeeName = $attendance->user ? ($attendance->user->full_name ?? $attendance->user->username) : 'Unknown employee';
+                $employeeIdOut = $attendance->user_id;
+
                 $date = $attendance->date
                     ? $attendance->date->format('Y-m-d')
                     : ($attendance->time_in ? $attendance->time_in->format('Y-m-d') : '');
 
-                // Prefix with a single quote so Excel treats this as text and avoids ###### due to auto date formatting
+                // Prefix date with a single quote so Excel treats this as text
                 $dateForExport = $date !== '' ? "'" . $date : '';
-                $timeIn = $attendance->time_in ? $attendance->time_in->format('H:i') : '';
-                $timeOut = $attendance->time_out ? $attendance->time_out->format('H:i') : '';
+                $timeIn = $attendance->time_in ? $attendance->time_in->format('g:i A') : '';
+                $timeOut = $attendance->time_out ? $attendance->time_out->format('g:i A') : '';
 
-                fputcsv($handle, [
+                $row = [
+                    $employeeIdOut,
                     $employeeName,
                     $dateForExport,
                     $timeIn,
@@ -548,13 +1061,452 @@ class AppController extends Controller
                     (float) $attendance->total_hours,
                     (float) $attendance->overtime_hours,
                     $attendance->status ?? 'Present',
-                ]);
+                    $attendance->overtime_approved ? 'Yes' : 'No',
+                    $attendance->leave_approved ? 'Yes' : 'No',
+                ];
+
+                if ($includeArchivedColumn) {
+                    $row[] = $attendance->deleted_at ? 'Yes' : 'No';
+                }
+
+                fputcsv($handle, $row);
             }
 
             fclose($handle);
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportAttendanceSummary(Request $request)
+    {
+        $employeeId = $request->input('employee_id');
+        $status = $request->input('status');
+        $periodStart = $request->input('period_start');
+        $periodEnd = $request->input('period_end');
+        $includeArchived = $request->boolean('archived');
+
+        if (empty($periodStart) && empty($periodEnd)) {
+            $periodStart = now()->subDays(30)->toDateString();
+            $periodEnd = now()->toDateString();
+        }
+
+        $query = $includeArchived
+            ? Attendance::withTrashed()->with('user')
+            : Attendance::with('user');
+
+        if (!empty($employeeId)) {
+            $query->where('user_id', $employeeId);
+        }
+
+        if (!empty($status)) {
+            $query->where('status', $status);
+        }
+
+        if (!empty($periodStart)) {
+            $start = Carbon::parse($periodStart)->startOfDay();
+
+            $query->where(function ($q) use ($start) {
+                $q->whereDate('date', '>=', $start->toDateString())
+                    ->orWhere('time_in', '>=', $start);
+            });
+        }
+
+        if (!empty($periodEnd)) {
+            $end = Carbon::parse($periodEnd)->endOfDay();
+
+            $query->where(function ($q) use ($end) {
+                $q->whereDate('date', '<=', $end->toDateString())
+                    ->orWhere('time_in', '<=', $end);
+            });
+        }
+
+        $attendances = $query->get();
+
+        $summaryRows = $this->buildAttendanceEmployeeSummary($attendances);
+
+        $filename = 'attendance_summary_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($summaryRows) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'Employee ID',
+                'Employee',
+                'Days present',
+                'Days late',
+                'Days absent',
+                'Days on leave',
+                'Total hours',
+                'Overtime hours',
+            ]);
+
+            foreach ($summaryRows as $row) {
+                fputcsv($handle, $row);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    // crew assignments
+    public function viewCrewAssignments(Request $request)
+    {
+        $currentUser = auth()->user();
+        $currentRole = strtolower($currentUser->role ?? '');
+
+        $supervisors = User::whereNull('deleted_at')
+            ->where('role', 'Supervisor')
+            ->orderBy('full_name')
+            ->orderBy('username')
+            ->get();
+
+        $canChooseSupervisor = $currentRole !== 'supervisor';
+
+        if ($currentRole === 'supervisor') {
+            $selectedSupervisorId = $currentUser->id;
+        } else {
+            $selectedSupervisorId = $request->input('supervisor_id');
+            if (empty($selectedSupervisorId) && $supervisors->isNotEmpty()) {
+                $selectedSupervisorId = $supervisors->first()->id;
+            }
+        }
+
+        $currentSupervisor = null;
+        if ($selectedSupervisorId) {
+            if ($currentRole === 'supervisor' && $currentUser->id === (int) $selectedSupervisorId) {
+                $currentSupervisor = $currentUser;
+            } else {
+                $currentSupervisor = $supervisors->firstWhere('id', (int) $selectedSupervisorId);
+            }
+        }
+
+        $crewAssignments = collect();
+        $availableWorkers = collect();
+        $crewTableData = [];
+
+        if ($selectedSupervisorId) {
+            $crewAssignments = CrewAssignment::with('worker')
+                ->where('supervisor_id', $selectedSupervisorId)
+                ->get();
+
+            $assignedWorkerIds = $crewAssignments->pluck('worker_id');
+
+            $availableWorkers = User::whereNull('deleted_at')
+                ->where('role', 'Worker')
+                ->whereNotIn('id', $assignedWorkerIds)
+                ->orderBy('full_name')
+                ->orderBy('username')
+                ->get();
+
+            $crewTableData = $crewAssignments->map(function ($assignment) {
+                $worker = $assignment->worker;
+                $name = $worker ? ($worker->full_name ?? $worker->username) : 'Unknown worker';
+
+                $workerCell = e($name);
+
+                $csrf = csrf_token();
+                $deleteForm = "<form method=\"POST\" action=\"" . route('crew.assignments.delete', ['id' => $assignment->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Remove this worker from the crew?');\">"
+                    . '<input type="hidden" name="_token" value="' . $csrf . '">' .
+                    '<input type="hidden" name="_method" value="DELETE">'
+                    . '<button type="submit" class="btn btn-outline-danger btn-sm" title="Remove from crew">'
+                    . '<i class="fa-solid fa-user-minus"></i>' .
+                    '</button>' .
+                    '</form>';
+
+                return [
+                    $workerCell,
+                    $deleteForm,
+                ];
+            })->toArray();
+        }
+
+        return view('pages.crew-assignments', [
+            'title' => 'Crew assignments',
+            'pageClass' => 'crew-assignments',
+            'supervisors' => $supervisors,
+            'currentSupervisor' => $currentSupervisor,
+            'selectedSupervisorId' => $selectedSupervisorId,
+            'canChooseSupervisor' => $canChooseSupervisor,
+            'availableWorkers' => $availableWorkers,
+            'crewTableData' => $crewTableData,
+        ]);
+    }
+
+    public function storeCrewAssignments(Request $request)
+    {
+        $currentUser = auth()->user();
+        $currentRole = strtolower($currentUser->role ?? '');
+
+        $validated = $request->validate([
+            'supervisor_id' => 'required|exists:users,id',
+            'worker_ids' => 'required|array',
+            'worker_ids.*' => 'exists:users,id',
+        ]);
+
+        $supervisorId = (int) $validated['supervisor_id'];
+
+        if ($currentRole === 'supervisor' && $currentUser->id !== $supervisorId) {
+            abort(403, 'You are not allowed to modify another supervisor\'s crew.');
+        }
+
+        foreach ($validated['worker_ids'] as $workerId) {
+            CrewAssignment::firstOrCreate([
+                'supervisor_id' => $supervisorId,
+                'worker_id' => $workerId,
+            ]);
+        }
+
+        return redirect()->route('crew.assignments', ['supervisor_id' => $supervisorId])
+            ->with('success', 'Crew assignments updated successfully.');
+    }
+
+    public function deleteCrewAssignment(Request $request, $id)
+    {
+        $currentUser = auth()->user();
+        $currentRole = strtolower($currentUser->role ?? '');
+
+        $assignment = CrewAssignment::findOrFail($id);
+
+        if ($currentRole === 'supervisor' && $assignment->supervisor_id !== $currentUser->id) {
+            abort(403, 'You are not allowed to modify another supervisor\'s crew.');
+        }
+
+        $supervisorId = $assignment->supervisor_id;
+        $assignment->delete();
+
+        return redirect()->route('crew.assignments', ['supervisor_id' => $supervisorId])
+            ->with('success', 'Worker removed from crew successfully.');
+    }
+
+    public function importAttendance(Request $request)
+    {
+        $validated = $request->validate([
+            'file' => 'required|file|mimes:csv,txt',
+        ]);
+
+        $path = $validated['file']->getRealPath();
+        $handle = fopen($path, 'r');
+
+        if ($handle === false) {
+            return redirect()->back()
+                ->withErrors(['file' => 'Unable to read uploaded file.']);
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false) {
+            fclose($handle);
+            return redirect()->back()
+                ->withErrors(['file' => 'Uploaded CSV appears to be empty.']);
+        }
+
+        $header = array_map('trim', $header);
+
+        $colIndex = [
+            'employee_id' => array_search('employee_id', $header),
+            'date' => array_search('date', $header),
+            'time_in' => array_search('time_in', $header),
+            'time_out' => array_search('time_out', $header),
+            'status' => array_search('status', $header),
+        ];
+
+        if ($colIndex['employee_id'] === false || $colIndex['date'] === false) {
+            fclose($handle);
+            return redirect()->back()
+                ->withErrors(['file' => 'CSV must contain at least employee_id and date columns.']);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            while (($row = fgetcsv($handle)) !== false) {
+                $employeeIdRaw = $row[$colIndex['employee_id']] ?? null;
+                $dateRaw = $row[$colIndex['date']] ?? null;
+
+                if (empty($employeeIdRaw) || empty($dateRaw)) {
+                    continue;
+                }
+
+                $user = User::find((int) $employeeIdRaw);
+                if (!$user || $user->deleted_at !== null) {
+                    continue;
+                }
+
+                $date = Carbon::parse($dateRaw)->startOfDay();
+
+                $timeInStr = $colIndex['time_in'] !== false ? trim((string) ($row[$colIndex['time_in']] ?? '')) : null;
+                $timeOutStr = $colIndex['time_out'] !== false ? trim((string) ($row[$colIndex['time_out']] ?? '')) : null;
+                $statusStr = $colIndex['status'] !== false ? trim((string) ($row[$colIndex['status']] ?? '')) : null;
+
+                if ($timeInStr === '') {
+                    $timeInStr = null;
+                }
+                if ($timeOutStr === '') {
+                    $timeOutStr = null;
+                }
+                if ($statusStr === '') {
+                    $statusStr = null;
+                }
+
+                $calculated = $this->calculateAttendanceMetrics($date, $timeInStr, $timeOutStr, $statusStr);
+
+                $attendance = Attendance::where('user_id', $user->id)
+                    ->whereDate('date', $date->toDateString())
+                    ->first();
+
+                if ($attendance) {
+                    $attendance->update([
+                        'date' => $date->format('Y-m-d'),
+                        'time_in' => $calculated['time_in'],
+                        'time_out' => $calculated['time_out'],
+                        'total_hours' => $calculated['total_hours'],
+                        'overtime_hours' => $calculated['overtime_hours'],
+                        'status' => $calculated['status'],
+                    ]);
+                } else {
+                    Attendance::create([
+                        'user_id' => $user->id,
+                        'date' => $date->format('Y-m-d'),
+                        'time_in' => $calculated['time_in'],
+                        'time_out' => $calculated['time_out'],
+                        'total_hours' => $calculated['total_hours'],
+                        'overtime_hours' => $calculated['overtime_hours'],
+                        'status' => $calculated['status'],
+                        'overtime_approved' => false,
+                        'leave_approved' => false,
+                    ]);
+                }
+            }
+
+            fclose($handle);
+            DB::commit();
+
+            return redirect()->route('attendance')
+                ->with('success', 'Attendance imported successfully from CSV.');
+        } catch (\Exception $e) {
+            fclose($handle);
+            DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['file' => 'An error occurred while importing attendance: ' . $e->getMessage()]);
+        }
+    }
+
+    private function calculateAttendanceMetrics(Carbon $date, ?string $timeInStr, ?string $timeOutStr, ?string $statusInput): array
+    {
+        $shiftStartStr = config('attendance.default_shift_start', '08:00');
+        $shiftEndStr = config('attendance.default_shift_end', '17:00');
+        $standardDailyHours = (float) config('attendance.standard_daily_hours', 8);
+        $lateGraceMinutes = (int) config('attendance.late_grace_minutes', 15);
+
+        $timeIn = null;
+        $timeOut = null;
+        $totalHours = 0.0;
+        $overtimeHours = 0.0;
+
+        if ($statusInput === 'On leave') {
+            return [
+                'time_in' => null,
+                'time_out' => null,
+                'total_hours' => 0.0,
+                'overtime_hours' => 0.0,
+                'status' => 'On leave',
+            ];
+        }
+
+        if ($timeInStr) {
+            $timeIn = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $timeInStr);
+
+            if ($timeOutStr) {
+                $timeOut = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $timeOutStr);
+
+                $minutes = max(0, $timeIn->diffInMinutes($timeOut, false));
+
+                $lunchMinutes = 60;
+                if ($minutes >= ($standardDailyHours * 60) + $lunchMinutes) {
+                    $minutes -= $lunchMinutes;
+                }
+
+                $totalHours = round($minutes / 60, 2);
+                $overtimeHours = max(0, $totalHours - $standardDailyHours);
+            }
+        }
+
+        $status = $statusInput;
+
+        if ($status === null) {
+            if (!$timeIn && !$timeOut) {
+                $status = 'Absent';
+            } else {
+                $shiftStart = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $shiftStartStr);
+                $lateThreshold = $shiftStart->copy()->addMinutes($lateGraceMinutes);
+
+                if ($timeIn && $timeIn->greaterThan($lateThreshold)) {
+                    $status = 'Late';
+                } else {
+                    $status = 'Present';
+                }
+            }
+        }
+
+        return [
+            'time_in' => $timeIn,
+            'time_out' => $timeOut,
+            'total_hours' => $totalHours,
+            'overtime_hours' => $overtimeHours,
+            'status' => $status,
+        ];
+    }
+
+    private function buildAttendanceEmployeeSummary(Collection $attendances): array
+    {
+        $grouped = $attendances->groupBy('user_id');
+
+        $rows = [];
+
+        foreach ($grouped as $userId => $records) {
+            if (!$records->count()) {
+                continue;
+            }
+
+            $first = $records->first();
+            $user = $first ? $first->user : null;
+
+            $employeeName = $user ? ($user->full_name ?? $user->username) : 'Unknown employee';
+
+            $presentDays = $records->where('status', 'Present')->count();
+            $lateDays = $records->where('status', 'Late')->count();
+            $absentDays = $records->where('status', 'Absent')->count();
+            $leaveDays = $records->where('status', 'On leave')->count();
+
+            $totalHours = (float) $records->sum('total_hours');
+            $overtimeHours = (float) $records->sum('overtime_hours');
+
+            $rows[] = [
+                (int) $userId,
+                $employeeName,
+                $presentDays,
+                $lateDays,
+                $absentDays,
+                $leaveDays,
+                number_format($totalHours, 2),
+                number_format($overtimeHours, 2),
+            ];
+        }
+
+        usort($rows, function (array $a, array $b) {
+            return strcmp((string) $a[1], (string) $b[1]);
+        });
+
+        return $rows;
     }
 
     // payroll
@@ -1393,8 +2345,30 @@ class AppController extends Controller
     // users
     public function viewUsers()
     {
-        $users = User::whereNull('deleted_at')->get();
-        $archivedUsers = User::onlyTrashed()->get();
+        $currentRole = strtolower(auth()->user()->role ?? '');
+
+        $activeQuery = User::whereNull('deleted_at');
+        $archivedQuery = User::onlyTrashed();
+
+        if ($currentRole === 'superadmin') {
+            // Superadmin should see Admin, HR, Payroll, Supervisor, Worker, but not other Superadmin accounts
+            $users = $activeQuery
+                ->whereNotIn('role', ['Superadmin', 'superadmin'])
+                ->get();
+
+            $archivedUsers = $archivedQuery
+                ->whereNotIn('role', ['Superadmin', 'superadmin'])
+                ->get();
+        } else {
+            // Fallback: hide all admin/superadmin accounts for non-superadmin viewers
+            $users = $activeQuery
+                ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
+                ->get();
+
+            $archivedUsers = $archivedQuery
+                ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
+                ->get();
+        }
         
         return view('pages.users', [
             'title' => 'Users',
@@ -1409,7 +2383,7 @@ class AppController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'role' => 'required|in:Admin,HR Manager,Accounting,Payroll Officer,Project Manager,Supervisor,Worker',
+            'role' => 'required|in:Admin,HR Manager,Payroll Officer,Supervisor,Worker',
             'password' => 'required|string|min:8',
         ]);
 

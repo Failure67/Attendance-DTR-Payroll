@@ -36,8 +36,14 @@ class SettingsController extends Controller
 
         $user->update(['password' => Hash::make($validated['password'])]);
 
+        $roleKey = strtolower($user->role ?? '');
+
+        $guard = $roleKey === 'superadmin'
+            ? 'superadmin'
+            : (in_array($roleKey, ['admin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor']) ? 'admin' : 'worker');
+
         return Redirect::route('profile.show', [
-                'guard' => $user->role === 'admin' ? 'admin' : 'worker',
+                'guard' => $guard,
             ])
             ->with('password_success', 'Password changed successfully!');
     }
@@ -49,6 +55,10 @@ class SettingsController extends Controller
     {
         // Prefer explicit guard hints first (query string or form input)
         $guardHint = $request->query('guard') ?? $request->input('guard');
+
+        if ($guardHint === 'superadmin' && Auth::guard('superadmin')->check()) {
+            return Auth::guard('superadmin')->user();
+        }
 
         if ($guardHint === 'admin' && Auth::guard('admin')->check()) {
             return Auth::guard('admin')->user();
@@ -63,7 +73,11 @@ class SettingsController extends Controller
             return Auth::guard('web')->user();
         }
 
-        // Default priority when both are logged in: prefer admin for non-worker pages
+        // Default priority when both are logged in: prefer superadmin, then admin, for non-worker pages
+        if (Auth::guard('superadmin')->check()) {
+            return Auth::guard('superadmin')->user();
+        }
+
         if (Auth::guard('admin')->check()) {
             return Auth::guard('admin')->user();
         }

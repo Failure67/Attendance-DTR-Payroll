@@ -6,7 +6,9 @@
             $guardHint = request()->query('guard');
 
             // Explicit guard hints from query string (used on profile pages)
-            if ($guardHint === 'admin' && Auth::guard('admin')->check()) {
+            if ($guardHint === 'superadmin' && Auth::guard('superadmin')->check()) {
+                $currentUser = Auth::guard('superadmin')->user();
+            } elseif ($guardHint === 'admin' && Auth::guard('admin')->check()) {
                 $currentUser = Auth::guard('admin')->user();
             } elseif ($guardHint === 'worker' && Auth::guard('web')->check()) {
                 $currentUser = Auth::guard('web')->user();
@@ -15,7 +17,9 @@
             } elseif (request()->is('worker*') && Auth::guard('web')->check()) {
                 $currentUser = Auth::guard('web')->user();
 
-            // Default priority when both are logged in: prefer admin for non-worker pages
+            // Default priority when both are logged in: prefer superadmin, then admin, for non-worker pages
+            } elseif (Auth::guard('superadmin')->check()) {
+                $currentUser = Auth::guard('superadmin')->user();
             } elseif (Auth::guard('admin')->check()) {
                 $currentUser = Auth::guard('admin')->user();
             } elseif (Auth::guard('web')->check()) {
@@ -25,9 +29,23 @@
             }
 
             $currentRole = $currentUser->role ?? null;
-            $logoutRoute = $currentRole === 'admin' ? 'auth.logout.admin' : 'auth.logout.worker';
-            $profileParams = $currentRole === 'admin' ? ['guard' => 'admin'] : ['guard' => 'worker'];
-            $logoRouteName = $currentRole === 'admin' ? 'admin.dashboard' : 'worker.dashboard';
+            $roleKey = strtolower($currentRole ?? '');
+
+            $backOfficeRoles = ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor'];
+
+            if (in_array($roleKey, $backOfficeRoles, true)) {
+                $logoutRoute = 'auth.logout.admin';
+                if ($roleKey === 'superadmin') {
+                    $profileParams = ['guard' => 'superadmin'];
+                } else {
+                    $profileParams = ['guard' => 'admin'];
+                }
+                $logoRouteName = 'admin.dashboard';
+            } else {
+                $logoutRoute = 'auth.logout.worker';
+                $profileParams = ['guard' => 'worker'];
+                $logoRouteName = 'worker.dashboard';
+            }
         @endphp
 
         <a class="header-logo" href="{{ route($logoRouteName) }}">

@@ -37,16 +37,35 @@ class AuthController extends Controller
 
         $remember = $request->filled('remember');
 
-        if ($user->role === 'admin') {
-            // Log in on the dedicated admin guard so admin and worker sessions can coexist
+        $roleKey = strtolower($user->role ?? '');
+
+        if ($roleKey === 'superadmin') {
+            // Superadmin uses a dedicated guard so it has its own session
+            Auth::guard('superadmin')->login($user, $remember);
+            $request->session()->regenerate();
+
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
+        $backOfficeRoles = [
+            'admin',
+            'hr manager',
+            'payroll officer',
+            'accounting',
+            'project manager',
+            'supervisor',
+        ];
+
+        if (in_array($roleKey, $backOfficeRoles, true)) {
+            // Other back-office users (admin, HR/payroll, accounting, supervisor, etc.) use the admin guard
             Auth::guard('admin')->login($user, $remember);
             $request->session()->regenerate();
 
             return redirect()->intended(route('admin.dashboard'));
         }
 
-        // Default: worker login on the main web guard
-        Auth::login($user, $remember);
+        // Default: workers and any other non-back-office roles use the main web guard
+        Auth::guard('web')->login($user, $remember);
         $request->session()->regenerate();
 
         return redirect()->intended(route('worker.dashboard'));
@@ -89,6 +108,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        // Log out from all guards (superadmin, admin, worker) if active
+        if (Auth::guard('superadmin')->check()) {
+            Auth::guard('superadmin')->logout();
+        }
+
         // Log out from both admin and worker guards, if active
         if (Auth::guard('admin')->check()) {
             Auth::guard('admin')->logout();
@@ -109,6 +133,10 @@ class AuthController extends Controller
      */
     public function logoutAdmin(Request $request)
     {
+        if (Auth::guard('superadmin')->check()) {
+            Auth::guard('superadmin')->logout();
+        }
+
         if (Auth::guard('admin')->check()) {
             Auth::guard('admin')->logout();
         }
