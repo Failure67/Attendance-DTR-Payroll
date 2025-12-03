@@ -4,7 +4,7 @@
 
 @php
     $roleKey = strtolower($user->role ?? '');
-    $backOfficeRoles = ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor'];
+    $backOfficeRoles = ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'];
     if ($roleKey === 'superadmin') {
         $guardParam = 'superadmin';
     } elseif (in_array($roleKey, $backOfficeRoles, true)) {

@@ -1,7 +1,8 @@
 {{-- plugins --}}
 <script src="{{ asset('assets/js/plugins/popper.min.js') }}"></script>
 <script src="{{ asset('assets/bootstrap/js/bootstrap.min.js') }}"></script>
-<script src="{{ asset('assets/js/plugins/chart.min.js') }}"></script>
+{{-- Use a browser-ready UMD build of Chart.js so window.Chart is available for dashboards --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="{{ asset('assets/fontawesome/js/all.min.js') }}"></script>
 <script src="{{ asset('assets/js/plugins/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ asset('assets/select2/dist/js/select2.full.min.js') }}"></script>

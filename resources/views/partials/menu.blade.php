@@ -22,9 +22,11 @@
         }
 
         $currentRole = strtolower($currentUser->role ?? '');
-        $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor'], true);
-        $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager'], true);
-        $canSeeUsers = $currentRole === 'superadmin';
+        $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'], true);
+        $canSeeCrewAssignments = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
+        $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
+        $canSeeActivityLogs = in_array($currentRole, ['admin', 'superadmin'], true);
+        $canSeeUsers = in_array($currentRole, ['admin', 'superadmin'], true);
     @endphp
 
     <div class="menu-container">
@@ -59,7 +61,23 @@
         </a>
         @endif
 
-        @if ($canSeeAttendance)
+        @if ($canSeeActivityLogs)
+        <a href="{{ route('activity-logs') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'activity-logs' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-list"></i>
+                </span>
+
+                <span class="menu-label">
+                    Activity logs
+                </span>
+
+            </span>
+        </a>
+        @endif
+
+        @if ($canSeeCrewAssignments)
         <a href="{{ route('crew.assignments') }}">
             <span class="menu-item {{ Route::currentRouteName() == 'crew.assignments' ? 'selected' : '' }}">
 

@@ -50,7 +50,7 @@ class CheckUserRole
             return $next($request);
         }
 
-        if (in_array($userRole, ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager'], true)) {
+        if (in_array($userRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true)) {
             return redirect()->route('admin.dashboard');
         }
 

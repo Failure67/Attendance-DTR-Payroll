@@ -3,12 +3,11 @@ $(document).ready(function() {
     const $summaryTableContainer = $('.table-container.attendance-table-summary');
     const $detailTable = $detailTableContainer.find('table').first();
     const $summaryTable = $summaryTableContainer.find('table').first();
-    const $detailView = $('.attendance-view-detail');
-    const $summaryView = $('.attendance-view-summary');
     const $search = $('#attendance-search');
 
     const $wrapper = $('.wrapper.attendance');
     const isArchivedView = $wrapper.data('archived') === 1 || $wrapper.data('archived') === '1';
+    const currentQueryString = window.location.search || '';
 
     const $deleteBtn = $('#delete-attendance');
     const $deleteLabel = $deleteBtn.find('.button-label');
@@ -18,14 +17,73 @@ $(document).ready(function() {
     const selectedAttendanceIds = new Set();
 
     function isSummaryMode() {
-        return $summaryView.length && $summaryView.is(':visible');
+        const $currentSummaryView = $('.attendance-view-summary');
+        return $currentSummaryView.length && $currentSummaryView.is(':visible');
     }
 
     function getActiveTable() {
-        if (isSummaryMode() && $summaryTable.length) {
-            return $summaryTable;
+        if (isSummaryMode()) {
+            const $currentSummaryTable = $('.table-container.attendance-table-summary').find('table').first();
+            if ($currentSummaryTable.length) {
+                return $currentSummaryTable;
+            }
         }
-        return $detailTable;
+        const $currentDetailTable = $('.table-container.attendance-table-detail').find('table').first();
+        return $currentDetailTable.length ? $currentDetailTable : $detailTable;
+    }
+
+    function loadAttendancePage(urlStr) {
+        const url = typeof urlStr === 'string' ? new URL(urlStr, window.location.origin) : urlStr;
+
+        $.get(url.toString(), function (html) {
+            const $html = $(html);
+            const $newWrapper = $html.find('.wrapper.attendance').first();
+            if (!$newWrapper.length) {
+                // Fallback: if structure is unexpected, fall back to full navigation
+                window.location.href = url.toString();
+                return;
+            }
+
+            const $currentWrapper = $('.wrapper.attendance').first();
+
+            const $newSummary = $newWrapper.find('.summary').first();
+            const $newTableComponent = $newWrapper.find('.table-component').first();
+            const $newPagination = $newWrapper.find('.pagination').first();
+
+            if ($newSummary.length) {
+                const $currentSummary = $currentWrapper.find('.summary').first();
+                if ($currentSummary.length) {
+                    $currentSummary.replaceWith($newSummary);
+                }
+            }
+
+            if ($newTableComponent.length) {
+                const $currentTableComponent = $currentWrapper.find('.table-component').first();
+                if ($currentTableComponent.length) {
+                    $currentTableComponent.replaceWith($newTableComponent);
+                }
+            }
+
+            if ($newPagination.length) {
+                const $currentPagination = $currentWrapper.find('.pagination').first();
+                if ($currentPagination.length) {
+                    $currentPagination.replaceWith($newPagination);
+                }
+            }
+
+            // Clear any selection after reload
+            selectedAttendanceIds.clear();
+            selectedAttendanceId = null;
+            updateDeleteButtonState();
+
+            // Ensure we default back to detailed view after any AJAX refresh
+            showDetailView();
+
+            // Update browser URL without full reload
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState({}, '', url.toString());
+            }
+        });
     }
 
     function updateSelectedFromRows() {
@@ -73,11 +131,13 @@ $(document).ready(function() {
     const $summaryToggleBtn = $('#summary-attendance');
 
     function showDetailView() {
-        if ($detailView.length) {
-            $detailView.show();
+        const $currentDetailView = $('.attendance-view-detail');
+        const $currentSummaryView = $('.attendance-view-summary');
+        if ($currentDetailView.length) {
+            $currentDetailView.show();
         }
-        if ($summaryView.length) {
-            $summaryView.hide();
+        if ($currentSummaryView.length) {
+            $currentSummaryView.hide();
         }
         if ($summaryToggleBtn.length) {
             $summaryToggleBtn.find('.button-label').text('Summary view');
@@ -85,11 +145,13 @@ $(document).ready(function() {
     }
 
     function showSummaryView() {
-        if ($detailView.length) {
-            $detailView.hide();
+        const $currentDetailView = $('.attendance-view-detail');
+        const $currentSummaryView = $('.attendance-view-summary');
+        if ($currentDetailView.length) {
+            $currentDetailView.hide();
         }
-        if ($summaryView.length) {
-            $summaryView.show();
+        if ($currentSummaryView.length) {
+            $currentSummaryView.show();
         }
         if ($summaryToggleBtn.length) {
             $summaryToggleBtn.find('.button-label').text('Detail view');
@@ -97,48 +159,67 @@ $(document).ready(function() {
     }
 
     // Row selection (multi-select toggle) on detailed table only
-    if ($detailTable.length) {
-        $detailTable.on('click', 'tbody tr', function (e) {
-            // Ignore clicks on inline action buttons/forms inside archived table
-            if ($(e.target).closest('.attendance-archive-actions').length) {
-                return;
-            }
+    $(document).on('click', '.attendance-table-detail tbody tr', function (e) {
+        // Ignore clicks on inline action buttons/forms inside archived table
+        if ($(e.target).closest('.attendance-archive-actions').length) {
+            return;
+        }
 
-            const $row = $(this);
-            const $cell = $row.find('.attendance-employee').first();
-            const id = $cell.data('attendance-id');
-            if (!id) return;
+        const $row = $(this);
+        const $cell = $row.find('.attendance-employee').first();
+        const id = $cell.data('attendance-id');
+        if (!id) return;
 
-            const idStr = String(id);
+        const idStr = String(id);
 
-            if ($row.hasClass('selected')) {
-                $row.removeClass('selected');
-                selectedAttendanceIds.delete(idStr);
-            } else {
-                $row.addClass('selected');
-                selectedAttendanceIds.add(idStr);
-            }
+        if ($row.hasClass('selected')) {
+            $row.removeClass('selected');
+            selectedAttendanceIds.delete(idStr);
+        } else {
+            $row.addClass('selected');
+            selectedAttendanceIds.add(idStr);
+        }
 
-            selectedAttendanceId = selectedAttendanceIds.size ? Array.from(selectedAttendanceIds)[selectedAttendanceIds.size - 1] : null;
+        selectedAttendanceId = selectedAttendanceIds.size ? Array.from(selectedAttendanceIds)[selectedAttendanceIds.size - 1] : null;
 
-            updateDeleteButtonState();
-        });
-    }
+        updateDeleteButtonState();
+    });
 
-    // Search filter (applies to whichever table is currently visible)
+    // Search filter: server-side search via `search` query param with full page reload (debounced)
     if ($search.length) {
-        $search.on('input', function() {
-            const term = $(this).val().trim().toLowerCase();
-            const $activeTable = getActiveTable();
-            if (!$activeTable.length) return;
+        let searchTimeout = null;
 
-            $activeTable.find('tbody tr').each(function() {
-                const text = $(this).text().toLowerCase();
-                const matches = !term || text.indexOf(term) !== -1;
-                $(this).toggle(matches);
-            });
+        $search.on('input', function () {
+            const term = $(this).val().trim();
+
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function () {
+                const url = new URL(window.location.href);
+                const params = url.searchParams;
+
+                if (term) {
+                    params.set('search', term);
+                } else {
+                    params.delete('search');
+                }
+
+                // Reset to first page when search changes
+                params.delete('page');
+
+                url.search = params.toString();
+                window.location.href = url.toString();
+            }, 400);
         });
     }
+
+    // Let the attendance filter form submit normally (server-side GET + full page reload).
+    // Keep a small UX improvement: auto-submit when employee dropdown changes.
+    $(document).on('change', '#attendance_filter_employee', function () {
+        const form = this.form;
+        if (form) {
+            form.submit();
+        }
+    });
 
     const $attendanceModal = $('#attendanceModal');
     const $attendanceForm = $('#attendanceForm');
@@ -194,7 +275,7 @@ $(document).ready(function() {
     // New attendance
     $('#add-attendance').on('click', function() {
         resetAttendanceForm();
-        $attendanceForm.attr('action', '/attendance');
+        $attendanceForm.attr('action', '/attendance' + currentQueryString);
         $attendanceModal.find('.modal-title').text('New attendance record');
         const modalInstance = new bootstrap.Modal($attendanceModal[0]);
         modalInstance.show();
@@ -215,7 +296,7 @@ $(document).ready(function() {
         const selectedId = Array.from(selectedAttendanceIds)[0];
         selectedAttendanceId = selectedId;
 
-        const $row = $detailTable.find('tbody tr.selected');
+        const $row = $('.attendance-table-detail').first().find('tbody tr.selected');
         const $employeeCell = $row.find('.attendance-employee').first();
         const userId = $employeeCell.data('user-id') || null;
         const date = $row.find('td').eq(1).text().trim();
@@ -228,7 +309,7 @@ $(document).ready(function() {
 
         resetAttendanceForm();
 
-        $attendanceForm.attr('action', `/attendance/${selectedId}`);
+        $attendanceForm.attr('action', `/attendance/${selectedId}${currentQueryString}`);
         $methodInput.val('PUT');
 
         if (userId) {
@@ -270,46 +351,46 @@ $(document).ready(function() {
         modalInstance.show();
     });
 
-    // Delete attendance or toggle archived view
-    $('#delete-attendance').on('click', function() {
-        const selectedCount = selectedAttendanceIds.size;
+// Delete attendance or toggle archived view
+$('#delete-attendance').on('click', function() {
+    const selectedCount = selectedAttendanceIds.size;
 
-        // No selection: act as View archived / Back to attendance toggle
-        if (selectedCount === 0) {
-            const url = new URL(window.location.href);
-            const params = url.searchParams;
+    // No selection: act as View archived / Back to attendance toggle
+    if (selectedCount === 0) {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
 
-            if (isArchivedView) {
-                params.delete('archived');
-            } else {
-                params.set('archived', '1');
-            }
-
-            url.search = params.toString();
-            window.location.href = url.toString();
-            return;
-        }
-
-        const ids = Array.from(selectedAttendanceIds);
-
-        const $modal = $('#deleteAttendanceModal');
-        $modal.data('attendanceIds', ids);
-
-        if (ids.length === 1) {
-            const $row = $detailTable.find('tbody tr').filter(function () {
-                const $cell = $(this).find('.attendance-employee').first();
-                return String($cell.data('attendance-id')) === String(ids[0]);
-            }).first();
-            const employeeName = $row.find('.attendance-employee').text().trim();
-            const date = $row.find('td').eq(1).text().trim();
-            $modal.find('#confirm-item-name').text(`attendance record for ${employeeName} on ${date}?`);
+        if (isArchivedView) {
+            params.delete('archived');
         } else {
-            $modal.find('#confirm-item-name').text(`these ${ids.length} attendance records?`);
+            params.set('archived', '1');
         }
 
-        const modalInstance = new bootstrap.Modal($modal[0]);
-        modalInstance.show();
-    });
+        url.search = params.toString();
+        window.location.href = url.toString();
+        return;
+    }
+
+    const ids = Array.from(selectedAttendanceIds);
+
+    const $modal = $('#deleteAttendanceModal');
+    $modal.data('attendanceIds', ids);
+
+    if (ids.length === 1) {
+        const $row = $('.attendance-table-detail').first().find('tbody tr').filter(function () {
+            const $cell = $(this).find('.attendance-employee').first();
+            return String($cell.data('attendance-id')) === String(ids[0]);
+        }).first();
+        const employeeName = $row.find('.attendance-employee').text().trim();
+        const date = $row.find('td').eq(1).text().trim();
+        $modal.find('#confirm-item-name').text(`attendance record for ${employeeName} on ${date}?`);
+    } else {
+        $modal.find('#confirm-item-name').text(`these ${ids.length} attendance records?`);
+    }
+
+    const modalInstance = new bootstrap.Modal($modal[0]);
+    modalInstance.show();
+});
 
     $('#confirm-delete-attendance').on('click', function(e) {
         e.preventDefault();
@@ -360,7 +441,7 @@ $(document).ready(function() {
         const basePath = isSummaryMode() ? '/attendance/summary-export' : '/attendance/export';
         let exportUrl = new URL(window.location.origin + basePath);
 
-        ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir'].forEach(function (key) {
+        ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir', 'search'].forEach(function (key) {
             const value = params.get(key);
             if (value !== null && value !== '') {
                 exportUrl.searchParams.set(key, value);
@@ -402,7 +483,7 @@ $(document).ready(function() {
 
             let exportUrl = new URL(window.location.origin + '/attendance/summary-export');
 
-            ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir'].forEach(function (key) {
+            ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir', 'search'].forEach(function (key) {
                 const value = params.get(key);
                 if (value !== null && value !== '') {
                     exportUrl.searchParams.set(key, value);
@@ -437,4 +518,12 @@ $(document).ready(function() {
             window.location.href = url.toString();
         });
     }
+    
+    // AJAX pagination: intercept page links and load partials
+    $wrapper.on('click', '.pagination a.page-link', function (e) {
+        e.preventDefault();
+        const href = $(this).attr('href');
+        if (!href) return;
+        loadAttendancePage(href);
+    });
 });
