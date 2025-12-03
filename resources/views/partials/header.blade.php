@@ -31,7 +31,7 @@
             $currentRole = $currentUser->role ?? null;
             $roleKey = strtolower($currentRole ?? '');
 
-            $backOfficeRoles = ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor'];
+            $backOfficeRoles = ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'];
 
             if (in_array($roleKey, $backOfficeRoles, true)) {
                 $logoutRoute = 'auth.logout.admin';
@@ -65,8 +65,16 @@
             <div class="user-name">
                 {{ $currentUser->full_name ?? $currentUser->username ?? 'User' }}
                 @if($currentRole)
+                    @php
+                        $displayRole = $currentRole;
+                        if (strtolower($displayRole) === 'hr') {
+                            $displayRole = 'HR';
+                        } else {
+                            $displayRole = ucfirst($displayRole);
+                        }
+                    @endphp
                     <span class="d-block" style="font-size: 0.8rem; color: #6c757d;">
-                        {{ ucfirst($currentRole) }}
+                        {{ $displayRole }}
                     </span>
                 @endif
             </div>

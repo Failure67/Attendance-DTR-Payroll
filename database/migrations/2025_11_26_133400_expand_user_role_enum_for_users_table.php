@@ -15,11 +15,9 @@ return new class extends Migration
                 'admin',
                 'worker',
                 'Superadmin',
-                'Admin',
                 'HR Manager',
                 'Payroll Officer',
                 'Supervisor',
-                'Worker',
             ])->default('Worker')->change();
         });
 

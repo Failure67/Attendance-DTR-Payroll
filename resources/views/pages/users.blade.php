@@ -108,26 +108,83 @@
                 roleFilter.addEventListener('change', applyFilters);
             }
 
-            // Action buttons (view/edit/archive/restore/delete)
+            // Action buttons (edit/archive/restore/delete)
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('.action-btn');
                 if (!btn) return;
 
                 const id = btn.getAttribute('data-id');
                 const action = Array.from(btn.classList).find(cls =>
-                    ['view', 'edit', 'archive', 'restore', 'delete'].includes(cls)
+                    ['edit', 'archive', 'restore', 'delete'].includes(cls)
                 );
 
                 switch (action) {
-                    case 'view':
-                        // TODO: Hook into a dedicated user details modal if available
-                        alert('View user #' + id);
-                        break;
+                    case 'edit': {
+                        const modalEl = document.getElementById('addUsersModal');
+                        const form = document.getElementById('addUsersForm');
+                        if (!modalEl || !form) {
+                            alert('Edit form is not available.');
+                            break;
+                        }
 
-                    case 'edit':
-                        // TODO: Hook into edit user flow
-                        alert('Edit user #' + id);
+                        // Mark modal as edit mode so JS validators can adjust behaviour
+                        modalEl.dataset.mode = 'edit';
+
+                        // Point form to update route with PUT method
+                        form.action = '/users/' + id;
+
+                        let methodInput = form.querySelector('input[name="_method"]');
+                        if (!methodInput) {
+                            methodInput = document.createElement('input');
+                            methodInput.type = 'hidden';
+                            methodInput.name = '_method';
+                            form.appendChild(methodInput);
+                        }
+                        methodInput.value = 'PUT';
+
+                        const fullNameInput = form.querySelector('[name="full_name"]');
+                        const emailInput = form.querySelector('[name="email"]');
+                        const roleSelect = form.querySelector('[name="role"]');
+                        const passwordInput = form.querySelector('[name="password"]');
+
+                        const name = btn.getAttribute('data-name') || '';
+                        const email = btn.getAttribute('data-email') || '';
+                        const role = btn.getAttribute('data-role') || '';
+
+                        if (fullNameInput) {
+                            fullNameInput.value = name;
+                            fullNameInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+
+                        if (emailInput) {
+                            emailInput.value = email;
+                            emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+
+                        if (roleSelect && role) {
+                            let matched = false;
+                            Array.from(roleSelect.options).forEach(function (opt) {
+                                if (opt.text.trim().toLowerCase() === role.trim().toLowerCase()) {
+                                    roleSelect.value = opt.value;
+                                    matched = true;
+                                }
+                            });
+                            if (!matched) {
+                                roleSelect.value = '';
+                            }
+                            roleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        if (passwordInput) {
+                            // Leave password blank for edits; filled value means change password
+                            passwordInput.value = '';
+                            passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+
+                        const editModal = new bootstrap.Modal(modalEl);
+                        editModal.show();
                         break;
+                    }
 
                     case 'archive':
                         if (confirm('Are you sure you want to archive this user?')) {
@@ -220,6 +277,30 @@
 
             // default view
             setView(false);
+
+            // Ensure the New button opens the modal in create mode
+            const addUserBtn = document.getElementById('users-add-users');
+            if (addUserBtn) {
+                addUserBtn.addEventListener('click', function () {
+                    const modalEl = document.getElementById('addUsersModal');
+                    const form = document.getElementById('addUsersForm');
+                    if (!modalEl || !form) {
+                        return;
+                    }
+
+                    modalEl.dataset.mode = 'create';
+
+                    form.action = '{{ route('users.store') }}';
+
+                    const methodInput = form.querySelector('input[name="_method"]');
+                    if (methodInput) {
+                        methodInput.parentNode.removeChild(methodInput);
+                    }
+
+                    // Reset fields; console/modal-step scripts will update their views
+                    form.reset();
+                });
+            }
         });
     </script>
 
@@ -237,11 +318,15 @@
                 ])
 
                 {{-- ROLE DROPDOWN SECOND (swapped) --}}
+                @php
+                    $currentRoleKey = strtolower(auth()->user()->role ?? '');
+                @endphp
                 <select id="role-filter" class="form-select form-select-sm" style="width: 170px; max-width: 190px;">
                     <option value="">All roles</option>
-                    <option value="Admin">Admin</option>
-                    <option value="HR Manager">HR Manager</option>
-                    <option value="Payroll Officer">Payroll Officer</option>
+                    @if ($currentRoleKey === 'superadmin')
+                        <option value="Admin">Admin</option>
+                    @endif
+                    <option value="HR">HR</option>
                     <option value="Supervisor">Supervisor</option>
                     <option value="Worker">Worker</option>
                 </select>
@@ -295,13 +380,16 @@
                         'Actions',
                     ],
                     'tableData' => $users->map(function ($user) {
+                        $displayName = $user->full_name ?? $user->username;
+                        $registeredAt = now()->parse($user->created_at)->format('M d, Y');
+
                         return [
                             // User cell with avatar initials and name
                             '<div class="d-flex align-items-center">'
                                 . '<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;font-size:12px;font-weight:600;">'
-                                    . substr($user->full_name ?? $user->username, 0, 2)
+                                    . substr($displayName, 0, 2)
                                 . '</div>'
-                                . '<span class="fw-semibold">' . e($user->full_name ?? $user->username) . '</span>'
+                                . '<span class="fw-semibold">' . e($displayName) . '</span>'
                             . '</div>',
                             // Email
                             e($user->email),
@@ -316,13 +404,15 @@
                                 . e($user->role ?? 'N/A')
                             . '</span>',
                             // Registered date
-                            now()->parse($user->created_at)->format('M d, Y'),
-                            // Actions
+                            $registeredAt,
+                            // Actions with data attributes for JS
                             '<div class="users-actions d-flex align-items-center gap-1">'
-                                . '<button type="button" class="btn btn-outline-info btn-sm btn-icon action-btn view" data-id="' . $user->id . '">'
-                                    . '<i class="fa-solid fa-eye"></i>'
-                                . '</button>'
-                                . '<button type="button" class="btn btn-outline-warning btn-sm btn-icon action-btn edit" data-id="' . $user->id . '">'
+                                . '<button type="button" class="btn btn-outline-warning btn-sm btn-icon action-btn edit"'
+                                    . ' data-id="' . $user->id . '"'
+                                    . ' data-name="' . e($displayName) . '"'
+                                    . ' data-email="' . e($user->email) . '"'
+                                    . ' data-role="' . e($user->role) . '"'
+                                    . ' data-registered="' . e($registeredAt) . '">'
                                     . '<i class="fa-solid fa-pen"></i>'
                                 . '</button>'
                                 . '<button type="button" class="btn btn-outline-secondary btn-sm btn-icon action-btn archive" data-id="' . $user->id . '" title="Archive user">'
@@ -442,8 +532,7 @@
                 'selectLabel' => 'Role',
                 'selectData' => [
                     'Admin' => 'Admin',
-                    'HR Manager' => 'HR Manager',
-                    'Payroll Officer' => 'Payroll Officer',
+                    'HR' => 'HR',
                     'Supervisor' => 'Supervisor',
                     'Worker' => 'Worker',
                 ],

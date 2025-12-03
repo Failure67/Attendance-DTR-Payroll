@@ -66,6 +66,7 @@
             @include('components.search', [
                 'searchClass' => 'attendance',
                 'searchId' => 'attendance-search',
+                'searchValue' => $filters['search'] ?? '',
             ])
 
             <div class="crud-buttons">

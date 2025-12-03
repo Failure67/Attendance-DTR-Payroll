@@ -96,3 +96,11 @@
 .input-field.number {
     margin: 0 10px;
 }
+
+/* username */
+
+.input-field-container.username, .input-field-container.password {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}

@@ -24,7 +24,7 @@ class RedirectIfAuthenticated
                 $user = Auth::user();
 
                 $roleKey = strtolower($user->role ?? '');
-                $backOfficeRoles = ['admin', 'superadmin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor'];
+                $backOfficeRoles = ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'];
 
                 // Redirect based on user role
                 if (in_array($roleKey, $backOfficeRoles, true)) {

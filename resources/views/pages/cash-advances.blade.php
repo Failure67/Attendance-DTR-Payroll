@@ -164,6 +164,16 @@
                             <textarea name="description" id="cash-advance-description" class="form-control" rows="2" maxlength="255"></textarea>
                         </div>
 
+                        @include('components.input-field', [
+                            'inputType' => 'textarea',
+                            'inputSrc' => 'cash-advance',
+                            'inputVar' => 'reason',
+                            'inputName' => 'description',
+                            'inputLabel' => 'Reason',
+                            'inputPlaceholder' => 'Enter reason...',
+                            'isRequired' => true,
+                        ])
+
                     </div>
 
                     <div class="modal-footer">

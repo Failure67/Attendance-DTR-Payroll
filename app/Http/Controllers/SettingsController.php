@@ -40,7 +40,7 @@ class SettingsController extends Controller
 
         $guard = $roleKey === 'superadmin'
             ? 'superadmin'
-            : (in_array($roleKey, ['admin', 'hr manager', 'payroll officer', 'accounting', 'project manager', 'supervisor']) ? 'admin' : 'worker');
+            : (in_array($roleKey, ['admin', 'hr', 'accounting', 'project manager', 'supervisor']) ? 'admin' : 'worker');
 
         return Redirect::route('profile.show', [
                 'guard' => $guard,

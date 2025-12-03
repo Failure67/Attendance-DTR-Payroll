@@ -10,7 +10,7 @@
     display: flex;
     align-items: center;
     gap: 3px;
-    height: 32px;
+    justify-content: center;
 }
 
 .button:hover {
@@ -32,6 +32,13 @@
     color: white;
 }
 
+.button.auth-submit {
+    background-color: #245a80;
+    color: white;
+    width: 100%;
+    padding: 13px 15px;
+}
+
 .button.icon.modal-close {
     border-radius: 50%;
     background-color: #d1d0d0;
@@ -42,17 +49,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-/* More actions dropdown button: keep same sizing but move icon to the right */
-#more-attendance .button-icon,
-#more-attendance-attendance .button-icon {
-    order: 2;
-}
-
-#more-attendance .button-label,
-#more-attendance-attendance .button-label {
-    order: 1;
 }
 
 /* icon */

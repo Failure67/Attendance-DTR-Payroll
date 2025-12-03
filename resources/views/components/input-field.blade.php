@@ -3,7 +3,104 @@
     @if (!empty($inputLabel))
         <label class="input-label {{ $inputType }}" for="{{ $inputVar }}-{{ $inputSrc }}">
             {{ $inputLabel }}
+            @if ($isRequired ?? false)
+                <span class="required">*</span>
+            @endif
         </label>
+    @endif
+
+    {{-- textarea --}}
+    @if ($inputType === 'textarea')
+        <div class="input-field-container {{ $inputType }}">
+
+            <textarea
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isRequired ?? false) ? 'required' : null }}"
+            placeholder="{{ $inputPlaceholder ?? null }}"
+            
+            @if (!empty($inputName) && $inputSrc !== 'manage-item')
+                name="{{ $inputName }}"
+            @endif
+            
+            id="{{ $inputVar }}-{{ $inputSrc }}"
+            autocomplete="off"
+            {{ $isDisabled ?? false ? 'disabled' : null }}></textarea>
+
+        </div>
+    @endif
+
+    {{-- time --}}
+    @if ($inputType === 'time')
+        <div class="input-field-container {{ $inputType }}">
+    
+            <input type="time"
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isRequired ?? false) ? 'required' : null }}"
+            placeholder="{{ $inputPlaceholder ?? null }}"
+
+            @if (!empty($inputName))
+                name="{{ $inputName }}"
+            @endif
+            
+            id="{{ $inputVar }}-{{ $inputSrc }}"
+            autocomplete="off"
+            {{ $isDisabled ?? false ? 'disabled' : null }}>
+
+        </div>
+    @endif
+
+    {{-- username with randomizer --}}
+    @if ($inputType === 'username')
+        <div class="input-field-container {{ $inputType }}">
+    
+            <input type="search"
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isRequired ?? false) ? 'required' : null }}"
+            placeholder="{{ $inputPlaceholder ?? null }}"
+
+            @if (!empty($inputName))
+                name="{{ $inputName }}"
+            @endif
+            
+            id="{{ $inputVar }}-{{ $inputSrc }}"
+            autocomplete="off"
+            {{ $isDisabled ?? false ? 'disabled' : null }}>
+
+            @if ($isRandom ?? true)
+                @include('components.button', [
+                    'buttonType' => 'icon randomize',
+                    'buttonVar' => $inputVar,
+                    'buttonSrc' => 'randomize',
+                    'buttonIcon' => '<i class="fa-solid fa-dice"></i>',
+                    'buttonModal' => false,
+                ])
+            @endif
+
+        </div>
+    @endif
+    
+    {{-- password --}}
+    @if ($inputType === 'password')
+        <div class="input-field-container {{ $inputType }}">
+
+            <input type="password"
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isRequired ?? false) ? 'required' : null }}"
+            placeholder="{{ $inputPlaceholder ?? null }}"
+
+            @if (!empty($inputName))
+                name="{{ $inputName }}"
+            @endif
+            
+            id="{{ $inputVar }}-{{ $inputSrc }}"
+            autocomplete="off"
+            {{ $isDisabled ?? false ? 'disabled' : null }}>
+
+            @include('components.button', [
+                'buttonType' => 'icon toggle-password',
+                'buttonVar' => $inputVar,
+                'buttonSrc' => 'toggle-password',
+                'buttonIcon' => '<i class="fa-solid fa-eye"></i>',
+                'buttonModal' => false,
+            ])
+
+        </div>
     @endif
 
     {{-- amount input --}}
@@ -15,22 +112,18 @@
             </span>
 
             <input type="search"
-            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isVertical ?? false) ? 'vertical' : null }}"
-            placeholder="{{ $inputPlaceholder }}"
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isVertical ?? false) ? 'vertical' : null }} {{ ($isRequired ?? false) ? 'required' : null }}"
+            placeholder="{{ $inputPlaceholder ?? null }}"
 
             @if (!empty($inputName) && $inputSrc !== 'manage-item')
                 name="{{ $inputName }}"
             @endif
-
+            
             id="{{ $inputVar }}-{{ $inputSrc }}"
             autocomplete="off"
-
-            @if (!empty($inputReadonly))
-                readonly
-            @endif
-
             inputmode="decimal"
-            {{--pattern="-?[0-9]*[.,]?[0-9]*"--}}>
+            {{--pattern="-?[0-9]*[.,]?[0-9]*"--}}
+            {{ $isDisabled ?? false ? 'disabled' : null }}>
 
         </div>
     @endif
@@ -39,8 +132,8 @@
     @if ($inputType === 'number')
         <div class="input-field-container {{ $inputType }} 
         {{ ($inputInDecrement ?? false) ? 'inDecrement' : null }} 
-        {{ ($inputNumberWithLabel ?? false) ? 'withLabel' : null }}"
-        >
+        {{ ($inputNumberWithLabel ?? false) ? 'withLabel' : null }}
+        {{ ($isRequired ?? false) ? 'required' : null }}">
 
             @if ($inputInDecrement ?? true)
                 @include('components.button', [
@@ -54,25 +147,22 @@
 
             <input type="search"   
             class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
-            placeholder="{{ $inputPlaceholder }}"
+            placeholder="{{ $inputPlaceholder ?? null }}"
 
             @if (!empty($inputName) && $inputSrc !== 'manage-item')
                 name="{{ $inputName }}"
             @endif
-
+            
             id="{{ $inputVar }}-{{ $inputSrc }}"
             autocomplete="off"
-
-            @if (!empty($inputReadonly))
-                readonly
-            @endif
 
             @if (!empty($inputStyle))
                 style="{{ $inputStyle ?? null }}"
             @endif
             
             inputmode="decimal"
-            {{--pattern="-?[0-9]*[.,]?[0-9]*"--}}>
+            {{--pattern="-?[0-9]*[.,]?[0-9]*"--}}
+            {{ $isDisabled ?? false ? 'disabled' : null }}>
 
             @if ($inputNumberWithLabel ?? true)
                 <span class="input-number-label">
@@ -97,52 +187,19 @@
     @if (($inputType ?? null) === 'text')
         <div class="input-field-container {{ $inputType }}">
 
-            <input type="search"   
-            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
-            placeholder="{{ $inputPlaceholder }}"
+            <input
+            type="{{ ($isEmail ?? false) ? 'email' : 'search' }}"
+
+            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }} {{ ($isRequired ?? false) ? 'required' : null }}"
+            placeholder="{{ $inputPlaceholder ?? null }}"
 
             @if (!empty($inputName) && $inputSrc !== 'manage-item')
                 name="{{ $inputName }}"
             @endif
-
+            
             id="{{ $inputVar }}-{{ $inputSrc }}"
-            autocomplete="off">
-
-        </div>
-    @endif
-
-    {{-- email input --}}
-    @if (($inputType ?? null) === 'email')
-        <div class="input-field-container {{ $inputType }}">
-
-            <input type="email"   
-            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
-            placeholder="{{ $inputPlaceholder }}"
-
-            @if (!empty($inputName) && $inputSrc !== 'manage-item')
-                name="{{ $inputName }}"
-            @endif
-
-            id="{{ $inputVar }}-{{ $inputSrc }}"
-            autocomplete="off">
-
-        </div>
-    @endif
-
-    {{-- password input --}}
-    @if (($inputType ?? null) === 'password')
-        <div class="input-field-container {{ $inputType }}">
-
-            <input type="password"   
-            class="input-field {{ $inputType }} {{ $inputSrc }} {{ $inputClass ?? null }}"
-            placeholder="{{ $inputPlaceholder }}"
-
-            @if (!empty($inputName) && $inputSrc !== 'manage-item')
-                name="{{ $inputName }}"
-            @endif
-
-            id="{{ $inputVar }}-{{ $inputSrc }}"
-            autocomplete="off">
+            autocomplete="off"
+            {{ $isDisabled ?? false ? 'disabled' : null }}>
 
         </div>
     @endif
