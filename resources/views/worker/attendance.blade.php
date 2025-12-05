@@ -5,11 +5,14 @@
         .worker-dashboard {
             max-width: 1200px;
             margin: 2rem auto;
-            padding: 1.5rem 2rem 2.2rem;
+            padding: 1.5rem 2rem 2.5rem;
             background: linear-gradient(135deg, #f3f6ff, #e5f0ff);
             border-radius: 18px;
             box-shadow: 0 18px 40px rgba(15, 23, 42, 0.15);
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            height: calc(100vh - 220px);
+            display: flex;
+            flex-direction: column;
         }
 
         .worker-header {
@@ -66,6 +69,9 @@
 
         .worker-content {
             margin-top: 0.5rem;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
         }
 
         .worker-table {
@@ -133,11 +139,16 @@
             .worker-dashboard {
                 margin: 1rem;
                 padding: 1.2rem 1.1rem 1.6rem;
+                height: auto;
             }
 
             .worker-header {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            .worker-content {
+                overflow: visible;
             }
 
             .worker-table table {

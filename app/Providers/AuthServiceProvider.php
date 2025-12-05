@@ -4,6 +4,7 @@ namespace App\Providers;
 
 // use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -21,6 +22,12 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Password::defaults(function () {
+            $rule = Password::min(12);
+
+            return app()->isProduction()
+                ? $rule->mixedCase()->letters()->numbers()->symbols()->uncompromised()
+                : $rule;
+        });
     }
 }
