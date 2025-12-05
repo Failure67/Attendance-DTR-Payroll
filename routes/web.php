@@ -115,7 +115,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
 
     // Worker dashboard + pages (worker-only)
     Route::middleware(['auth:web', 'role:worker'])->group(function () {
-        Route::get('/worker', [WorkerController::class, 'overview'])->name('worker.dashboard');
+        Route::get('/home', [WorkerController::class, 'overview'])->name('worker.dashboard');
         Route::get('/worker/payroll-history', [WorkerController::class, 'payrollHistory'])->name('worker.payroll-history');
         Route::get('/worker/payroll-history/{id}', [WorkerController::class, 'payslip'])->name('worker.payslip');
         Route::get('/worker/payroll-history/{id}/download', [WorkerController::class, 'downloadPayslip'])->name('worker.payslip.download');

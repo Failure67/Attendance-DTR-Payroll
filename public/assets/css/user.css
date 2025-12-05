@@ -1,0 +1,321 @@
+/* © 2025 Romar Jabez */
+
+html, body {
+    font-family: 'Inter', sans-serif;
+    background-color: #afc7e3;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.container {
+    padding: 0 !important;
+}
+
+hr {
+    margin: 0;
+}
+
+.crud-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+}
+
+header {
+    background-color: #0D2C42;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    padding: 10px 20px;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1380px;
+}
+
+.header-logo {
+    display: flex;
+    align-items: center;
+    transition: filter 0.2s ease;
+}
+
+.header-logo:hover {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+}
+
+.auth-option {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.auth-option .option-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+}
+
+.auth-option .option-button:hover {
+    background-color: white;
+    color: #0D2C42;
+    border-radius: 50%;
+}
+
+/* content */
+
+.wrapper.employee {
+    background-color: #d1e1f3;
+    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+    border-bottom: 0px solid #0D2C42;
+    border-radius: 12px;
+    padding: 30px;
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.wrapper.employee .name-container {
+    font-weight: 600;
+    font-size: 30px;
+    width: 100%;
+    max-width: 450px;
+    overflow: hidden;
+    line-height: 1.3;
+}
+
+.content.info .name {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.content.info .name-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.container.employee.header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.content.selector {
+    background-color: #426079;
+    display: flex;
+    gap: 5px;
+    height: 100%;
+    border-radius: 20px;
+    padding: 4.5px 5px;
+    font-weight: 600;
+    color: white;
+}
+
+.content.selector .selector-item {
+    padding: 5px 25px;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.content.selector .selector-item.selected {
+    background-color: white;
+    color: #0D2C42;
+}
+
+.content.selector .selector-item:hover:not(.selected) {
+    background-color: #2f3f4d;
+}
+
+.content.info, .id-number {
+    display: flex;
+}
+
+.content.info {
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* cards */
+
+.container.employee .content.cards {
+    display: flex;
+    gap: 10px;
+}
+
+.user-count-container {
+    background-color: #ccd9e4;
+    width: 227px;
+    height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px 15px;
+    border-radius: 15px;
+    border-bottom: 4px solid #0D2C42;
+    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.8);
+}
+
+.user-count-container .user-count-wrapper {
+    display: flex;
+}
+
+.user-count-container .user-count-wrapper.label {
+    justify-content: space-between;
+}
+
+.user-count-container .user-count-wrapper.count {
+    justify-content: flex-end;
+}
+
+.user-count-container .user-count-label {
+    font-weight: 600;
+    font-size: 20px;
+}
+
+.user-count-container .user-count-desc {
+    font-size: 13px;
+}
+
+.user-count-container .user-count-label-container.label {
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
+.user-count-container .user-count-icon {
+    margin-top: 3px;
+}
+
+.user-count-container .user-count-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 35px;
+}
+
+/* payroll breakdown, payroll history, attendance */
+
+.content.payroll-breakdown {
+    background-color: #ccd9e4;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.8);
+    border-bottom: 4px solid #0D2C42;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.content.payroll-history, .content.attendance {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.content.payroll-breakdown .title,
+.content.payroll-history .title,
+.content.attendance .title {
+    font-weight: 600;
+    font-size: 22px;
+}
+
+.content.payroll-breakdown .pay-amount {
+    display: flex;
+    justify-content: space-between;
+}
+
+.content.payroll-breakdown .pay-item {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.content.payroll-breakdown .pay-item .label {
+    font-weight: 600;
+}
+
+.content.payroll-breakdown .pay-item.net-pay {
+    background-color: #40515f;
+    padding: 8px 15px;
+    color: white;
+    font-size: 18px;
+    border-radius: 15px;
+    box-shadow: 0px 0px 3px 0px rgba(0, 0, 0, 0.9);
+}
+
+/* table */
+
+.table-container {
+    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-container table thead tr th {
+    padding: 5px 10px;
+}
+
+.table-container table tbody tr td {
+    padding: 15px 10px;
+}
+
+.table-container table thead tr th:first-child {
+    border-top-left-radius: 10px;
+}
+
+.table-container table thead tr th:last-child {
+    border-top-right-radius: 10px;
+}
+
+.table-container table thead tr th.table-col {
+    background-color: #205173;
+    color: #f1f1f1;
+}
+
+.table-container table tbody tr:nth-child(even) {
+    background-color: #d8d7d7;
+}
+
+.table-container table tbody tr:nth-child(odd) {
+    background-color: #f1f1f1;
+}
+
+.table-container table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+}
+
+.table-container table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 10px;
+}
+
+/* hide items */
+
+.container.payroll-history, .container.attendance {
+    display: none;
+}

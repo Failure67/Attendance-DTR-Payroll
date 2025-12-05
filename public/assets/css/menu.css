@@ -2,22 +2,22 @@
 
 .menu {
     padding: 20px 20px 0 20px;
-    min-height: 100vh;
+    height: 130vh;
     box-sizing: border-box;
 }
 
 .menu-container {
     display: flex;
     flex-direction: column;
-    background-color: #9fb1c5;
+    background-color: #9fb8d5;
     gap: 8px;
-    border-radius: 15px;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
     color: #0c1d29;
     box-shadow: 0px 0px 6px 0px #000000;
     width: 300px;
     height: 100%;
     padding: 20px;
-    overflow-y: auto;
 }
 
 .menu-item {
@@ -27,11 +27,11 @@
 }
 
 .menu-item:hover {
-    background-color: #728191;
+    background-color: #7694b6;
     border-radius: 10px;
 }
 
 .menu-item.selected {
-    background-color: #758292;
+    background-color: #8097b1;
     border-radius: 10px;
 }

@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="{{ asset('assets/components/css/confirm.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/dashboard-card.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/dashboard-count.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/components/css/date.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/input-field.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/modal.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/components/css/manage-item.css') }}">

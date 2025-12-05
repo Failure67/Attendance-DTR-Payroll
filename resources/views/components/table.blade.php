@@ -32,7 +32,7 @@
                                 @if ($isActiveSort)
                                     {!! $sortDirForHeader === 'asc' ? '&uarr;' : '&darr;' !!}
                                 @else
-                                    <span class="text-muted">&udarr;</span>
+                                    <span class="text-muted" style="color: #f1f1f1 !important;">&udarr;</span>
                                 @endif
                             </span>
                         @endif

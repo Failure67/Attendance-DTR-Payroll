@@ -80,11 +80,11 @@
 
         </div>
 
-        <div class="container {{ $pageClass }} mb-1">
+        <div class="container {{ $pageClass }} mb-2 mt-2">
             <form method="GET" action="{{ route('payroll') }}" class="row g-3 align-items-end payroll-filter-row">
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="employee_id" class="form-label mb-1">Employee</label>
-                    <select name="employee_id" id="employee_id" class="form-select">
+                    <label for="employee_id" class="input-label mb-1">Employee</label>
+                    <select name="employee_id" id="employee_id" class="select w-100">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>
@@ -92,16 +92,16 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="period_start" class="form-label mb-1">Period start</label>
-                    <input type="date" name="period_start" id="period_start" class="form-control" value="{{ $filters['period_start'] ?? '' }}">
+                    <label for="period_start" class="input-label mb-1">Period start</label>
+                    <input type="date" name="period_start" id="period_start" class="date-field" value="{{ $filters['period_start'] ?? '' }}">
                 </div>
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="period_end" class="form-label mb-1">Period end</label>
-                    <input type="date" name="period_end" id="period_end" class="form-control" value="{{ $filters['period_end'] ?? '' }}">
+                    <label for="period_end" class="input-label mb-1">Period end</label>
+                    <input type="date" name="period_end" id="period_end" class="date-field" value="{{ $filters['period_end'] ?? '' }}">
                 </div>
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="status" class="form-label mb-1">Status</label>
-                    <select name="status" id="status" class="form-select">
+                    <label for="status" class="input-label mb-1">Status</label>
+                    <select name="status" id="status" class="select w-100">
                         <option value="">All</option>
                         <option value="Pending" @if(($filters['status'] ?? '') === 'Pending') selected @endif>Pending</option>
                         <option value="Released" @if(($filters['status'] ?? '') === 'Released') selected @endif>Completed</option>
@@ -109,7 +109,7 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
-                    <button type="submit" class="btn btn-primary w-100 w-lg-auto">Filter</button>
+                    <button type="submit" class="button main filter">Filter</button>
                 </div>
             </form>
         </div>

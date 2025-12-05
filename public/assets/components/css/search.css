@@ -7,7 +7,7 @@
     padding: 7px 10px 5px 37px;
     border-radius: 18px;
     width: 100%;
-    max-width: 300px;
+    max-width: 250px;
 }
 
 #search-icon {
@@ -17,4 +17,14 @@
     padding-left: 15px;
     font-size: 14px;
     color: #3d3d3d;
+}
+
+.tab-select {
+    background-color: #D1E1F3;
+    border: 1px solid #616161;
+    outline: none;
+    padding: 8px 10px;
+    border-radius: 18px;
+    width: 200px;
+    font-size: 15px;
 }

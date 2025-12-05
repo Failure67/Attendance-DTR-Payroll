@@ -13,7 +13,7 @@
             <div class="d-flex align-items-center" style="gap: 10px;">
                 {{-- Simple role filter --}}
                 <form method="GET" action="{{ route('activity-logs') }}" class="d-flex align-items-center" style="gap: 8px;">
-                    <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <select name="role" class="tab-select" onchange="this.form.submit()">
                         <option value="">All roles</option>
                         <option value="HR" {{ request('role') === 'HR' ? 'selected' : '' }}>HR</option>
                         <option value="Supervisor" {{ request('role') === 'Supervisor' ? 'selected' : '' }}>Supervisor</option>

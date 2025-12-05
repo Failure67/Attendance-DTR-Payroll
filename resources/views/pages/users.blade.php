@@ -310,7 +310,7 @@
 
         <div class="container {{ $pageClass }} tab">
 
-            <div class="d-flex align-items-center" style="gap: 10px;">
+            <div class="d-flex align-items-center" style="gap: 8px;">
                 {{-- SEARCH FIRST (swapped) --}}
                 @include('components.search', [
                     'searchClass' => 'users',
@@ -321,7 +321,7 @@
                 @php
                     $currentRoleKey = strtolower(auth()->user()->role ?? '');
                 @endphp
-                <select id="role-filter" class="form-select form-select-sm" style="width: 170px; max-width: 190px;">
+                <select id="role-filter" class="tab-select">
                     <option value="">All roles</option>
                     @if ($currentRoleKey === 'superadmin')
                         <option value="Admin">Admin</option>
@@ -514,13 +514,14 @@
 
             {{-- email --}}
             ' . view('components.input-field', [
-                'inputType' => 'email',
+                'inputType' => 'text',
                 'inputSrc' => 'users',
                 'inputVar' => 'email',
                 'inputName' => 'email',
-                'inputLabel' => 'Email Address',
+                'inputLabel' => 'Email address',
                 'inputPlaceholder' => 'Enter email address',
-                'inputInDecrement' => false,
+                'isEmail' => true,
+                'isRequired' => true,
             ])->render() . '
 
             {{-- role --}}
@@ -546,7 +547,7 @@
                 'inputVar' => 'password',
                 'inputName' => 'password',
                 'inputLabel' => 'Initial Password',
-                'inputPlaceholder' => 'Enter initial password (min. 8 characters)',
+                'inputPlaceholder' => 'Enter initial password (min. 12 characters)',
                 'inputInDecrement' => false,
             ])->render() . '
         ',

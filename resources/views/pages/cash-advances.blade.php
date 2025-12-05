@@ -6,7 +6,7 @@
 
     <div class="wrapper cash-advances">
 
-        <h1>Cash advances</h1>
+        <h1>Cash Advance</h1>
 
         <div class="container cash-advances tab">
 
@@ -159,16 +159,18 @@
                             'inputInDecrement' => false,
                         ])
 
+                        {{-- 
                         <div class="mb-3 mt-2">
                             <label for="cash-advance-description" class="form-label">Description</label>
                             <textarea name="description" id="cash-advance-description" class="form-control" rows="2" maxlength="255"></textarea>
                         </div>
+                        --}}
 
                         @include('components.input-field', [
                             'inputType' => 'textarea',
-                            'inputSrc' => 'cash-advance',
+                            'inputSrc' => 'description',
                             'inputVar' => 'reason',
-                            'inputName' => 'reason',
+                            'inputName' => 'cash-advance',
                             'inputLabel' => 'Reason',
                             'inputPlaceholder' => 'Enter reason...',
                             'isRequired' => true,

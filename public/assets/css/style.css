@@ -111,3 +111,41 @@ header {
     color: #0D2C42;
     border-radius: 50%;
 }
+
+/* pages */
+
+.add-workers, .add-workers-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.supervisor, .supervisor-container {
+    display: flex;
+    gap: 5px;
+    width: 100%;
+}
+
+.crew-assignment-wrapper {
+    display: flex;
+    gap: 8px;
+}
+
+.crew-assignment-container, .table-container.crew-assignments-table.initialized {
+    width: 100%;
+}
+
+.button.crew-assignment {
+    white-space: nowrap;
+}
+
+.supervisor-container.input {
+    flex-direction: column;
+}
+
+.supervisor-wrapper {
+    display: flex;
+    width: 100%;
+    gap: 5px;
+}
+

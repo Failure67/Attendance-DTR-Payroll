@@ -97,7 +97,7 @@
 
                 <div class="dropdown">
                     @include('components.button', [
-                        'buttonType' => 'secondary',
+                        'buttonType' => 'main',
                         'buttonVar' => 'more',
                         'buttonSrc' => 'attendance',
                         'buttonIcon' => '<i class="fa-solid fa-caret-down"></i>',
@@ -144,8 +144,8 @@
         <div class="container {{ $pageClass }} mb-1">
             <form method="GET" action="{{ route('attendance') }}" class="row g-3 align-items-end attendance-filter-row">
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="attendance_filter_employee" class="form-label mb-1">Employee</label>
-                    <select name="employee_id" id="attendance_filter_employee" class="form-select">
+                    <label for="attendance_filter_employee" class="input-label mb-1">Employee</label>
+                    <select name="employee_id" id="attendance_filter_employee" class="select w-100">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>
@@ -153,16 +153,16 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="attendance_filter_period_start" class="form-label mb-1">Period start</label>
-                    <input type="date" name="period_start" id="attendance_filter_period_start" class="form-control" value="{{ $filters['period_start'] ?? '' }}">
+                    <label for="attendance_filter_period_start" class="input-label mb-1">Period start</label>
+                    <input type="date" name="period_start" id="attendance_filter_period_start" class="date-field" value="{{ $filters['period_start'] ?? '' }}">
                 </div>
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="attendance_filter_period_end" class="form-label mb-1">Period end</label>
-                    <input type="date" name="period_end" id="attendance_filter_period_end" class="form-control" value="{{ $filters['period_end'] ?? '' }}">
+                    <label for="attendance_filter_period_end" class="input-label mb-1">Period end</label>
+                    <input type="date" name="period_end" id="attendance_filter_period_end" class="date-field" value="{{ $filters['period_end'] ?? '' }}">
                 </div>
                 <div class="col-12 col-md-6 col-lg">
-                    <label for="attendance_filter_status" class="form-label mb-1">Status</label>
-                    <select name="status" id="attendance_filter_status" class="form-select">
+                    <label for="attendance_filter_status" class="input-label mb-1">Status</label>
+                    <select name="status" id="attendance_filter_status" class="select w-100">
                         <option value="">All</option>
                         <option value="Present" @if(($filters['status'] ?? '') === 'Present') selected @endif>Present</option>
                         <option value="Late" @if(($filters['status'] ?? '') === 'Late') selected @endif>Late</option>
@@ -171,7 +171,7 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
-                    <button type="submit" class="btn btn-primary w-100 w-lg-auto">Filter</button>
+                    <button type="submit" class="button main filter">Filter</button>
                 </div>
             </form>
         </div>

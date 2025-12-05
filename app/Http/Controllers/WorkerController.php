@@ -42,14 +42,22 @@ class WorkerController extends Controller
 
         $caBalance = max(0, $totalAdvances - $totalRepayments);
 
-        return view('worker.overview', [
+        $payrolls = Payroll::where('user_id', $user->id)
+        ->orderByDesc('period_end')
+        ->orderByDesc('created_at')
+        ->limit(5)
+        ->get();
+
+        return view('user.pages.index', [
             'title' => 'Overview',
-            'pageClass' => 'worker-overview',
+            'pageClass' => 'employee',
             'user' => $user,
             'latestPayroll' => $latestPayroll,
             'monthHours' => $totalHours,
             'monthOvertime' => $totalOvertime,
             'caBalance' => $caBalance,
+            'payrolls' => $payrolls,
+            'attendances' => $monthlyAttendance,
         ]);
     }
 
@@ -66,7 +74,7 @@ class WorkerController extends Controller
             ->limit(50)
             ->get();
 
-        return view('worker.payroll-history', [
+        return view('user.pages.index', [
             'title' => 'Payroll History',
             'pageClass' => 'worker-payroll-history',
             'user' => $user,
@@ -217,7 +225,7 @@ class WorkerController extends Controller
             ->limit(50)
             ->get();
 
-        return view('worker.attendance', [
+        return view('user.pages.index', [
             'title' => 'Attendance',
             'pageClass' => 'worker-attendance',
             'user' => $user,

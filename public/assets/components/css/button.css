@@ -11,6 +11,7 @@
     align-items: center;
     gap: 3px;
     justify-content: center;
+    height: 100%;
 }
 
 .button:hover {
@@ -28,7 +29,7 @@
 }
 
 .button.secondary {
-    background-color: #8d8d8d;
+    background-color: #777777;
     color: white;
 }
 
@@ -63,4 +64,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* filter */
+
+.button.filter {
+    padding: 10px 30px;
+    border-radius: 10px;
 }

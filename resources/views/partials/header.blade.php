@@ -40,7 +40,7 @@
                 } else {
                     $profileParams = ['guard' => 'admin'];
                 }
-                $logoRouteName = 'admin.dashboard';
+                $logoRouteName = 'index';
             } else {
                 $logoutRoute = 'auth.logout.worker';
                 $profileParams = ['guard' => 'worker'];

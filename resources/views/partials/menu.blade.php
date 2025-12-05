@@ -54,7 +54,7 @@
                 </span>
 
                 <span class="menu-label">
-                    Cash advances
+                    Cash Advance
                 </span>
 
             </span>

@@ -1,0 +1,25 @@
+/* © 2025 Romar Jabez */
+
+.date-option {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.date-label {
+    user-select: none;
+}
+
+.date-field {
+    border: 2px solid #afafaf;
+    border-radius: 10px;
+    outline: none;
+    padding: 10px 15px;
+    transition: all 0.2s ease-in-out;
+    width: 100%;
+}
+
+.date:focus {
+    border-color: #5a85a4;
+    box-shadow: 0 0 5px 1px rgba(90, 133, 164, 0.8);
+}
