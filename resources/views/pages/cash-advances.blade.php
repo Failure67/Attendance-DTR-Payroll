@@ -168,7 +168,7 @@
                             'inputType' => 'textarea',
                             'inputSrc' => 'cash-advance',
                             'inputVar' => 'reason',
-                            'inputName' => 'description',
+                            'inputName' => 'reason',
                             'inputLabel' => 'Reason',
                             'inputPlaceholder' => 'Enter reason...',
                             'isRequired' => true,

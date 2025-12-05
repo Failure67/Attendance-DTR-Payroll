@@ -36,11 +36,11 @@
                     class="form-control @error('password') is-invalid @enderror" 
                     id="password" 
                     name="password" 
-                    placeholder="Enter new password (min. 8 characters)"
+                    placeholder="Enter new password (min. 12 characters)"
                     required
                     autofocus
                 >
-                <small class="form-text-hint">Must be at least 8 characters</small>
+                <small class="form-text-hint">Must be at least 12 characters</small>
                 @error('password')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

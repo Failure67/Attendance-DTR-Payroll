@@ -67,7 +67,7 @@
                     placeholder="Create a strong password"
                     required
                 >
-                <small class="form-text-hint">At least 8 characters, with uppercase, lowercase, numbers and special characters</small>
+                <small class="form-text-hint">At least 12 characters, with uppercase, lowercase, numbers and special characters</small>
                 @error('password')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

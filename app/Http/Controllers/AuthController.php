@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -24,7 +25,7 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'email' => 'required|email',
-            'password' => 'required|string|min:8',
+            'password' => 'required|string',
         ]);
 
         $user = User::where('email', $validated['email'])->first();
@@ -86,7 +87,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'username' => 'required|string|unique:users|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
         ]);
 
         $user = User::create([
@@ -213,7 +214,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'token' => 'required|string',
             'email' => 'required|email|exists:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', Password::defaults(), 'confirmed'],
         ]);
 
         $email = cache()->get('password_reset_' . $validated['token']);

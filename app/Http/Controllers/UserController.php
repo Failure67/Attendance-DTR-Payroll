@@ -47,7 +47,11 @@ class UserController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'role' => 'required|in:Admin,HR,Supervisor,Worker',
+<<<<<<< HEAD
             'password' => 'required|string|min:8',
+=======
+            'password' => 'required|string|min:12',
+>>>>>>> 177e5ecd354e5183f7f3d637d6fa668c668ce5b6
         ]);
 
         DB::beginTransaction();
@@ -85,7 +89,11 @@ class UserController extends Controller
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => 'required|in:Admin,HR,Supervisor,Worker',
+<<<<<<< HEAD
             'password' => 'nullable|string|min:8',
+=======
+            'password' => 'nullable|string|min:12',
+>>>>>>> 177e5ecd354e5183f7f3d637d6fa668c668ce5b6
         ]);
 
         DB::beginTransaction();
