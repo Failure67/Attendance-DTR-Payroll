@@ -1,0 +1,111 @@
+/* © 2025 Romar Jabez */
+
+.wrapper.backup {
+    max-width: 1100px;
+}
+
+.container.backup.summary {
+    display: flex;
+    gap: 20px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.container.backup.summary .dashboard-count .item-title {
+    font-size: 18px;
+}
+
+.container.backup.summary .dashboard-count .item-sub-title {
+    font-size: 12px;
+}
+
+.container.backup.summary .dashboard-count .item-count {
+    font-size: 22px;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.backup-section {
+    background-color: #d1e1f3;
+    border-radius: 12px;
+    padding: 16px 18px 20px;
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.4);
+    border-bottom: 4px solid #0D2C42;
+    margin-bottom: 16px;
+}
+
+.backup-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.backup-section-title {
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.backup-section-subtitle {
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.backup-section-grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.backup-section-grid .dashboard-card.backup-card {
+    min-height: 220px;
+}
+
+.backup-card-body {
+    margin-top: 6px;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.backup-card-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.backup-card-row .label {
+    color: #4b5563;
+}
+
+.backup-card-row .value {
+    font-weight: 500;
+}
+
+.backup-card-actions {
+    margin-top: 12px;
+}
+
+.backup-restore-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.backup-restore-warning {
+    font-size: 13px;
+    background-color: #fef3c7;
+    border-radius: 8px;
+    padding: 8px 10px;
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
+}
+
+.backup-restore-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.backup-history-table {
+    margin-top: 4px;
+}

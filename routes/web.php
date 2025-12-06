@@ -11,6 +11,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\BackupController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -97,6 +98,13 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
 
         Route::get('/cash-advances', [PayrollController::class, 'viewCashAdvances'])->name('cash-advances');
         Route::post('/cash-advances', [PayrollController::class, 'storeCashAdvance'])->name('cash-advances.store');
+    });
+
+    Route::middleware(['role:Superadmin'])->group(function () {
+        Route::get('/backup', [BackupController::class, 'index'])->name('backup');
+        Route::post('/backup/create', [BackupController::class, 'createBackup'])->name('backup.create');
+        Route::get('/backup/download/{file}', [BackupController::class, 'downloadBackup'])->name('backup.download');
+        Route::post('/backup/restore', [BackupController::class, 'restoreBackup'])->name('backup.restore');
     });
 
     Route::middleware(['role:Superadmin,Admin'])->group(function () {
