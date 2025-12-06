@@ -15,12 +15,16 @@
 
 /* Profile Picture Card */
 .profile-picture-card {
-    background-color: #d1e1f3;
-    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+    background-color: var(--card-bg);
+    box-shadow: var(--card-shadow);
     padding: 25px;
-    border-radius: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
     border-bottom: 4px solid #0D2C42;
     width: 100%;
+    position: relative;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
 .profile-picture-header {
@@ -126,12 +130,23 @@
 
 .profile-info-card,
 .change-password-card {
-    background-color: #d1e1f3;
-    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+    background-color: var(--card-bg);
+    box-shadow: var(--card-shadow);
     padding: 25px;
-    border-radius: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
     border-bottom: 4px solid #0D2C42;
     width: 100%;
+    position: relative;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.profile-picture-card:hover,
+.profile-info-card:hover,
+.change-password-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
 }
 
 .card-header {

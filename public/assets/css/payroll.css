@@ -70,7 +70,7 @@
 .table-container.payroll-table .gross-pay,
 .table-container.payroll-table .deductions,
 .table-container.payroll-table .net-pay {
-    text-align: right;
+    text-align: left;
 }
 
 .table-container.payroll-table .status {
@@ -107,7 +107,7 @@
 
 .table-container.attendance-table .total-hours,
 .table-container.attendance-table .overtime-hours {
-    text-align: right;
+    text-align: left;
 }
 
 .table-container.attendance-table .status {
@@ -142,7 +142,7 @@
 .table-container.payroll-process-table .present-days,
 .table-container.payroll-process-table .ca-balance,
 .table-container.payroll-process-table .ca-deduction {
-    text-align: right;
+    text-align: left;
 }
 
 .table-container.payroll-process-table table input[type="checkbox"] {

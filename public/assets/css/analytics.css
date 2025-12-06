@@ -43,19 +43,28 @@
 }
 
 .analytics-section {
-    background-color: #d1e1f3;
-    border-radius: 12px;
-    padding: 16px 18px 20px;
-    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.4);
+    background-color: var(--card-bg);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--card-border);
     border-bottom: 4px solid #0D2C42;
+    position: relative;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
     margin-bottom: 16px;
+}
+
+.analytics-section:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
 }
 
 .analytics-section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .analytics-section-title {
@@ -65,7 +74,7 @@
 
 .analytics-section-subtitle {
     font-size: 13px;
-    color: #4b5563;
+    color: #4B5563;
 }
 
 .analytics-role-banner {

@@ -1,9 +1,33 @@
 /* © 2025 Romar Jabez */
 
+:root {
+	--page-bg-start: rgba(13, 87, 127, 0.10);
+	--page-bg-end: #E9F1F8; /* subtle pale blue instead of pure white */
+	--header-bg: #0D2C42;  /* darker header */
+	--sidebar-bg: #0B3A55;
+	--card-bg: #FFFFFF;
+	--card-border: #E6E9EF;
+	--card-shadow: 0 6px 16px rgba(16, 24, 40, 0.06);
+	--text-head: #122028;
+	--text-body: #26323F;
+}
+
+:root[data-theme='classic'] {
+	--page-bg-start: #AFC7E3; /* classic solid blue background */
+	--page-bg-end: #AFC7E3;
+	--header-bg: #0D2C42;
+	--sidebar-bg: #0C4C7D;
+	--card-bg: #DCE8F7; /* light blue card surface */
+	--card-border: rgba(12, 76, 125, 0.6);
+	--card-shadow: 0 8px 22px rgba(15, 23, 42, 0.35);
+}
+
 html, body {
 	font-family: 'Inter', sans-serif;
-    background-color: #afc7e3;
+	background: linear-gradient(135deg, var(--page-bg-start) 0%, var(--page-bg-end) 100%);
+	background-attachment: fixed;
 	margin: 0;
+	color: var(--text-body);
 }
 
 a {
@@ -44,10 +68,12 @@ hr {
 
 h1, h2, h3, h4, h5, h6 {
     margin: 0;
+    color: var(--text-head);
+    font-weight: 700;
 }
 
 header {
-    background-color: #0D2C42;
+	background-color: var(--header-bg);
     color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
     display: flex;
@@ -56,11 +82,54 @@ header {
 }
 
 .header-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    max-width: 1380px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
+	max-width: 1380px;
+}
+
+.header-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.theme-toggle-btn {
+	border: none;
+	background: transparent;
+	color: #E5E7EB;
+	width: 32px;
+	height: 32px;
+	border-radius: 999px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	padding: 0;
+	transition: background-color 0.15s ease-out, box-shadow 0.15s ease-out, color 0.15s ease-out;
+}
+
+.theme-toggle-btn:hover {
+	background-color: rgba(255, 255, 255, 0.12);
+	box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.6);
+}
+
+.theme-toggle-btn .theme-icon {
+	font-size: 15px;
+}
+
+.theme-toggle-btn .theme-icon-modern,
+.theme-toggle-btn .theme-icon-classic {
+	display: none;
+}
+
+:root[data-theme='modern'] .theme-toggle-btn .theme-icon-classic {
+	display: inline-block;
+}
+
+:root[data-theme='classic'] .theme-toggle-btn .theme-icon-modern {
+	display: inline-block;
 }
 
 .header-logo {
@@ -78,6 +147,14 @@ header {
     align-items: center;
     gap: 5px;
     cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 999px;
+    transition: background-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.auth-option:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.4);
 }
 
 .user-image {
@@ -186,7 +263,7 @@ header {
 .page-title-text p {
     margin: 0;
     font-size: 13px;
-    color: #4b5563;
+    color: #6B7683;
 }
 
 .crew-cards {
@@ -196,11 +273,20 @@ header {
 }
 
 .crew-card {
-    background-color: #d1e1f3;
-    border-radius: 12px;
-    padding: 16px 18px 18px;
-    box-shadow: 0px 0px 4px rgba(0,0,0,0.4);
+    background-color: var(--card-bg);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--card-border);
     border-bottom: 4px solid #0D2C42;
+    position: relative;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.crew-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
 }
 
 .crew-card-header {
@@ -214,7 +300,7 @@ header {
 
 .crew-card-subtitle {
     font-size: 13px;
-    color: #4b5563;
+    color: #6B7683;
 }
 
 .crew-form {

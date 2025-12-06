@@ -62,7 +62,7 @@ class DashboardController extends Controller
             'overtimeHours' => $attendanceOvertimeHours,
         ];
 
-        // Payroll chart: net pay totals per month for the last 6 months (including current)
+        // Payroll chart: gross and net pay totals per month for the last 6 months (including current)
         $payrollEnd = $now->copy()->endOfMonth();
         $payrollStart = $now->copy()->subMonths(5)->startOfMonth();
 
@@ -80,23 +80,31 @@ class DashboardController extends Controller
             $monthKey = $periodEnd->copy()->startOfMonth()->format('Y-m-01');
 
             if (!isset($payrollByMonth[$monthKey])) {
-                $payrollByMonth[$monthKey] = 0;
+                $payrollByMonth[$monthKey] = [
+                    'gross' => 0,
+                    'net' => 0,
+                ];
             }
 
-            $payrollByMonth[$monthKey] += (float) ($payroll->net_pay ?? 0);
+            $payrollByMonth[$monthKey]['gross'] += (float) ($payroll->gross_pay ?? 0);
+            $payrollByMonth[$monthKey]['net'] += (float) ($payroll->net_pay ?? 0);
         }
 
         $payrollLabels = [];
         $payrollNetPay = [];
+        $payrollGrossPay = [];
 
         for ($date = $payrollStart->copy(); $date->lte($payrollEnd); $date->addMonth()) {
             $key = $date->format('Y-m-01');
             $payrollLabels[] = $date->format('M Y');
-            $payrollNetPay[] = round((float) ($payrollByMonth[$key] ?? 0), 2);
+            $monthTotals = $payrollByMonth[$key] ?? ['gross' => 0, 'net' => 0];
+            $payrollGrossPay[] = round((float) ($monthTotals['gross'] ?? 0), 2);
+            $payrollNetPay[] = round((float) ($monthTotals['net'] ?? 0), 2);
         }
 
         $payrollChart = [
             'labels' => $payrollLabels,
+            'grossPay' => $payrollGrossPay,
             'netPay' => $payrollNetPay,
         ];
 

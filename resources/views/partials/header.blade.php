@@ -52,7 +52,16 @@
             <img src="{{ asset('assets/img/logo/logo.webp') }}" alt="Logo" width="200">
         </a>
 
-        <div class="auth-option">
+        <div class="header-actions">
+
+            <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Switch theme" title="Switch theme">
+                <i class="fa-solid fa-sun theme-icon theme-icon-modern"></i>
+                <i class="fa-solid fa-circle-half-stroke theme-icon theme-icon-classic"></i>
+            </button>
+
+            <div class="dropdown">
+
+                <div class="auth-option" data-bs-toggle="dropdown" aria-expanded="false">
 
             <div class="user-image">
                 @if($currentUser && $currentUser->profile_picture && file_exists(public_path('uploads/profiles/' . $currentUser->profile_picture)))
@@ -79,12 +88,14 @@
                 @endif
             </div>
 
-            <div class="option-button" data-bs-toggle="dropdown">
+            <div class="option-button">
                 <i class="fa-solid fa-caret-down"></i>
             </div>
 
-            {{-- dropdown --}}
-            <ul class="dropdown-menu">
+                </div>
+
+                {{-- dropdown --}}
+                <ul class="dropdown-menu dropdown-menu-end">
                 <li><a href="{{ route('profile.show', $profileParams) }}" class="dropdown-item">Profile</a></li>
                 @if($currentRole === 'admin')
                     <li><a href="{{ route('settings.show', $profileParams) }}" class="dropdown-item">Settings</a></li>
@@ -97,7 +108,9 @@
                         </button>
                     </form>
                 </li>
-            </ul>
+                </ul>
+
+            </div>
 
         </div>
 
