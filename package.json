@@ -1,18 +1,25 @@
 {
     "private": true,
-    "type": "module",
+    "type": "commonjs",
+    "name": "rmcs-payroll",
+    "version": "1.0.0",
+    "description": "RMCS Payroll Management System",
+    "main": "electron/main.js",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+
+        "laravel": "php artisan serve --host=127.0.0.1 --port=8000",
+        "electron": "wait-on tcp:127.0.0.1:8000 --timeout 60000 --interval 500 && node ./node_modules/electron/cli.js electron/main.js",
+        "start": "concurrently -k -n \"laravel,electron\" -c \"green,cyan\" \"npm run laravel\" \"npm run electron\""
     },
     "devDependencies": {
-        "@tailwindcss/forms": "^0.5.2",
-        "alpinejs": "^3.4.2",
-        "autoprefixer": "^10.4.2",
         "axios": "^1.6.4",
-        "laravel-vite-plugin": "^1.0.0",
-        "postcss": "^8.4.31",
-        "tailwindcss": "^3.1.0",
-        "vite": "^7.2.4"
+        "laravel-vite-plugin": "^1.0",
+        "vite": "^5.0",
+        "electron": "^28.0.0",
+        "electron-builder": "^24.9.1",
+        "concurrently": "^8.2.2",
+        "wait-on": "^7.2.0"
     }
 }

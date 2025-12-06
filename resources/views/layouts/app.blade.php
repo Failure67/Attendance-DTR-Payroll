@@ -22,6 +22,7 @@
     @yield('scripts')
 </head>
 <body>
+    @include('components.titlebar')
     
     @include('partials.header')
 
