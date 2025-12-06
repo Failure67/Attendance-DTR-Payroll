@@ -6,7 +6,15 @@
 
     <div class="wrapper payroll-process">
 
-        <h1>Process payroll</h1>
+        <div class="page-header">
+            <div class="page-title">
+                <span class="page-icon"><i class="fa-solid fa-gears"></i></span>
+                <div class="page-title-text">
+                    <h1>Process payroll</h1>
+                    <p>Generate payrolls based on attendance data</p>
+                </div>
+            </div>
+        </div>
 
         <div class="container payroll-process filter mb-3">
             <form method="GET" action="{{ route('payroll.process') }}" class="row g-2 align-items-end">

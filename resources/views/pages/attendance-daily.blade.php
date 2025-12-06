@@ -6,7 +6,15 @@
 
     <div class="wrapper {{ $pageClass }}">
 
-        <h1>{{ $title }}</h1>
+        <div class="page-header">
+            <div class="page-title">
+                <span class="page-icon"><i class="fa-solid fa-calendar-day"></i></span>
+                <div class="page-title-text">
+                    <h1>{{ $title }}</h1>
+                    <p>Daily attendance sheet for a specific date</p>
+                </div>
+            </div>
+        </div>
 
         <div class="container {{ $pageClass }} mb-3">
             <form method="GET" action="{{ route('attendance.daily') }}" class="row g-3 align-items-end">

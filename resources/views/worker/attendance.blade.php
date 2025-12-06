@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.user')
 
 @section('styles')
     <style>
@@ -79,6 +79,8 @@
             border-radius: 18px;
             padding: 1.3rem 1.5rem 1.6rem;
             box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+            max-height: 100%;
+            overflow-y: auto;
         }
 
         .worker-table .section-title {

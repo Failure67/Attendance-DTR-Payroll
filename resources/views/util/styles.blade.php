@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="{{ asset('assets/css/users.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/profile.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/settings.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/analytics.css') }}">
 
 {{-- main assets --}}
 <link rel="stylesheet" href="{{ asset('assets/css/menu.css') }}">

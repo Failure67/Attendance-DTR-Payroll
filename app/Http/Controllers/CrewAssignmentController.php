@@ -88,6 +88,7 @@ class CrewAssignmentController extends Controller
             'canChooseSupervisor' => $canChooseSupervisor,
             'availableWorkers' => $availableWorkers,
             'crewTableData' => $crewTableData,
+            'crewAssignments' => $crewAssignments,
         ]);
     }
 

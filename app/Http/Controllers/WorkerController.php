@@ -18,6 +18,7 @@ class WorkerController extends Controller
         }
 
         $latestPayroll = Payroll::where('user_id', $user->id)
+            ->where('status', 'Released')
             ->orderByDesc('period_end')
             ->orderByDesc('created_at')
             ->first();
@@ -25,9 +26,11 @@ class WorkerController extends Controller
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
-        $monthlyAttendance = Attendance::where('user_id', $user->id)
-            ->whereBetween('date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
-            ->get();
+        $attendanceBase = Attendance::where('user_id', $user->id)
+            ->whereBetween('date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()]);
+
+        // Full-month collection for aggregates
+        $monthlyAttendance = (clone $attendanceBase)->get();
 
         $totalHours = (float) $monthlyAttendance->sum('total_hours');
         $totalOvertime = (float) $monthlyAttendance->sum('overtime_hours');
@@ -42,11 +45,22 @@ class WorkerController extends Controller
 
         $caBalance = max(0, $totalAdvances - $totalRepayments);
 
-        $payrolls = Payroll::where('user_id', $user->id)
-        ->orderByDesc('period_end')
-        ->orderByDesc('created_at')
-        ->limit(5)
-        ->get();
+        $payrollBase = Payroll::where('user_id', $user->id)
+            ->where('status', 'Released')
+            ->orderByDesc('period_end')
+            ->orderByDesc('created_at');
+
+        // Paginated payroll history (5 rows per page) for the Payroll History tab
+        $payrolls = (clone $payrollBase)
+            ->paginate(5)
+            ->appends(['tab' => 'history']);
+
+        // Paginated attendance list for the dashboard (used in the Attendance tab)
+        $attendances = (clone $attendanceBase)
+            ->orderByDesc('date')
+            ->orderByDesc('time_in')
+            ->paginate(5)
+            ->appends(['tab' => 'attendance']);
 
         return view('user.pages.index', [
             'title' => 'Overview',
@@ -57,29 +71,13 @@ class WorkerController extends Controller
             'monthOvertime' => $totalOvertime,
             'caBalance' => $caBalance,
             'payrolls' => $payrolls,
-            'attendances' => $monthlyAttendance,
+            'attendances' => $attendances,
         ]);
     }
 
     public function payrollHistory()
     {
-        $user = auth()->user();
-        if (!$user) {
-            abort(403);
-        }
-
-        $payrolls = Payroll::where('user_id', $user->id)
-            ->orderByDesc('period_end')
-            ->orderByDesc('created_at')
-            ->limit(50)
-            ->get();
-
-        return view('user.pages.index', [
-            'title' => 'Payroll History',
-            'pageClass' => 'worker-payroll-history',
-            'user' => $user,
-            'payrolls' => $payrolls,
-        ]);
+        return redirect()->route('worker.dashboard', ['tab' => 'history']);
     }
 
     public function payslip($id)
@@ -91,6 +89,7 @@ class WorkerController extends Controller
 
         $payroll = Payroll::with(['deductions', 'cashAdvances'])
             ->where('user_id', $user->id)
+            ->where('status', 'Released')
             ->findOrFail($id);
 
         $attendanceSummary = null;
@@ -155,6 +154,7 @@ class WorkerController extends Controller
 
         $payroll = Payroll::with(['deductions', 'cashAdvances'])
             ->where('user_id', $user->id)
+            ->where('status', 'Released')
             ->findOrFail($id);
 
         $attendanceSummary = null;
@@ -214,22 +214,6 @@ class WorkerController extends Controller
 
     public function attendance()
     {
-        $user = auth()->user();
-        if (!$user) {
-            abort(403);
-        }
-
-        $attendances = Attendance::where('user_id', $user->id)
-            ->orderByDesc('date')
-            ->orderByDesc('time_in')
-            ->limit(50)
-            ->get();
-
-        return view('user.pages.index', [
-            'title' => 'Attendance',
-            'pageClass' => 'worker-attendance',
-            'user' => $user,
-            'attendances' => $attendances,
-        ]);
+        return redirect()->route('worker.dashboard', ['tab' => 'attendance']);
     }
 }

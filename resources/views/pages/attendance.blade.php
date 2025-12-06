@@ -6,7 +6,15 @@
 
     <div class="wrapper {{ $pageClass }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}">
 
-        <h1>{{ $title }}</h1>
+        <div class="page-header">
+            <div class="page-title">
+                <span class="page-icon"><i class="fa-solid fa-calendar-days"></i></span>
+                <div class="page-title-text">
+                    <h1>{{ $title }}</h1>
+                    <p>View and manage detailed attendance records</p>
+                </div>
+            </div>
+        </div>
 
         <div class="container {{ $pageClass }} summary mb-3">
 

@@ -1,15 +1,19 @@
-@extends('layouts.app')
+@extends('layouts.user')
 
 @section('styles')
     <style>
         .worker-dashboard {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 2rem auto;
-            padding: 1.5rem 2rem 2.2rem;
-            background: linear-gradient(135deg, #f3f6ff, #e5f0ff);
-            border-radius: 18px;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.15);
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            padding: 30px;
+            background-color: #d1e1f3;
+            border-radius: 12px;
+            box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
+            border-bottom: 0px solid #0D2C42;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
         .worker-header {
@@ -65,10 +69,9 @@
         }
 
         .payslip-card {
-            background: #ffffff;
-            border-radius: 18px;
-            padding: 1.4rem 1.6rem 1.6rem;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
         .payslip-header {
@@ -172,42 +175,96 @@
 @endsection
 
 @section('content')
-    <div class="worker-dashboard payslip">
-        <div class="worker-header">
-            <div class="worker-profile">
-                <div class="worker-name">{{ $user->full_name ?? $user->username }}</div>
-                <div class="worker-id">ID: EMP-{{ str_pad($user->id, 4, '0', STR_PAD_LEFT) }}</div>
+    <div class="wrapper employee">
+
+        <div class="container employee header">
+
+            <div class="content info">
+
+                <div class="name">
+
+                    <div class="profile-picture">
+                        @if($user->profile_picture && file_exists(public_path('uploads/profiles/' . $user->profile_picture)))
+                            <img src="{{ asset('uploads/profiles/' . $user->profile_picture) }}" alt="Profile Picture" width="120">
+                        @else
+                            <img src="{{ asset('assets/img/defaults/user_image.webp') }}" alt="Profile Picture" width="120">
+                        @endif
+                    </div>
+
+                    <div class="name-info">
+
+                        <div class="name-container">
+                            {{ $user->full_name ?? $user->username }}
+                        </div>
+
+                        <div class="id-number">
+
+                            <span class="icon">
+                                <i class="fa-solid fa-id-badge"></i>
+                            </span>
+
+                            <div class="label">
+                                RMCS-{{ str_pad($user->id, 4, '0', STR_PAD_LEFT) }}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
             </div>
-            <div class="worker-tabs">
-                <a href="{{ route('worker.dashboard') }}" class="tab">Overview</a>
-                <a href="{{ route('worker.payroll-history') }}" class="tab active">Payroll History</a>
-                <a href="{{ route('worker.attendance') }}" class="tab">Attendance</a>
+
+            <div class="content selector">
+
+                <a href="{{ route('worker.dashboard') }}" class="selector-item">
+                    Overview
+                </a>
+
+                <a href="{{ route('worker.payroll-history') }}" class="selector-item selected">
+                    Payroll History
+                </a>
+
+                <a href="{{ route('worker.attendance') }}" class="selector-item">
+                    Attendance
+                </a>
+
             </div>
+
         </div>
 
-        <div class="payslip-card">
-            @php
-                $period = ($payroll->period_start && $payroll->period_end)
-                    ? $payroll->period_start->format('Y-m-d') . ' to ' . $payroll->period_end->format('Y-m-d')
-                    : ($payroll->created_at ? $payroll->created_at->format('Y-m-d') : 'N/A');
-                $gross = number_format((float) ($payroll->gross_pay ?? 0), 2);
-                $deductions = number_format((float) ($payroll->total_deductions ?? 0), 2);
-                $net = number_format((float) ($payroll->net_pay ?? 0), 2);
-            @endphp
+        <div class="container employee payroll-history">
 
-            <div class="payslip-header">
-                <div>
-                    <div class="payslip-title">Payslip</div>
-                    <div class="payslip-meta">Period: {{ $period }}</div>
-                    <div class="payslip-meta">Generated on: {{ now()->format('Y-m-d') }}</div>
-                </div>
-                <div class="text-end">
-                    <div class="payslip-meta">Status: {{ $payroll->status ?? 'Pending' }}</div>
-                    <div class="payslip-meta">Wage type: {{ $payroll->wage_type ?? 'N/A' }}</div>
-                </div>
-            </div>
+            <div class="content payroll-breakdown">
 
-            <div class="payslip-grid">
+                <div class="title">
+                    Payslip
+                </div>
+
+                @php
+                    $period = ($payroll->period_start && $payroll->period_end)
+                        ? $payroll->period_start->format('Y-m-d') . ' to ' . $payroll->period_end->format('Y-m-d')
+                        : ($payroll->created_at ? $payroll->created_at->format('Y-m-d') : 'N/A');
+                    $gross = number_format((float) ($payroll->gross_pay ?? 0), 2);
+                    $deductions = number_format((float) ($payroll->total_deductions ?? 0), 2);
+                    $net = number_format((float) ($payroll->net_pay ?? 0), 2);
+                @endphp
+
+                <div class="payslip-card">
+
+                    <div class="payslip-header">
+                        <div>
+                            <div class="payslip-title">Payslip</div>
+                            <div class="payslip-meta">Period: {{ $period }}</div>
+                            <div class="payslip-meta">Generated on: {{ now()->format('Y-m-d') }}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="payslip-meta">Status: {{ $payroll->status ?? 'Pending' }}</div>
+                            <div class="payslip-meta">Wage type: {{ $payroll->wage_type ?? 'N/A' }}</div>
+                        </div>
+                    </div>
+
+                    <div class="payslip-grid">
                 <div>
                     <div class="payslip-section-title">Earnings</div>
                     <div class="payslip-row">
@@ -289,6 +346,12 @@
                     <a href="{{ route('worker.payslip.download', $payroll->id) }}" class="btn btn-sm btn-primary">Download PDF</a>
                 </div>
             </div>
+
+                </div>
+
+            </div>
+
         </div>
+
     </div>
 @endsection

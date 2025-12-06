@@ -23,6 +23,7 @@
 
         $currentRole = strtolower($currentUser->role ?? '');
         $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'], true);
+        $canSeeAnalytics = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'], true);
         $canSeeCrewAssignments = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
         $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
         $canSeeActivityLogs = in_array($currentRole, ['admin', 'superadmin'], true);
@@ -44,6 +45,22 @@
 
             </span>
         </a>
+
+        @if ($canSeeAnalytics)
+        <a href="{{ route('analytics') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'analytics' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-chart-line"></i>
+                </span>
+
+                <span class="menu-label">
+                    Analytics
+                </span>
+
+            </span>
+        </a>
+        @endif
 
         @if ($canSeePayrollAndCa)
         <a href="{{ route('cash-advances') }}">

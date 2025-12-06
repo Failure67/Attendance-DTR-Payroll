@@ -5,6 +5,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CrewAssignmentController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkerController;
@@ -56,6 +57,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
     Route::middleware(['role:Superadmin,Admin,HR,Accounting,Project Manager,Supervisor'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
         Route::get('/', [DashboardController::class, 'index'])->name('index');
+        Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
 
         Route::get('/attendance', [AttendanceController::class, 'viewAttendance'])->name('attendance');
         Route::post('/attendance', [AttendanceController::class, 'storeAttendance'])->name('attendance.store');

@@ -6,7 +6,15 @@
 
     <div class="wrapper {{ $pageClass }}">
 
-        <h1>{{ $title }}</h1>
+        <div class="page-header">
+            <div class="page-title">
+                <span class="page-icon"><i class="fa-solid fa-house"></i></span>
+                <div class="page-title-text">
+                    <h1>{{ $title }}</h1>
+                    <p>Overview of workforce, attendance, and payroll metrics</p>
+                </div>
+            </div>
+        </div>
 
         <div class="container {{ $pageClass }}">
 

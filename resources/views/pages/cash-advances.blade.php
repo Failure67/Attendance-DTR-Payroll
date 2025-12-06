@@ -6,7 +6,15 @@
 
     <div class="wrapper cash-advances">
 
-        <h1>Cash Advance</h1>
+        <div class="page-header">
+            <div class="page-title">
+                <span class="page-icon"><i class="fa-solid fa-money-bill-wave"></i></span>
+                <div class="page-title-text">
+                    <h1>Cash Advance</h1>
+                    <p>Manage employee cash advances and repayments</p>
+                </div>
+            </div>
+        </div>
 
         <div class="container cash-advances tab">
 

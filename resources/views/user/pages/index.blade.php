@@ -2,6 +2,17 @@
 
 @section('content')
 
+    @php
+        $activeTab = request('tab');
+        if ($activeTab === 'history') {
+            $activeTab = 'history';
+        } elseif ($activeTab === 'attendance') {
+            $activeTab = 'attendance';
+        } else {
+            $activeTab = 'overview';
+        }
+    @endphp
+
     <div class="wrapper {{ $pageClass }}">
 
         <div class="container {{ $pageClass }} header">
@@ -11,7 +22,11 @@
                 <div class="name">
 
                     <div class="profile-picture">
-                        <img src="{{ asset('assets/img/defaults/user_image.webp') }}" alt="Profile Picture" width="120">
+                        @if($user->profile_picture && file_exists(public_path('uploads/profiles/' . $user->profile_picture)))
+                            <img src="{{ asset('uploads/profiles/' . $user->profile_picture) }}" alt="Profile Picture" width="120">
+                        @else
+                            <img src="{{ asset('assets/img/defaults/user_image.webp') }}" alt="Profile Picture" width="120">
+                        @endif
                     </div>
                 
                     <div class="name-info">
@@ -40,23 +55,23 @@
 
             <div class="content selector">
 
-                <span class="selector-item selected">
+                <a href="{{ route('worker.dashboard') }}" class="selector-item {{ $activeTab === 'overview' ? 'selected' : '' }}">
                     Overview
-                </span>
+                </a>
                 
-                <span class="selector-item">
+                <a href="{{ route('worker.dashboard', ['tab' => 'history']) }}" class="selector-item {{ $activeTab === 'history' ? 'selected' : '' }}">
                     Payroll History
-                </span>
+                </a>
                 
-                <span class="selector-item">
+                <a href="{{ route('worker.dashboard', ['tab' => 'attendance']) }}" class="selector-item {{ $activeTab === 'attendance' ? 'selected' : '' }}">
                     Attendance
-                </span>
+                </a>
 
             </div>
 
         </div>
 
-        <div class="container {{ $pageClass }}">
+        <div class="container {{ $pageClass }}" @if($activeTab !== 'overview') style="display: none;" @endif>
 
             @php
                 $latestNet = $latestPayroll ? number_format((float) $latestPayroll->net_pay, 2) : null;
@@ -103,7 +118,7 @@
 
         </div>
 
-        <div class="container {{ $pageClass }}">
+        <div class="container {{ $pageClass }}" @if($activeTab !== 'overview') style="display: none;" @endif>
 
             <div class="content payroll-breakdown">
 
@@ -177,7 +192,7 @@
 
         </div>
 
-        <div class="container {{ $pageClass }} payroll-history">
+        <div class="container {{ $pageClass }} payroll-history" @if($activeTab !== 'history') style="display: none;" @endif>
 
             <div class="content payroll-history">
 
@@ -228,11 +243,17 @@
                     'tableData' => $tableData,
                 ])
 
+                @if($payrolls instanceof \Illuminate\Pagination\LengthAwarePaginator || $payrolls instanceof \Illuminate\Pagination\Paginator)
+                    <div class="mt-3 d-flex justify-content-end">
+                        {{ $payrolls->onEachSide(1)->links('pagination::bootstrap-4') }}
+                    </div>
+                @endif
+
             </div>
 
         </div>
 
-        <div class="container {{ $pageClass }} attendance">
+        <div class="container {{ $pageClass }} attendance" @if($activeTab !== 'attendance') style="display: none;" @endif>
 
             <div class="content attendance">
 
@@ -279,6 +300,12 @@
                     ],
                     'tableData' => $attendanceTableData,
                 ])
+
+                @if($attendances instanceof \Illuminate\Pagination\LengthAwarePaginator || $attendances instanceof \Illuminate\Pagination\Paginator)
+                    <div class="mt-3 d-flex justify-content-end">
+                        {{ $attendances->onEachSide(1)->links('pagination::bootstrap-4') }}
+                    </div>
+                @endif
 
             </div>
 

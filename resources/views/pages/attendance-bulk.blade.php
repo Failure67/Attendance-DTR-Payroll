@@ -6,7 +6,15 @@
 
     <div class="wrapper {{ $pageClass }}">
 
-        <h1>{{ $title }}</h1>
+        <div class="page-header">
+            <div class="page-title">
+                <span class="page-icon"><i class="fa-solid fa-table"></i></span>
+                <div class="page-title-text">
+                    <h1>{{ $title }}</h1>
+                    <p>Edit attendance for multiple employees on a single date</p>
+                </div>
+            </div>
+        </div>
 
         <div class="container {{ $pageClass }} mb-3">
             <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-3 align-items-end">
