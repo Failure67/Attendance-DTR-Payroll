@@ -28,6 +28,7 @@
         $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
         $canSeeActivityLogs = in_array($currentRole, ['admin', 'superadmin'], true);
         $canSeeUsers = in_array($currentRole, ['admin', 'superadmin'], true);
+        $canSeeBackup = in_array($currentRole, ['superadmin'], true);
     @endphp
 
     <div class="menu-container">
@@ -136,6 +137,22 @@
                 
                 <span class="menu-label">
                     Payroll
+                </span>
+
+            </span>
+        </a>
+        @endif
+
+        @if ($canSeeBackup)
+        <a href="{{ route('backup') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'backup' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-database"></i>
+                </span>
+
+                <span class="menu-label">
+                    Backup
                 </span>
 
             </span>
