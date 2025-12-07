@@ -4,3 +4,4 @@
 
 {{-- main assets --}}
 <link rel="stylesheet" href="{{ asset('assets/css/user.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
