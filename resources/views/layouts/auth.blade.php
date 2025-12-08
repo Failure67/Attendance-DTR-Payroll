@@ -22,7 +22,11 @@
     </noscript>
 </head>
 <body class="auth-body">
+
+    @include('components.titlebar')
+
     <div class="auth-container">
+        
         @yield('content')
     </div>
 

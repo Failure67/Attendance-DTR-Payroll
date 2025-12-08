@@ -33,3 +33,6 @@
 
 {{-- fixes --}}
 <link rel="stylesheet" href="{{ asset('assets/css/fixes.css') }}">
+
+{{-- electron --}}
+<link rel="stylesheet" href="{{ asset('assets/css/electron/titlebar.css') }}">

@@ -69,7 +69,10 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      sandbox: true,
+      allowRunningInsecureContent: false,
+      webSecurity: true
     },
     title: 'RMCS Payroll System',
     icon: path.join(__dirname, '../public/assets/img/favicon/favicon.ico'),
