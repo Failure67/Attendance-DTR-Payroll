@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\CrewAssignment;
 use App\Models\User;
 use App\Services\Attendance\AttendanceService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
@@ -306,6 +307,39 @@ class AttendanceController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportAttendancePdf(Request $request)
+    {
+        $exportData = $this->attendanceService->getExportAttendanceData($request->query());
+
+        $attendances = $exportData['attendances'];
+        $includeArchivedColumn = $exportData['includeArchivedColumn'];
+        $periodStart = $exportData['period_start'] ?? null;
+        $periodEnd = $exportData['period_end'] ?? null;
+
+        $filters = [
+            'employee_id' => $request->query('employee_id'),
+            'status' => $request->query('status'),
+            'period_start' => $periodStart,
+            'period_end' => $periodEnd,
+            'archived' => $request->query('archived'),
+            'search' => $request->query('search'),
+        ];
+
+        $generatedAt = now();
+
+        $pdf = Pdf::loadView('pdf.attendance-detailed', [
+            'title' => 'Attendance Report',
+            'attendances' => $attendances,
+            'includeArchivedColumn' => $includeArchivedColumn,
+            'filters' => $filters,
+            'generatedAt' => $generatedAt,
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'attendance_report_' . $generatedAt->format('Ymd_His') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function exportAttendanceSummary(Request $request)

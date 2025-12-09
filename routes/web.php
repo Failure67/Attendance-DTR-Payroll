@@ -67,6 +67,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/attendance/{attendance}/restore', [AttendanceController::class, 'restoreAttendance'])->name('attendance.restore');
         Route::delete('/attendance', [AttendanceController::class, 'deleteMultipleAttendance'])->name('attendance.delete.multiple');
         Route::get('/attendance/export', [AttendanceController::class, 'exportAttendance'])->name('attendance.export');
+        Route::get('/attendance/export-pdf', [AttendanceController::class, 'exportAttendancePdf'])->name('attendance.export-pdf');
         Route::get('/attendance/summary-export', [AttendanceController::class, 'exportAttendanceSummary'])->name('attendance.summary-export');
         Route::get('/attendance/daily', [AttendanceController::class, 'viewAttendanceDaily'])->name('attendance.daily');
 
@@ -88,11 +89,13 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/payroll', [PayrollController::class, 'viewPayroll'])->name('payroll');
         Route::post('/payroll/create', [PayrollController::class, 'storePayroll'])->name('payroll.store');
         Route::get('/payroll/export', [PayrollController::class, 'exportPayroll'])->name('payroll.export');
+        Route::get('/payroll/export-pdf', [PayrollController::class, 'exportPayrollPdf'])->name('payroll.export-pdf');
         Route::get('/payroll/process', [PayrollController::class, 'viewProcessPayroll'])->name('payroll.process');
         Route::post('/payroll/process', [PayrollController::class, 'runProcessPayroll'])->name('payroll.process.run');
         Route::get('/payroll/{id}', [PayrollController::class, 'showPayroll'])->name('payroll.show');
         Route::put('/payroll/{id}', [PayrollController::class, 'updatePayroll'])->name('payroll.update');
         Route::patch('/payroll/{id}/status', [PayrollController::class, 'updatePayrollStatus'])->name('payroll.update-status');
+        Route::post('/payroll/{id}/restore', [PayrollController::class, 'restorePayroll'])->name('payroll.restore');
         Route::delete('/payroll/{id}', [PayrollController::class, 'deletePayroll'])->name('payroll.delete');
         Route::delete('/payroll', [PayrollController::class, 'deleteMultiplePayroll'])->name('payroll.delete.multiple');
 

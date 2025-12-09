@@ -8,6 +8,7 @@ use App\Http\Requests\Payroll\UpdatePayrollRequest;
 use App\Models\Payroll;
 use App\Models\User;
 use App\Services\Payroll\PayrollService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -27,8 +28,13 @@ class PayrollController extends Controller
             return [$user->id => $user->full_name ?? $user->username];
         })->toArray();
 
-        $query = Payroll::with('user')
-            ->orderByDesc('period_end')
+        $showArchived = $request->boolean('archived');
+
+        $query = $showArchived
+            ? Payroll::onlyTrashed()->with('user')
+            : Payroll::with('user');
+
+        $query->orderByDesc('period_end')
             ->orderByDesc('created_at');
 
         $employeeId = $request->input('employee_id');
@@ -52,7 +58,7 @@ class PayrollController extends Controller
             $query->whereDate('period_end', '<=', Carbon::parse($periodEnd)->toDateString());
         }
 
-        $payrolls = $query->limit(200)->get();
+        $payrolls = $query->paginate(10)->appends($request->query());
 
         return view('pages.payroll', [
             'title' => 'Payroll',
@@ -65,6 +71,7 @@ class PayrollController extends Controller
                 'period_start' => $periodStart,
                 'period_end' => $periodEnd,
             ],
+            'showArchived' => $showArchived,
         ]);
     }
 
@@ -169,6 +176,56 @@ class PayrollController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportPayrollPdf(Request $request)
+    {
+        $query = Payroll::with('user')
+            ->orderByDesc('period_end')
+            ->orderByDesc('created_at');
+
+        $employeeId = $request->input('employee_id');
+        $status = $request->input('status');
+        $periodStart = $request->input('period_start');
+        $periodEnd = $request->input('period_end');
+
+        if (!empty($employeeId)) {
+            $query->where('user_id', $employeeId);
+        }
+
+        if (!empty($status)) {
+            $query->where('status', $status);
+        }
+
+        if (!empty($periodStart)) {
+            $query->whereDate('period_start', '>=', Carbon::parse($periodStart)->toDateString());
+        }
+
+        if (!empty($periodEnd)) {
+            $query->whereDate('period_end', '<=', Carbon::parse($periodEnd)->toDateString());
+        }
+
+        $payrolls = $query->limit(1000)->get();
+
+        $filters = [
+            'employee_id' => $employeeId,
+            'status' => $status,
+            'period_start' => $periodStart,
+            'period_end' => $periodEnd,
+        ];
+
+        $generatedAt = now();
+
+        $pdf = Pdf::loadView('pdf.payroll-summary', [
+            'title' => 'Payroll Report',
+            'payrolls' => $payrolls,
+            'filters' => $filters,
+            'generatedAt' => $generatedAt,
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'payroll_report_' . $generatedAt->format('Ymd_His') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     public function viewCashAdvances()
@@ -287,7 +344,11 @@ class PayrollController extends Controller
 
     public function showPayroll($id)
     {
-        $payroll = Payroll::with('deductions', 'user')->findOrFail($id);
+        $payroll = Payroll::with('deductions', 'cashAdvances', 'user')->findOrFail($id);
+
+        $cashAdvanceRepayments = $payroll->cashAdvances
+            ? $payroll->cashAdvances->where('type', 'repayment')
+            : collect();
 
         return response()->json([
             'id' => $payroll->id,
@@ -297,14 +358,27 @@ class PayrollController extends Controller
             'min_wage' => (float) ($payroll->min_wage ?? 0),
             'hours_worked' => (float) ($payroll->hours_worked ?? 0),
             'days_worked' => (float) ($payroll->days_worked ?? 0),
+            'regular_hours' => (float) ($payroll->regular_hours ?? 0),
+            'overtime_hours' => (float) ($payroll->overtime_hours ?? 0),
+            'absent_days' => (float) ($payroll->absent_days ?? 0),
             'gross_pay' => (float) ($payroll->gross_pay ?? 0),
             'total_deductions' => (float) ($payroll->total_deductions ?? 0),
             'net_pay' => (float) ($payroll->net_pay ?? 0),
             'status' => $payroll->status,
+            'created_at' => $payroll->created_at ? $payroll->created_at->format('Y-m-d H:i:s') : null,
+            'period_start' => $payroll->period_start ? $payroll->period_start->format('Y-m-d') : null,
+            'period_end' => $payroll->period_end ? $payroll->period_end->format('Y-m-d') : null,
             'deductions' => $payroll->deductions->map(function ($d) {
                 return [
                     'name' => $d->deduction_name,
                     'amount' => (float) $d->amount,
+                ];
+            })->values(),
+            'cash_advances' => $cashAdvanceRepayments->map(function ($ca) {
+                return [
+                    'type' => $ca->type,
+                    'amount' => (float) $ca->amount,
+                    'description' => $ca->description,
                 ];
             })->values(),
         ]);
@@ -379,12 +453,35 @@ class PayrollController extends Controller
         return redirect()->route('payroll')->with('success', 'Payroll status updated successfully.');
     }
 
+    public function restorePayroll($id)
+    {
+        $payroll = Payroll::withTrashed()->findOrFail($id);
+
+        if ($payroll->trashed()) {
+            $payroll->restore();
+        }
+
+        return redirect()->route('payroll', ['archived' => 1])
+            ->with('success', 'Payroll record recovered successfully.');
+    }
+
     public function deletePayroll(Request $request, $id)
     {
-        $payroll = Payroll::findOrFail($id);
-        $payroll->delete();
+        $payroll = Payroll::withTrashed()->findOrFail($id);
 
-        return redirect()->route('payroll')->with('success', 'Payroll successfully deleted.');
+        $stayOnArchived = $request->boolean('archived');
+
+        if ($payroll->trashed()) {
+            $payroll->forceDelete();
+            $message = 'Payroll permanently deleted.';
+        } else {
+            $payroll->delete();
+            $message = 'Payroll archived successfully.';
+        }
+
+        $routeParams = $stayOnArchived ? ['archived' => 1] : [];
+
+        return redirect()->route('payroll', $routeParams)->with('success', $message);
     }
 
     public function deleteMultiplePayroll(Request $request)
@@ -394,10 +491,23 @@ class PayrollController extends Controller
             'payroll_ids.*' => 'exists:payrolls,id',
         ]);
 
-        $payroll = Payroll::whereIn('id', $validated['payroll_ids'])->get();
+        $stayOnArchived = $request->boolean('archived');
 
-        $payroll->each->delete();
+        $payrolls = Payroll::withTrashed()
+            ->whereIn('id', $validated['payroll_ids'])
+            ->get();
 
-        return redirect()->route('payroll')->with('success', 'Selected payrolls successfully deleted.');
+        foreach ($payrolls as $payroll) {
+            if ($payroll->trashed()) {
+                $payroll->forceDelete();
+            } else {
+                $payroll->delete();
+            }
+        }
+
+        $routeParams = $stayOnArchived ? ['archived' => 1] : [];
+
+        return redirect()->route('payroll', $routeParams)
+            ->with('success', 'Selected payrolls successfully deleted.');
     }
 }

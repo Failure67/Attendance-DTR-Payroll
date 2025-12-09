@@ -137,6 +137,9 @@
                         <li>
                             <button type="button" class="dropdown-item" id="attendance-more-summary-export">Export summary CSV</button>
                         </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="attendance-more-export-pdf">Export detailed PDF</button>
+                        </li>
                     </ul>
                 </div>
 

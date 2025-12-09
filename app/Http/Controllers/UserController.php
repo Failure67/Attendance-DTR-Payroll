@@ -15,22 +15,32 @@ class UserController extends Controller
         $activeQuery = User::whereNull('deleted_at');
         $archivedQuery = User::onlyTrashed();
 
+        $perPage = 10;
+
         if ($currentRole === 'superadmin') {
             $users = $activeQuery
                 ->whereNotIn('role', ['Superadmin', 'superadmin'])
-                ->get();
+                ->orderBy('full_name')
+                ->orderBy('username')
+                ->paginate($perPage);
 
             $archivedUsers = $archivedQuery
                 ->whereNotIn('role', ['Superadmin', 'superadmin'])
-                ->get();
+                ->orderBy('full_name')
+                ->orderBy('username')
+                ->paginate($perPage, ['*'], 'archived_page');
         } else {
             $users = $activeQuery
                 ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
-                ->get();
+                ->orderBy('full_name')
+                ->orderBy('username')
+                ->paginate($perPage);
 
             $archivedUsers = $archivedQuery
                 ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
-                ->get();
+                ->orderBy('full_name')
+                ->orderBy('username')
+                ->paginate($perPage, ['*'], 'archived_page');
         }
         
         return view('pages.users', [
