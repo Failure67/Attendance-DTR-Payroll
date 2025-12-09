@@ -647,6 +647,10 @@ class AttendanceService
                 $timeOutStr = $record['time_out'] ?? null;
                 $statusInput = $record['status'] ?? null;
 
+                $timeInStr = $timeInStr !== '' ? $timeInStr : null;
+                $timeOutStr = $timeOutStr !== '' ? $timeOutStr : null;
+                $statusInput = $statusInput !== '' ? $statusInput : null;
+
                 if ($timeInStr === null && $timeOutStr === null && $statusInput === null) {
                     continue;
                 }
@@ -810,7 +814,8 @@ class AttendanceService
                 $minutes = max(0, $timeIn->diffInMinutes($timeOut, false));
 
                 $lunchMinutes = 60;
-                if ($minutes >= ($standardDailyHours * 60) + $lunchMinutes) {
+                // Subtract lunch break for any shift that meets or exceeds standard daily hours
+                if ($minutes >= ($standardDailyHours * 60)) {
                     $minutes -= $lunchMinutes;
                 }
 

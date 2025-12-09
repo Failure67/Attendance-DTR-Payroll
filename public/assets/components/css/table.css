@@ -16,10 +16,20 @@
 
 .table-container table thead tr th {
     padding: 5px 10px;
+    text-align: left;
 }
 
 .table-container table tbody tr td {
     padding: 15px 10px;
+    text-align: left;
+}
+
+/* Generic alignment helpers */
+.table-container table thead tr th.actions,
+.table-container table tbody tr td.actions,
+.table-container table thead tr th.backup-actions,
+.table-container table tbody tr td.backup-actions {
+    text-align: center;
 }
 
 .table-container table thead tr th.table-col {

@@ -1,14 +1,23 @@
 /* © 2025 Romar Jabez */
 
 .dashboard-count {
-    background-color: #d1e1f3;
-    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
-    padding: 15px;
+    background-color: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    padding: 1.25rem 1.5rem;
     width: 260px;
-    height: 135px;
-    border-radius: 10px;
+    min-height: 135px;
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
     border-bottom: 4px solid #0D2C42;
+    position: relative;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
     user-select: none;
+}
+
+.dashboard-count:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
 }
 
 .dashboard-count-container {
@@ -36,6 +45,7 @@
 
 .dashboard-count-container .item-title-container .item-sub-title {
     font-size: 13px;
+    color: #4B5563;
 }
 
 .dashboard-count-container .item-icon {

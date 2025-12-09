@@ -431,6 +431,15 @@
                     })->toArray(),
                     'rawColumns' => ['user', 'role', 'actions'],
                 ])
+
+                <div class="container {{ $pageClass }} pagination">
+
+                    @include('components.pagination', [
+                        'paginationClass' => 'users-active',
+                        'paginator' => $users ?? null,
+                    ])
+
+                </div>
             </div>
 
             <!-- Archived Users Table -->

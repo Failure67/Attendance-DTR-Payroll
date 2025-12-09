@@ -1,11 +1,15 @@
 /* © 2025 Romar Jabez */
 
 .dashboard-card {
-    background-color: #d1e1f3;
-    box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.6);
-    padding: 15px;
-    border-radius: 10px;
+    background-color: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    padding: 1.25rem 1.5rem;
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
     border-bottom: 4px solid #0D2C42;
+    position: relative;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -13,10 +17,18 @@
     min-height: 300px;
 }
 
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+}
+
 .dashboard-card-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #E5E7EB;
 }
 
 .dashboard-card-title {

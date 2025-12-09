@@ -72,7 +72,7 @@
 
                 <div class="dashboard-card-container">
                     <span class="dashboard-card-title">
-                        Payroll net pay (last 6 months)
+                        Payroll (gross vs net, last 6 months)
                     </span>
                 </div>
 
@@ -97,14 +97,22 @@
                     'anomaly_count' => 0,
                 ];
 
-                $todayAttendanceTable = [
-                    ['Total records', $todaySummary['records']],
-                    ['Present', $todaySummary['present']],
-                    ['Late', $todaySummary['late']],
-                    ['Absent', $todaySummary['absent']],
-                    ['On leave', $todaySummary['leave']],
-                    ['Anomalies detected', $todaySummary['anomaly_count']],
-                ];
+                $hasTodayAttendance = ($todaySummary['records'] ?? 0) > 0;
+
+                if ($hasTodayAttendance) {
+                    $todayAttendanceTable = [
+                        ['Total records', $todaySummary['records']],
+                        ['Present', $todaySummary['present']],
+                        ['Late', $todaySummary['late']],
+                        ['Absent', $todaySummary['absent']],
+                        ['On leave', $todaySummary['leave']],
+                        ['Anomalies detected', $todaySummary['anomaly_count']],
+                    ];
+                } else {
+                    $todayAttendanceTable = [
+                        ['No attendance records yet', 'Add a DTR entry or import attendance to see data here.'],
+                    ];
+                }
             @endphp
 
             @include('components.dashboard-card', [
@@ -164,8 +172,8 @@
                             {
                                 label: 'Total hours',
                                 data: attendanceChartData.totalHours || [],
-                                borderColor: '#0d6efd',
-                                backgroundColor: 'rgba(13, 110, 253, 0.15)',
+                                borderColor: '#1F7AE0',
+                                backgroundColor: 'rgba(31, 122, 224, 0.18)',
                                 tension: 0.3,
                                 fill: true,
                                 pointRadius: 3,
@@ -173,8 +181,8 @@
                             {
                                 label: 'Overtime hours',
                                 data: attendanceChartData.overtimeHours || [],
-                                borderColor: '#fd7e14',
-                                backgroundColor: 'rgba(253, 126, 20, 0.15)',
+                                borderColor: '#F39C12',
+                                backgroundColor: 'rgba(243, 156, 18, 0.18)',
                                 tension: 0.3,
                                 fill: true,
                                 pointRadius: 3,
@@ -228,10 +236,17 @@
                         labels: payrollChartData.labels,
                         datasets: [
                             {
+                                label: 'Gross pay',
+                                data: payrollChartData.grossPay || [],
+                                backgroundColor: 'rgba(243, 156, 18, 0.7)',
+                                borderColor: '#F39C12',
+                                borderWidth: 1,
+                            },
+                            {
                                 label: 'Net pay',
                                 data: payrollChartData.netPay || [],
-                                backgroundColor: 'rgba(25, 135, 84, 0.7)',
-                                borderColor: '#198754',
+                                backgroundColor: 'rgba(31, 122, 224, 0.85)',
+                                borderColor: '#1F7AE0',
                                 borderWidth: 1,
                             },
                         ],
@@ -241,7 +256,7 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                display: false,
+                                display: true,
                             },
                             tooltip: {
                                 callbacks: {
@@ -266,7 +281,7 @@
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: 'Net pay (₱)',
+                                    text: 'Amount (₱)',
                                 },
                             },
                         },

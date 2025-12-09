@@ -12,6 +12,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        if (env('SUPABASE_SYNC_ENABLED', false) && env('SUPABASE_SYNC_AUTO', false)) {
+            $schedule->command('sync:to-supabase')
+                ->everyFiveMinutes()
+                ->withoutOverlapping();
+        }
+
         // $schedule->command('inspire')->hourly();
     }
 

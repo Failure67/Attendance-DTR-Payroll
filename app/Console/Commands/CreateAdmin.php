@@ -17,7 +17,7 @@ class CreateAdmin extends Command
     protected $signature = 'make:admin
                         {--name= : The name of the superadmin user}
                         {--email= : The email of the superadmin user}
-                        {--password= : The password for the superadmin user (min: 8 characters)}';
+                        {--password= : The password for the superadmin user (min: 12 characters)}';
 
     /**
      * The console command description.
@@ -33,7 +33,7 @@ class CreateAdmin extends Command
     {
         $name = $this->option('name') ?: $this->ask('Enter superadmin name');
         $email = $this->option('email') ?: $this->ask('Enter superadmin email');
-        $password = $this->option('password') ?: $this->secret('Enter superadmin password (min: 8 characters)');
+        $password = $this->option('password') ?: $this->secret('Enter superadmin password (min: 12 characters)');
 
         // Validate input
         $validator = Validator::make(
@@ -45,7 +45,7 @@ class CreateAdmin extends Command
             [
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users,email',
-                'password' => 'required|string|min:8',
+                'password' => 'required|string|min:12',
             ]
         );
 

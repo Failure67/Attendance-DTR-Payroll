@@ -18,11 +18,11 @@
 
         <div class="container {{ $pageClass }} mb-3">
             <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-3 align-items-end">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_date" class="form-label mb-1">Date</label>
                     <input type="date" name="date" id="bulk_attendance_date" class="form-control" value="{{ $filters['date'] ?? $bulkDate }}">
                 </div>
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_employee" class="form-label mb-1">Employee</label>
                     <select name="employee_id" id="bulk_attendance_employee" class="form-select">
                         <option value="">All employees</option>
@@ -31,8 +31,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end">
-                    <button type="submit" class="btn btn-primary w-100 w-md-auto">Load</button>
+                <div class="col-12 col-lg-3 d-flex align-items-end justify-content-lg-end">
+                    <button type="submit" class="btn btn-primary w-100 w-lg-auto">Load</button>
                 </div>
             </form>
         </div>
@@ -48,15 +48,15 @@
                 <div class="row g-2 mb-3 align-items-end">
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_time_in" class="form-label mb-1">Default time in</label>
-                        <input type="time" id="bulk_default_time_in" class="form-control form-control-sm" value="{{ config('attendance.default_shift_start', '08:00') }}">
+                        <input type="time" id="bulk_default_time_in" class="form-control" value="{{ config('attendance.default_shift_start', '08:00') }}">
                     </div>
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_time_out" class="form-label mb-1">Default time out</label>
-                        <input type="time" id="bulk_default_time_out" class="form-control form-control-sm" value="{{ config('attendance.default_shift_end', '17:00') }}">
+                        <input type="time" id="bulk_default_time_out" class="form-control" value="{{ config('attendance.default_shift_end', '17:00') }}">
                     </div>
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_status" class="form-label mb-1">Default status</label>
-                        <select id="bulk_default_status" class="form-select form-select-sm">
+                        <select id="bulk_default_status" class="form-select">
                             <option value="">Auto (Present/Late/Absent)</option>
                             <option value="Present">Present</option>
                             <option value="Late">Late</option>

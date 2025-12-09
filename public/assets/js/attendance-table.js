@@ -494,6 +494,25 @@ $('#delete-attendance').on('click', function() {
         });
     }
 
+    const $moreExportPdf = $('#attendance-more-export-pdf');
+    if ($moreExportPdf.length) {
+        $moreExportPdf.on('click', function () {
+            const currentUrl = new URL(window.location.href);
+            const params = currentUrl.searchParams;
+
+            let exportUrl = new URL(window.location.origin + '/attendance/export-pdf');
+
+            ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir', 'search'].forEach(function (key) {
+                const value = params.get(key);
+                if (value !== null && value !== '') {
+                    exportUrl.searchParams.set(key, value);
+                }
+            });
+
+            window.location.href = exportUrl.toString();
+        });
+    }
+
     // Column header sorting (server-side via query params) on detailed table only
     if ($detailTable.length) {
         $detailTable.find('thead th[data-sort-key]').on('click', function () {
