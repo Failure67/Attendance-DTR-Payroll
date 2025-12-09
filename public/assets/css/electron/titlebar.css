@@ -1,0 +1,11 @@
+/* © 2025 Romar Jabez */
+
+.titlebar .titlebar-container {
+    display: flex;
+}
+
+.titlebar .titlebar-container.buttons {
+    color: #f1f1f1;
+    font-size: 20px;
+    gap: 15px;
+}

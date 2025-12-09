@@ -3,6 +3,11 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// Detect OS
+const isWindows = process.platform === "win32";
+const isMac = process.platform === "darwin";
+const isLinux = process.platform === "linux";
+
 let phpServer = null;
 let mainWindow = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -63,9 +68,15 @@ function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 600,
-    frame: false,  // Remove default frame
-    titleBarStyle: 'hidden',
+
+    frame: isWindows ? false : true,
+
+    titleBarStyle: isWindows 
+      ? 'hidden'
+      : (isMac ? 'hiddenInset' : 'default'),
+
     backgroundColor: '#1e1e1e',
+
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -74,22 +85,17 @@ function createWindow() {
       allowRunningInsecureContent: false,
       webSecurity: true
     },
+
     title: 'RMCS Payroll System',
     icon: path.join(__dirname, '../public/assets/img/favicon/favicon.ico'),
-    show: false  // Don't show until ready
+    show: false
   });
 
   mainWindow.loadURL('http://127.0.0.1:8000');
 
-  // Show window when ready
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
-  /*
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
-  */
 
   mainWindow.on('closed', () => {
     mainWindow = null;

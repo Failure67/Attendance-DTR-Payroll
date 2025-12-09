@@ -20,6 +20,8 @@
     <noscript>
         <meta http-equiv="refresh" content="0;url={{ route('require') }}">
     </noscript>
+    @include('auth.util.styles')
+    @include('auth.util.scripts')
 </head>
 <body class="auth-body">
 
