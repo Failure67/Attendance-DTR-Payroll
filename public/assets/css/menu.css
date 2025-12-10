@@ -1,9 +1,15 @@
 /* 2025 Romar Jabez */
 
 .menu {
-    padding: 20px 20px 0 20px;
-    min-height: calc(100vh - 70px); /* cover at least the viewport below header */
+    padding: 20px 0 0 20px;
+    min-height: calc(100vh - 70px);
     box-sizing: border-box;
+    margin-top: 120px;
+    width: 300px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
 }
 
 .menu-container {
@@ -15,11 +21,11 @@
     border-top-right-radius: 15px;
     color: #FFFFFF;
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
-    width: 300px;
-    height: 100%;
+    width: 280px;
+    height: calc(100vh - 140px);
     padding: 20px;
-    position: relative;
-    left: -38px;
+    overflow-y: auto;
+    transition: all 0.3s ease-in-out;
 }
 
 .menu-item {

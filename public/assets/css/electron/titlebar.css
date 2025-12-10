@@ -1,11 +1,61 @@
 /* © 2025 Romar Jabez */
 
-.titlebar .titlebar-container {
+.titlebar:not(.titlebar .titlebar-container.buttons) {
+    user-select: none;
+}
+
+.titlebar, .titlebar-container {
     display: flex;
+    align-items: center;
+    padding: 3px 5px;
+    background-color: #041725;
+}
+
+.titlebar {
+    position: absolute;
+    justify-content: space-between;
+    width: 100%;
+    z-index: 1200;
+    position: fixed;
+}
+
+.titlebar .titlebar-container.buttons,
+.titlebar .titlebar-container.title {
+    color: #f1f1f1;
+    font-size: 14px;
+}
+
+.titlebar .titlebar-container.title {
+    gap: 8px;
+    background-color: transparent;
+}
+
+.titlebar .titlebar-container.title .icon {
+    outline: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
 }
 
 .titlebar .titlebar-container.buttons {
-    color: #f1f1f1;
-    font-size: 20px;
-    gap: 15px;
+    font-size: 18px;
+    gap: 5px;
+    background-color: transparent;
+}
+
+.titlebar .titlebar-container.buttons .button-item:hover:not(.button-item.close) {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.titlebar .titlebar-container.buttons .button-item.close:hover {
+    background-color: rgba(160, 51, 60, 0.7);
+}
+
+.titlebar .titlebar-container.buttons .button-item {
+    border-radius: 5px;
+}
+
+.titlebar .titlebar-container.buttons .button-item {
+    cursor: pointer;
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
 }

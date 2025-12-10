@@ -97,28 +97,37 @@ function createWindow() {
     mainWindow.show();
   });
 
+  mainWindow.on('maximize', () => {
+    mainWindow.webContents.send('maximize-change', true);
+  });
+
+  mainWindow.on('unmaximize', () => {
+    mainWindow.webContents.send('maximize-change', false);
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
 // Window control handlers
-ipcMain.on('window-minimize', () => {
-  if (mainWindow) mainWindow.minimize();
+ipcMain.on('window-minimize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  win?.minimize();
 });
 
-ipcMain.on('window-maximize', () => {
-  if (mainWindow) {
-    if (mainWindow.isMaximized()) {
-      mainWindow.unmaximize();
-    } else {
-      mainWindow.maximize();
-    }
+ipcMain.on('window-maximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win?.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win?.maximize();
   }
 });
 
-ipcMain.on('window-close', () => {
-  if (mainWindow) mainWindow.close();
+ipcMain.on('window-close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.close();
 });
 
 app.whenReady().then(async () => {
