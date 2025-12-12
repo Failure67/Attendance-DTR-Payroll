@@ -2,12 +2,12 @@
 
 .menu {
     padding: 20px 0 0 20px;
-    min-height: calc(100vh - 70px);
     box-sizing: border-box;
     margin-top: 120px;
     width: 300px;
     position: fixed;
-    left: 0;
+    left: 50%; /* Center reference point */
+    transform: translateX(calc(-600px - 50%)); /* Offset to the left of centered content */
     top: 0;
     z-index: 100;
 }
