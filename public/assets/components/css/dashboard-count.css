@@ -4,8 +4,10 @@
     background-color: var(--card-bg);
     box-shadow: var(--card-shadow);
     padding: 1.25rem 1.5rem;
-    width: 260px;
+    width: auto;
+    flex: 1 1 0;
     min-height: 135px;
+    min-width: 0;
     border-radius: 14px;
     border: 1px solid var(--card-border);
     border-bottom: 4px solid #0D2C42;

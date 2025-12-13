@@ -5,7 +5,8 @@
 <script src="{{ asset('assets/js/plugins/jquery-3.7.1.min.js') }}"></script>
 
 {{-- custom scripts --}}
-<script src="{{ asset('assets/js/user.js') }}"></script>
+<script src="{{ asset('assets/js/user-dashboard.js') }}"></script>
+<script src="{{ asset('assets/js/worker-announcements.js') }}"></script>
 
 <script>
 	(function () {

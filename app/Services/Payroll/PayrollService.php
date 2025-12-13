@@ -143,6 +143,11 @@ class PayrollService
             $periodStart = Carbon::parse($validated['period_start'])->toDateString();
             $periodEnd = Carbon::parse($validated['period_end'])->toDateString();
 
+            $periodStartDate = Carbon::parse($periodStart);
+            $periodEndDate = Carbon::parse($periodEnd);
+            $periodDays = max(1, $periodStartDate->diffInDays($periodEndDate) + 1);
+            $applySss = $this->shouldApplySssForPeriod($periodStartDate, $periodEndDate);
+
             foreach ($validated['rows'] as $row) {
                 if (empty($row['include'])) {
                     continue;
@@ -181,11 +186,12 @@ class PayrollService
 
                 $grossPay = $minWage * $unitsWorked;
 
-                $sss = ContributionBracket::calculateAmount('SSS', $grossPay);
+                $sss = $applySss ? ContributionBracket::calculateAmount('SSS', $grossPay) : 0.0;
                 $philhealth = ContributionBracket::calculateAmount('PhilHealth', $grossPay);
                 $pagibig = ContributionBracket::calculateAmount('Pag-IBIG', $grossPay);
 
                 $totalContrib = $sss + $philhealth + $pagibig;
+                $incomeTax = $this->calculateSimpleIncomeTax($grossPay, $periodDays);
 
                 $totalAdvances = (float) CashAdvance::where('user_id', $userId)
                     ->where('type', 'advance')
@@ -198,15 +204,29 @@ class PayrollService
                 $outstandingCa = max(0, $totalAdvances - $totalRepayments);
 
                 $maxCaByBalance = $outstandingCa;
-                $maxCaByNet = max(0, $grossPay - $totalContrib);
+                $maxCaByNet = max(0, $grossPay - $totalContrib - $incomeTax);
 
-                $caDeduction = min($requestedCaDeduction, $maxCaByBalance, $maxCaByNet);
+                // Enforce company policy: at least ₱500 CA deduction per payroll
+                // when there is an outstanding balance, subject to available net pay.
+                $enforcedRequestedCa = $requestedCaDeduction;
+
+                if ($outstandingCa > 0 && $maxCaByNet > 0) {
+                    // Required minimum is ₱500, but cannot exceed outstanding balance
+                    // or the maximum CA we can deduct without making net pay negative.
+                    $requiredCa = min(500.0, $outstandingCa, $maxCaByNet);
+
+                    if ($requiredCa > 0 && $enforcedRequestedCa < $requiredCa) {
+                        $enforcedRequestedCa = $requiredCa;
+                    }
+                }
+
+                $caDeduction = min($enforcedRequestedCa, $maxCaByBalance, $maxCaByNet);
 
                 if ($caDeduction < 0 || !is_finite($caDeduction)) {
                     $caDeduction = 0.0;
                 }
 
-                $totalDeductions = $totalContrib + $caDeduction;
+                $totalDeductions = $totalContrib + $incomeTax + $caDeduction;
                 $netPay = $grossPay - $totalDeductions;
 
                 $payroll = $this->payrollRepository->createPayroll([
@@ -236,6 +256,10 @@ class PayrollService
 
                 if ($pagibig > 0) {
                     $this->payrollRepository->addDeduction($payroll, 'Pag-IBIG', $pagibig);
+                }
+
+                if ($incomeTax > 0) {
+                    $this->payrollRepository->addDeduction($payroll, 'Income tax', $incomeTax);
                 }
 
                 if ($caDeduction > 0) {
@@ -368,8 +392,7 @@ class PayrollService
     /**
      * Update payroll status and synchronize cash advance repayments linked to this payroll.
      *
-     * UI uses: Pending / Completed / Cancelled.
-     * DB uses: Pending / Released / Cancelled (Completed => Released).
+     * UI and DB both use: Pending / Released / Cancelled.
      *
      * Cash advance repayments (source = 'payroll') should only exist while
      * the payroll is marked as Released. When moving away from Released,
@@ -385,7 +408,7 @@ class PayrollService
 
     private function applyStatusAndSyncCashAdvance(Payroll $payroll, string $statusUi): void
     {
-        $statusDb = $statusUi === 'Completed' ? 'Released' : $statusUi;
+        $statusDb = $statusUi;
 
         CashAdvance::where('user_id', $payroll->user_id)
             ->where('source', 'payroll')
@@ -408,5 +431,43 @@ class PayrollService
 
         $payroll->status = $statusDb;
         $payroll->save();
+    }
+
+    /**
+     * Determine whether SSS should be applied for the given payroll period.
+     *
+     * Paper specifies SSS is deducted once per month (25th). To keep
+     * implementation simple and robust, apply SSS when the current weekly
+     * payroll period covers the 25th day of its month.
+     */
+    private function shouldApplySssForPeriod(Carbon $periodStart, Carbon $periodEnd): bool
+    {
+        $monthDate = $periodStart->copy()->day(25);
+
+        return $monthDate->between($periodStart, $periodEnd, true);
+    }
+
+    /**
+     * Simple income tax: if projected annual income exceeds 200,000,
+     * apply a conservative flat 5% rate on this period's gross pay
+     * (pro-rated to an annual basis).
+     */
+    private function calculateSimpleIncomeTax(float $grossPay, int $periodDays): float
+    {
+        if ($grossPay <= 0 || $periodDays <= 0) {
+            return 0.0;
+        }
+
+        // Approximate annual income based on this period's gross.
+        $daysPerYear = 365;
+        $projectedAnnual = ($grossPay / $periodDays) * $daysPerYear;
+
+        if ($projectedAnnual <= 200000) {
+            return 0.0;
+        }
+
+        $taxRate = 0.05; // 5% flat for simplicity
+
+        return round($grossPay * $taxRate, 2);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Payroll;
 use App\Models\User;
+use App\Models\Announcement;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -218,6 +219,38 @@ class DashboardController extends Controller
             ];
         }
 
+        // Active + upcoming announcements for dashboard card (date-based)
+        // Show any announcement that has not yet ended, regardless of start date.
+        // This avoids hiding "upcoming" announcements when the server date
+        // is slightly behind the user-specified start date.
+        $today = $now->toDateString();
+
+        $activeAnnouncements = Announcement::where(function ($q) use ($today) {
+                $q->whereNull('ends_at')
+                    ->orWhereDate('ends_at', '>=', $today);
+            })
+            ->orderByDesc('starts_at')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        $announcementTable = $activeAnnouncements->map(function ($a) {
+            $starts = $a->starts_at ? $a->starts_at->format('Y-m-d') : 'Immediately';
+            $ends = $a->ends_at ? $a->ends_at->format('Y-m-d') : 'Open';
+            $period = $starts . ' – ' . $ends;
+
+            return [
+                $a->title,
+                $period,
+            ];
+        })->toArray();
+
+        if (empty($announcementTable)) {
+            $announcementTable = [
+                ['No active announcements', '—'],
+            ];
+        }
+
         return view('pages.index', [
             'title' => 'Home',
             'pageClass' => 'index',
@@ -229,6 +262,7 @@ class DashboardController extends Controller
             'payrollPaidAmount' => $payrollPaidAmount,
             'todayAttendanceSummary' => $todayAttendanceSummary,
             'pendingPayrollTable' => $pendingPayrollTable,
+            'announcementTable' => $announcementTable,
         ]);
     }
 }

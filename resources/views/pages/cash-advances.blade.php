@@ -4,7 +4,7 @@
 
     @include('partials.menu')
 
-    <div class="wrapper cash-advances">
+    <div class="wrapper cash-advances" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -43,6 +43,24 @@
                     'buttonModal' => false,
                 ])
 
+                @include('components.button', [
+                    'buttonType' => 'secondary',
+                    'buttonVar' => 'view',
+                    'buttonSrc' => 'cash-advances',
+                    'buttonIcon' => '<i class="fa-solid fa-list-check"></i>',
+                    'buttonLabel' => 'View requests',
+                    'buttonModal' => false,
+                ])
+
+                @include('components.button', [
+                    'buttonType' => 'danger',
+                    'buttonVar' => 'delete',
+                    'buttonSrc' => 'cash-advances',
+                    'buttonIcon' => '<i class="fa-solid fa-clock-rotate-left"></i>',
+                    'buttonLabel' => ($showArchived ?? false) ? 'Back to cash advances' : 'View archived',
+                    'buttonModal' => false,
+                ])
+
             </div>
 
         </div>
@@ -71,29 +89,82 @@
 
         <div class="container cash-advances table-component">
 
-            @include('components.table', [
-                'tableClass' => 'cash-advances-table',
-                'tableCol' => [
-                    'employee-name',
-                    'type',
-                    'amount',
-                    'source',
-                    'payroll',
-                    'description',
-                    'date',
-                ],
-                'tableLabel' => [
-                    'Employee',
-                    'Type',
-                    'Amount',
-                    'Source',
-                    'Payroll',
-                    'Description',
-                    'Date',
-                ],
-                'tableData' => $cashAdvanceTableData ?? [],
-                'rawColumns' => [],
-            ])
+            <div class="cash-advances-table-views">
+
+                <div class="cash-advances-view cash-advances-view-ledger">
+
+                    @php
+                        $isArchivedView = $showArchived ?? false;
+                        $ledgerTableCols = [
+                            'employee-name',
+                            'type',
+                            'amount',
+                            'source',
+                            'payroll',
+                            'description',
+                            'date',
+                        ];
+                        $ledgerTableLabels = [
+                            'Employee',
+                            'Type',
+                            'Amount',
+                            'Source',
+                            'Payroll',
+                            'Description',
+                            'Date',
+                        ];
+                        $ledgerRawColumns = ['employee-name'];
+
+                        if ($isArchivedView) {
+                            $ledgerTableCols[] = 'actions';
+                            $ledgerTableLabels[] = 'Actions';
+                            $ledgerRawColumns[] = 'actions';
+                        }
+                    @endphp
+
+                    @include('components.table', [
+                        'tableClass' => 'cash-advances-table',
+                        'tableCol' => $ledgerTableCols,
+                        'tableLabel' => $ledgerTableLabels,
+                        'tableData' => $cashAdvanceTableData ?? [],
+                        'rawColumns' => $ledgerRawColumns,
+                    ])
+                </div>
+
+                <div class="cash-advances-view cash-advances-view-requests" style="display: none;">
+                    @php
+                        $caRequestTableData = $cashAdvanceRequestsTableData ?? [];
+                    @endphp
+
+                    @include('components.table', [
+                        'tableClass' => 'cash-advance-requests-table',
+                        'tableCol' => [
+                            'employee-name',
+                            'amount',
+                            'status',
+                            'created-at',
+                            'actions',
+                        ],
+                        'tableLabel' => [
+                            'Employee',
+                            'Amount',
+                            'Status',
+                            'Requested on',
+                            'Actions',
+                        ],
+                        'tableData' => $caRequestTableData,
+                        'rawColumns' => ['actions'],
+                    ])
+
+                    @if(isset($cashAdvanceRequests) && ($cashAdvanceRequests instanceof \Illuminate\Pagination\LengthAwarePaginator || $cashAdvanceRequests instanceof \Illuminate\Pagination\Paginator))
+                        <div class="mt-3 d-flex justify-content-end">
+                            {{ $cashAdvanceRequests->onEachSide(1)->links('pagination::bootstrap-4') }}
+                        </div>
+                    @endif
+
+                </div>
+
+            </div>
 
         </div>
 
@@ -194,5 +265,30 @@
             </div>
         </div>
     </div>
+
+    {{-- delete / archive confirm modal for cash advances --}}
+    @include('components.confirm', [
+        'confirmClass' => 'delete-cash-advances',
+        'confirmModalId' => 'deleteCashAdvancesModal',
+        'confirmType' => 'archive',
+        'confirmRoute' => 'cash-advances.delete',
+        'confirmRouteParams' => ['id' => 0],
+        'confirmLabel' => 'archive',
+        'confirmButtons' =>
+            view('components.button', [
+                'buttonType' => 'secondary',
+                'buttonVar' => 'cancel-delete',
+                'buttonSrc' => 'cash-advances',
+                'buttonLabel' => 'Cancel',
+                'isModalClose' => true,
+            ])->render() .
+            view('components.button', [
+                'buttonType' => 'danger',
+                'buttonVar' => 'confirm-delete',
+                'buttonSrc' => 'cash-advances',
+                'buttonLabel' => 'Delete',
+                'isSubmit' => false,
+            ])
+    ])
 
 @endsection

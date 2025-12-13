@@ -120,7 +120,7 @@
                     <select name="status" id="status" class="select w-100">
                         <option value="">All</option>
                         <option value="Pending" @if(($filters['status'] ?? '') === 'Pending') selected @endif>Pending</option>
-                        <option value="Released" @if(($filters['status'] ?? '') === 'Released') selected @endif>Completed</option>
+                        <option value="Released" @if(($filters['status'] ?? '') === 'Released') selected @endif>Released</option>
                         <option value="Cancelled" @if(($filters['status'] ?? '') === 'Cancelled') selected @endif>Cancelled</option>
                     </select>
                 </div>
@@ -135,7 +135,14 @@
             @php
                 $isArchivedView = $showArchived ?? false;
 
-                $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) use ($isArchivedView) {
+                $currentUser = auth()->user();
+                $currentRole = $currentUser->role ?? '';
+                // HR approval stage: HR only, with Superadmin override
+                $canHrApprove = in_array($currentRole, ['Superadmin', 'HR'], true);
+                $canFinalApprove = in_array($currentRole, ['Superadmin', 'Admin', 'Accounting'], true);
+                $canCancelPayroll = in_array($currentRole, ['Superadmin', 'Admin', 'HR', 'Accounting'], true);
+
+                $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) use ($isArchivedView, $canHrApprove, $canFinalApprove, $canCancelPayroll, $currentRole) {
                     $employeeName = $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : 'Unknown employee';
 
                     $minWage = '₱ ' . number_format($payroll->min_wage ?? 0, 2);
@@ -155,15 +162,22 @@
                     $totalDeductions = '₱ ' . number_format($payroll->total_deductions ?? 0, 2);
                     $netPay = '₱ ' . number_format($payroll->net_pay ?? 0, 2);
 
-                    $statusLabelMap = [
-                        'Pending' => 'Pending',
-                        'Released' => 'Completed',
-                        'Cancelled' => 'Cancelled',
-                    ];
-                    $statusLabel = $statusLabelMap[$payroll->status] ?? ($payroll->status ?? 'Pending');
+                    if ($payroll->status === 'Pending') {
+                        if ($payroll->hr_approved_at) {
+                            $statusLabel = 'Pending (Admin)';
+                        } else {
+                            $statusLabel = 'Pending (HR)';
+                        }
+                    } elseif ($payroll->status === 'Released') {
+                        $statusLabel = 'Released';
+                    } elseif ($payroll->status === 'Cancelled') {
+                        $statusLabel = 'Cancelled';
+                    } else {
+                        $statusLabel = $payroll->status ?? 'Pending';
+                    }
 
                     $statusClass = match ($statusLabel) {
-                        'Completed' => 'bg-success',
+                        'Released' => 'bg-success',
                         'Cancelled' => 'bg-secondary',
                         default => 'bg-warning text-dark',
                     };
@@ -194,16 +208,52 @@
                             . $deleteForm
                             . '</div>';
                     } else {
-                        $actions = '<div class="payroll-actions d-flex align-items-center gap-2">';
+                        $leftParts = [];
+                        $rightParts = [];
 
-                        if ($statusLabel === 'Pending') {
-                            $actions .=
-                                '<button type="button" class="btn btn-outline-success btn-sm payroll-action complete" data-id="' . $payroll->id . '">Complete</button>'
-                                . '<button type="button" class="btn btn-outline-secondary btn-sm payroll-action cancel" data-id="' . $payroll->id . '">Cancel</button>';
+                        if ($payroll->status === 'Pending') {
+                            $csrf = csrf_token();
+
+                            // HR approval action (no separate HR-approved badge in actions column)
+                            if ($canHrApprove && !$payroll->hr_approved_at) {
+                                $leftParts[] =
+                                    '<form method="POST" action="' . route('payroll.hr-approve', ['id' => $payroll->id]) . '" style="display:inline-block;margin-right:4px;">'
+                                    . '<input type="hidden" name="_token" value="' . $csrf . '">'
+                                    . '<button type="submit" class="btn btn-outline-primary btn-sm">HR approve</button>'
+                                    . '</form>';
+                            }
+
+                            if ($canFinalApprove) {
+                                $canReleaseNow = $payroll->hr_approved_at || $currentRole === 'Superadmin';
+                                $disabledAttr = $canReleaseNow ? '' : ' disabled';
+                                $titleAttr = $canReleaseNow ? '' : ' title="HR must approve before final release."';
+
+                                $leftParts[] =
+                                    '<form method="POST" action="' . route('payroll.admin-approve', ['id' => $payroll->id]) . '" style="display:inline-block;margin-left:4px;">'
+                                    . '<input type="hidden" name="_token" value="' . $csrf . '">'
+                                    . '<button type="submit" class="btn btn-success btn-sm"' . $disabledAttr . $titleAttr . '>Approve &amp; release</button>'
+                                    . '</form>';
+                            }
+
+                            // Cancel payroll lives on the right side
+                            if ($canCancelPayroll) {
+                                $rightParts[] =
+                                    '<form method="POST" action="' . route('payroll.update-status', ['id' => $payroll->id]) . '" style="display:inline-block;" onsubmit="return confirm(\'Cancel payroll for ' . e($employeeName) . '?\');">'
+                                    . '<input type="hidden" name="_token" value="' . $csrf . '">'
+                                    . '<input type="hidden" name="_method" value="PATCH">'
+                                    . '<input type="hidden" name="status" value="Cancelled">'
+                                    . '<button type="submit" class="btn btn-outline-secondary btn-sm">Cancel</button>'
+                                    . '</form>';
+                            }
                         }
 
-                        $actions .= '</div>';
-                        $actionsHtml = $actions;
+                        $leftHtml = implode('', $leftParts) ?: '&nbsp;';
+                        $rightHtml = implode('', $rightParts) ?: '&nbsp;';
+
+                        $actionsHtml = '<div class="payroll-actions d-flex align-items-center">'
+                            . '<div class="payroll-actions-left flex-grow-1 d-flex justify-content-center">' . $leftHtml . '</div>'
+                            . '<div class="payroll-actions-right flex-grow-1 d-flex justify-content-center">' . $rightHtml . '</div>'
+                            . '</div>';
                     }
 
                     return [
@@ -381,7 +431,7 @@
                 'selectName' => 'status',
                 'selectData' => [
                     'Pending' => 'Pending',
-                    'Completed' => 'Completed',
+                    'Released' => 'Released',
                     'Cancelled' => 'Cancelled',
                 ],
                 'isShort' => false,

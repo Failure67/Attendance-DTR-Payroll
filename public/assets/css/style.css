@@ -46,7 +46,7 @@ main {
 }
 
 .wrapper {
-    padding: 25px 20px 0 0;
+    padding: 25px 20px 25px 0;
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -57,6 +57,11 @@ main {
 }
 
 .wrapper.payroll-process {
+    max-width: 1250px;
+}
+
+/* Make main payroll page slightly wider so table, filters, and buttons have more room */
+.wrapper.payroll {
     max-width: 1250px;
 }
 
@@ -97,13 +102,46 @@ header {
 	justify-content: space-between;
 	align-items: center;
 	width: 100%;
-	max-width: 1380px;
+	max-width: 1250px;
+}
+
+/* Visually balance header with sidebar: nudge logo slightly left over sidebar width
+   and shift actions right by the same amount so spacing stays symmetric. */
+.header-logo {
+	transform: translateX(-142px);
+}
+
+.header-actions {
+	transform: translateX(150px);
 }
 
 .header-actions {
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+/* Facebook-style notification badge on the announcements icon */
+.header-actions .announcements-btn {
+	position: relative;
+}
+
+.header-actions .announcements-btn .notification-badge {
+	position: absolute;
+	top: 0;
+	right: 0;
+	transform: translate(40%, -40%);
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	border-radius: 999px;
+	background-color: #ef4444; /* red-500 */
+	color: #fff;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 16px;
+	text-align: center;
+	box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9); /* dark ring for contrast */
 }
 
 .theme-toggle-btn {
@@ -464,8 +502,8 @@ header {
 
 .crew-table-header {
     display: flex;
-    background-color: #0D2C42;
-    color: #fff;
+    background-color: #205173; /* align with table headers */
+    color: #f1f1f1;
     font-size: 13px;
     font-weight: 600;
 }
@@ -507,6 +545,83 @@ header {
 .crew-table-cell.actions {
     width: 120px;
     justify-content: flex-end;
+}
+
+/* Announcements admin page */
+
+.announcements-card {
+    margin-top: 6px;
+}
+
+.announcements-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.announcements-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.announcements-form-dates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.announcements-form-field {
+    flex: 1 1 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.announcements-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.announcements-form-helper {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.announcements-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+
+.announcements-form-actions .btn-primary {
+    padding: 8px 20px;
+    border-radius: 999px;
+}
+
+.table-container.announcements-table {
+    margin-top: 10px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
+}
+
+.table-container.announcements-table table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-container.announcements-table table thead tr th.table-col {
+    background-color: #205173; /* match global table header */
+    color: #f1f1f1;
+    padding: 10px 14px;
+    font-size: 13px;
+}
+
+.table-container.announcements-table table tbody tr td {
+    padding: 12px 14px;
+    font-size: 13px;
 }
 
 .crew-avatar {

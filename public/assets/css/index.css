@@ -1,6 +1,24 @@
-/* © 2025 Romar Jabez */
+/* 2025 Romar Jabez */
 
 .container.index {
     display: flex;
     gap: 20px;
+    justify-content: space-between;
+}
+
+/* Let the four Home stat cards grow to share the full content width */
+.container.index .dashboard-count {
+    width: auto;
+    flex: 1 1 0;
+}
+
+/* Ensure the three bottom dashboard cards on Home have equal widths,
+   even though the announcements card is wrapped in an extra div */
+.container.index #company-announcements {
+    display: flex;
+    flex: 1 1 0;
+}
+
+.container.index #company-announcements > .dashboard-card {
+    flex: 1 1 0;
 }

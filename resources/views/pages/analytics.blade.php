@@ -63,6 +63,12 @@
                 ];
                 $attendanceSummary = array_merge($attendanceSummaryDefaults, $attendanceAnalytics['summary'] ?? []);
                 $attendancePeriodText = $attendanceSummary['period_label'] ?? 'selected period';
+
+                // Build a non-breaking "0 anomalies" phrase so the number stays with the word
+                $attendanceEmployeesCount = (int) ($attendanceSummary['employee_count'] ?? 0);
+                $attendanceAnomalyCount = (int) ($attendanceSummary['anomaly_count'] ?? 0);
+                $nbsp = html_entity_decode('&nbsp;', ENT_QUOTES, 'UTF-8');
+                $attendanceEmployeesAnomaliesText = $attendanceEmployeesCount . ' employees, ' . $attendanceAnomalyCount . $nbsp . 'anomalies';
             @endphp
 
             <div class="container {{ $pageClass }} cards mt-3">
@@ -105,7 +111,7 @@
                     'countLabel' => 'Employees / anomalies',
                     'countSublabel' => 'For ' . $attendancePeriodText,
                     'countIcon' => '<i class="fa-solid fa-people-group"></i>',
-                    'countValue' => ($attendanceSummary['employee_count'] ?? 0) . ' employees, ' . ($attendanceSummary['anomaly_count'] ?? 0) . ' anomalies',
+                    'countValue' => $attendanceEmployeesAnomaliesText,
                 ])
 
             </div>

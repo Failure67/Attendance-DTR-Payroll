@@ -4,6 +4,36 @@ html, body {
     font-family: 'Inter', sans-serif;
 }
 
+.wrapper.employee.announcements-index .content.announcements-card {
+    padding: 16px 18px;
+}
+
+.wrapper.employee.announcements-index .content.announcements-card .title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.table-container.worker-announcements-table table thead th {
+    font-size: 13px;
+}
+
+.table-container.worker-announcements-table table tbody td {
+    font-size: 13px;
+}
+
+.table-container.worker-announcements-table tbody tr {
+    cursor: pointer;
+}
+
+.table-container.worker-announcements-table tbody td .announcement-preview-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.table-container.worker-announcements-table tbody td .announcement-preview-body {
+    font-size: 12px;
+}
+
 a {
     text-decoration: none;
     color: inherit;
@@ -110,7 +140,7 @@ header {
     border: 1px solid var(--card-border);
     padding: 30px;
     width: 100%;
-    max-width: 1000px;
+    max-width: 1150px;
     display: flex;
     flex-direction: column;
     gap: 20px;
