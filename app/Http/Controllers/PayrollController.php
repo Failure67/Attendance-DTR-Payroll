@@ -237,13 +237,21 @@ class PayrollController extends Controller
         $employeeOptions = $employees->mapWithKeys(function ($user) {
             return [$user->id => $user->full_name ?? $user->username];
         })->toArray();
+        $showArchived = request()->boolean('archived');
 
-        $cashAdvances = \App\Models\CashAdvance::with('user', 'payroll')
+        $cashAdvanceQuery = \App\Models\CashAdvance::with('user', 'payroll');
+
+        if ($showArchived) {
+            $cashAdvanceQuery->onlyTrashed();
+        }
+
+        $cashAdvances = $cashAdvanceQuery
             ->latest()
             ->limit(200)
             ->get();
+        $showArchivedLocal = $showArchived;
 
-        $cashAdvanceTableData = $cashAdvances->map(function ($entry) {
+        $cashAdvanceTableData = $cashAdvances->map(function ($entry) use ($showArchivedLocal) {
             $employeeName = $entry->user ? ($entry->user->full_name ?? $entry->user->username) : 'Unknown employee';
             $typeLabel = $entry->type === 'repayment' ? 'Repayment' : 'Advance';
             $amount = '₱ ' . number_format((float) $entry->amount, 2);
@@ -252,8 +260,10 @@ class PayrollController extends Controller
             $description = $entry->description ?? '—';
             $date = $entry->created_at ? $entry->created_at->format('Y-m-d') : '—';
 
-            return [
-                $employeeName,
+            $employeeCell = '<span class="cash-advance-entry" data-cash-advance-id="' . $entry->id . '">' . e($employeeName) . '</span>';
+
+            $row = [
+                $employeeCell,
                 $typeLabel,
                 $amount,
                 $sourceLabel,
@@ -261,6 +271,35 @@ class PayrollController extends Controller
                 $description,
                 $date,
             ];
+
+            if ($showArchivedLocal) {
+                $csrf = csrf_token();
+
+                $restoreForm = "<form method=\"POST\" action=\"" . route('cash-advances.restore', ['id' => $entry->id]) . "\" style=\"display:inline-block;margin-right:4px;\" onsubmit=\"return confirm('Recover this cash advance entry?');\">"
+                    . '<input type="hidden" name="_token" value="' . $csrf . '">' .
+                    '<button type="submit" class="btn btn-outline-success btn-sm" title="Recover">'
+                    . '<i class="fa-solid fa-rotate-left"></i>' .
+                    '</button>' .
+                    '</form>';
+
+                $deleteForm = "<form method=\"POST\" action=\"" . route('cash-advances.delete', ['id' => $entry->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Permanently delete this cash advance entry? This cannot be undone.');\">"
+                    . '<input type="hidden" name="_token" value="' . $csrf . '">' .
+                    '<input type="hidden" name="_method" value="DELETE">'
+                    . '<input type="hidden" name="archived" value="1">'
+                    . '<button type="submit" class="btn btn-outline-danger btn-sm" title="Delete permanently">'
+                    . '<i class="fa-solid fa-trash"></i>' .
+                    '</button>' .
+                    '</form>';
+
+                $actionsHtml = '<div class="cash-advances-archive-actions d-flex align-items-center gap-1">'
+                    . $restoreForm
+                    . $deleteForm
+                    . '</div>';
+
+                $row[] = $actionsHtml;
+            }
+
+            return $row;
         })->toArray();
 
         $balanceRows = \App\Models\CashAdvance::select('user_id')
@@ -284,13 +323,96 @@ class PayrollController extends Controller
             ];
         })->toArray();
 
+        // Cash advance requests (for integration into this page)
+        $caRequests = \App\Models\CashAdvanceRequest::with('user')
+            ->orderByDesc('created_at')
+            ->paginate(10);
+
+        $cashAdvanceRequestsTableData = $caRequests->map(function (\App\Models\CashAdvanceRequest $entry) {
+            $employeeName = $entry->user ? ($entry->user->full_name ?? $entry->user->username) : 'Unknown employee';
+            $amount = '₱ ' . number_format((float) $entry->amount, 2);
+            $status = $entry->status ?? 'Pending';
+            $createdAt = $entry->created_at ? $entry->created_at->format('Y-m-d') : '—';
+
+            $actions = app(\App\Http\Controllers\CashAdvanceRequestController::class)->buildActionsHtml($entry);
+
+            return [
+                e($employeeName),
+                $amount,
+                e($status),
+                e($createdAt),
+                $actions,
+            ];
+        })->toArray();
+
         return view('pages.cash-advances', [
             'title' => 'Cash advances',
             'pageClass' => 'cash-advances',
             'cashAdvanceSummaryTableData' => $cashAdvanceSummaryTableData,
             'cashAdvanceTableData' => $cashAdvanceTableData,
+            'cashAdvanceRequests' => $caRequests,
+            'cashAdvanceRequestsTableData' => $cashAdvanceRequestsTableData,
             'employeeOptions' => $employeeOptions,
+            'showArchived' => $showArchived,
         ]);
+    }
+
+    public function deleteCashAdvance(Request $request, $id)
+    {
+        $cashAdvance = \App\Models\CashAdvance::withTrashed()->findOrFail($id);
+
+        $stayOnArchived = $request->boolean('archived');
+
+        if ($cashAdvance->trashed()) {
+            $cashAdvance->forceDelete();
+            $message = 'Cash advance permanently deleted.';
+        } else {
+            $cashAdvance->delete();
+            $message = 'Cash advance archived successfully.';
+        }
+
+        $routeParams = $stayOnArchived ? ['archived' => 1] : [];
+
+        return redirect()->route('cash-advances', $routeParams)->with('success', $message);
+    }
+
+    public function restoreCashAdvance($id)
+    {
+        $cashAdvance = \App\Models\CashAdvance::withTrashed()->findOrFail($id);
+
+        if ($cashAdvance->trashed()) {
+            $cashAdvance->restore();
+        }
+
+        return redirect()->route('cash-advances', ['archived' => 1])
+            ->with('success', 'Cash advance record recovered successfully.');
+    }
+
+    public function deleteMultipleCashAdvances(Request $request)
+    {
+        $validated = $request->validate([
+            'cash_advance_ids' => 'required|array',
+            'cash_advance_ids.*' => 'exists:cash_advances,id',
+        ]);
+
+        $stayOnArchived = $request->boolean('archived');
+
+        $cashAdvances = \App\Models\CashAdvance::withTrashed()
+            ->whereIn('id', $validated['cash_advance_ids'])
+            ->get();
+
+        foreach ($cashAdvances as $cashAdvance) {
+            if ($cashAdvance->trashed()) {
+                $cashAdvance->forceDelete();
+            } else {
+                $cashAdvance->delete();
+            }
+        }
+
+        $routeParams = $stayOnArchived ? ['archived' => 1] : [];
+
+        return redirect()->route('cash-advances', $routeParams)
+            ->with('success', 'Selected cash advance entries processed successfully.');
     }
 
     public function storeCashAdvance(Request $request)
@@ -451,6 +573,84 @@ class PayrollController extends Controller
         $this->payrollService->updatePayrollStatus($payroll, $validated['status']);
 
         return redirect()->route('payroll')->with('success', 'Payroll status updated successfully.');
+    }
+
+    public function hrApprove(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $role = (string) ($user->role ?? '');
+
+        // HR stage is restricted to HR, with Superadmin as override (Admin should not act as HR)
+        if (!in_array($role, ['Superadmin', 'HR'], true)) {
+            abort(403, 'You are not allowed to approve payroll at HR stage.');
+        }
+
+        $payroll = Payroll::findOrFail($id);
+
+        if ($payroll->status === 'Cancelled') {
+            return redirect()->back()->with('error', 'Cancelled payrolls cannot be approved.');
+        }
+
+        if ($payroll->status === 'Released') {
+            return redirect()->back()->with('success', 'This payroll is already released.');
+        }
+
+        if ($payroll->hr_approved_at) {
+            return redirect()->back()->with('success', 'Payroll is already HR approved.');
+        }
+
+        $payroll->hr_approved_at = now();
+        $payroll->hr_approved_by = $user->id;
+        $payroll->save();
+
+        return redirect()->back()->with('success', 'Payroll marked as HR approved.');
+    }
+
+    public function adminApprove(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $role = (string) ($user->role ?? '');
+
+        $finalRoles = ['Superadmin', 'Admin', 'Accounting'];
+        if (!in_array($role, $finalRoles, true)) {
+            abort(403, 'You are not allowed to approve payroll at final stage.');
+        }
+
+        $payroll = Payroll::findOrFail($id);
+
+        if ($payroll->status === 'Cancelled') {
+            return redirect()->back()->with('error', 'Cancelled payrolls cannot be approved.');
+        }
+
+        if ($payroll->status === 'Released') {
+            if (!$payroll->admin_approved_at) {
+                $payroll->admin_approved_at = now();
+                $payroll->admin_approved_by = $user->id;
+                $payroll->save();
+            }
+
+            return redirect()->back()->with('success', 'This payroll is already released.');
+        }
+
+        if (!$payroll->hr_approved_at && $role !== 'Superadmin') {
+            return redirect()->back()->with('error', 'HR must approve the payroll before final approval.');
+        }
+
+        $payroll->admin_approved_at = now();
+        $payroll->admin_approved_by = $user->id;
+        $payroll->save();
+
+        $this->payrollService->updatePayrollStatus($payroll, 'Completed');
+
+        return redirect()->back()->with('success', 'Payroll approved and released.');
     }
 
     public function restorePayroll($id)

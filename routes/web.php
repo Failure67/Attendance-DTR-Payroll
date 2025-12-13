@@ -12,6 +12,8 @@ use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\CashAdvanceRequestController;
+use App\Http\Controllers\AnnouncementController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -78,7 +80,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/attendance/generate-defaults', [AttendanceController::class, 'generateDefaultAttendance'])->name('attendance.generate-defaults');
 
         // Crew assignments (Superadmin, Admin, HR, Accounting, Project Manager only)
-        Route::middleware(['role:Superadmin,Admin,HR,Accounting,Project Manager'])->group(function () {
+        Route::middleware(['role:Superadmin,Admin,HR,Accounting,Project Manager,Supervisor'])->group(function () {
             Route::get('/crew-assignments', [CrewAssignmentController::class, 'viewCrewAssignments'])->name('crew.assignments');
             Route::post('/crew-assignments', [CrewAssignmentController::class, 'storeCrewAssignments'])->name('crew.assignments.store');
             Route::delete('/crew-assignments/{id}', [CrewAssignmentController::class, 'deleteCrewAssignment'])->name('crew.assignments.delete');
@@ -95,12 +97,23 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/payroll/{id}', [PayrollController::class, 'showPayroll'])->name('payroll.show');
         Route::put('/payroll/{id}', [PayrollController::class, 'updatePayroll'])->name('payroll.update');
         Route::patch('/payroll/{id}/status', [PayrollController::class, 'updatePayrollStatus'])->name('payroll.update-status');
+        Route::post('/payroll/{id}/hr-approve', [PayrollController::class, 'hrApprove'])->name('payroll.hr-approve');
+        Route::post('/payroll/{id}/admin-approve', [PayrollController::class, 'adminApprove'])->name('payroll.admin-approve');
         Route::post('/payroll/{id}/restore', [PayrollController::class, 'restorePayroll'])->name('payroll.restore');
         Route::delete('/payroll/{id}', [PayrollController::class, 'deletePayroll'])->name('payroll.delete');
         Route::delete('/payroll', [PayrollController::class, 'deleteMultiplePayroll'])->name('payroll.delete.multiple');
 
         Route::get('/cash-advances', [PayrollController::class, 'viewCashAdvances'])->name('cash-advances');
         Route::post('/cash-advances', [PayrollController::class, 'storeCashAdvance'])->name('cash-advances.store');
+        Route::delete('/cash-advances/{id}', [PayrollController::class, 'deleteCashAdvance'])->name('cash-advances.delete');
+        Route::post('/cash-advances/{id}/restore', [PayrollController::class, 'restoreCashAdvance'])->name('cash-advances.restore');
+        Route::delete('/cash-advances', [PayrollController::class, 'deleteMultipleCashAdvances'])->name('cash-advances.delete.multiple');
+
+        Route::get('/cash-advance-requests', [CashAdvanceRequestController::class, 'index'])->name('cash-advance-requests');
+        Route::post('/cash-advance-requests/{id}/hr-approve', [CashAdvanceRequestController::class, 'hrApprove'])->name('cash-advance-requests.hr-approve');
+        Route::post('/cash-advance-requests/{id}/manager-approve', [CashAdvanceRequestController::class, 'managerApprove'])->name('cash-advance-requests.manager-approve');
+        Route::post('/cash-advance-requests/{id}/release', [CashAdvanceRequestController::class, 'release'])->name('cash-advance-requests.release');
+        Route::post('/cash-advance-requests/{id}/reject', [CashAdvanceRequestController::class, 'reject'])->name('cash-advance-requests.reject');
     });
 
     Route::middleware(['role:Superadmin'])->group(function () {
@@ -126,6 +139,12 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-logs');
     });
 
+    Route::middleware(['role:Superadmin,Admin,HR'])->group(function () {
+        Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements');
+        Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+        Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy'])->name('announcements.delete');
+    });
+
     // Worker dashboard + pages (worker-only)
     Route::middleware(['auth:web', 'role:worker'])->group(function () {
         Route::get('/home', [WorkerController::class, 'overview'])->name('worker.dashboard');
@@ -133,6 +152,10 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/worker/payroll-history/{id}', [WorkerController::class, 'payslip'])->name('worker.payslip');
         Route::get('/worker/payroll-history/{id}/download', [WorkerController::class, 'downloadPayslip'])->name('worker.payslip.download');
         Route::get('/worker/attendance', [WorkerController::class, 'attendance'])->name('worker.attendance');
+        Route::get('/worker/announcements', [WorkerController::class, 'announcementsIndex'])->name('worker.announcements');
+        Route::get('/worker/cash-advance-requests', [CashAdvanceRequestController::class, 'workerIndex'])->name('worker.cash-advance-requests');
+        Route::post('/worker/cash-advance-requests', [CashAdvanceRequestController::class, 'store'])->name('worker.cash-advance-requests.store');
+        Route::post('/worker/cash-advance-requests/{id}/cancel', [CashAdvanceRequestController::class, 'cancel'])->name('worker.cash-advance-requests.cancel');
     });
 });
 

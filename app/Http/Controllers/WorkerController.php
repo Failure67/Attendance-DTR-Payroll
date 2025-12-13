@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\CashAdvance;
 use App\Models\Payroll;
+use App\Models\Announcement;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -62,6 +63,21 @@ class WorkerController extends Controller
             ->paginate(5)
             ->appends(['tab' => 'attendance']);
 
+        $today = now()->toDateString();
+
+        $announcements = Announcement::where(function ($q) use ($today) {
+                $q->whereNull('starts_at')
+                    ->orWhereDate('starts_at', '<=', $today);
+            })
+            ->where(function ($q) use ($today) {
+                $q->whereNull('ends_at')
+                    ->orWhereDate('ends_at', '>=', $today);
+            })
+            ->orderByDesc('starts_at')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
         return view('user.pages.index', [
             'title' => 'Overview',
             'pageClass' => 'employee',
@@ -72,6 +88,7 @@ class WorkerController extends Controller
             'caBalance' => $caBalance,
             'payrolls' => $payrolls,
             'attendances' => $attendances,
+            'announcements' => $announcements,
         ]);
     }
 
@@ -215,5 +232,41 @@ class WorkerController extends Controller
     public function attendance()
     {
         return redirect()->route('worker.dashboard', ['tab' => 'attendance']);
+    }
+
+    public function announcementsIndex()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $announcements = Announcement::orderByDesc('starts_at')
+            ->orderByDesc('created_at')
+            ->paginate(10);
+
+        $tableData = $announcements->map(function (Announcement $a) {
+            $startsAt = $a->starts_at ? $a->starts_at->format('Y-m-d') : 'Immediately';
+            $endsAt = $a->ends_at ? $a->ends_at->format('Y-m-d') : 'Open';
+            $period = $startsAt . ' – ' . $endsAt;
+
+            $bodyPreview = \Illuminate\Support\Str::limit($a->body ?? '', 120);
+
+            return [
+                '<div class="announcement-preview" data-title="' . e($a->title) . '" data-body="' . e($a->body ?? '') . '" data-period="' . e($period) . '">' .
+                    '<div class="fw-semibold announcement-preview-title">' . e($a->title) . '</div>' .
+                    '<div class="small text-muted announcement-preview-body">' . e($bodyPreview) . '</div>' .
+                '</div>',
+                $period,
+            ];
+        })->toArray();
+
+        return view('user.pages.announcements-index', [
+            'title' => 'Announcements',
+            'pageClass' => 'employee-announcements',
+            'user' => $user,
+            'announcements' => $announcements,
+            'announcementTableData' => $tableData,
+        ]);
     }
 }

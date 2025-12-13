@@ -7,7 +7,7 @@
 .container.backup.summary {
     display: flex;
     gap: 20px;
-    justify-content: flex-start;
+    justify-content: space-between;
     flex-wrap: wrap;
 }
 

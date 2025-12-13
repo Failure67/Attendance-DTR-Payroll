@@ -25,6 +25,10 @@ class Payroll extends Model
         'period_start',
         'period_end',
         'user_id',
+        'hr_approved_by',
+        'hr_approved_at',
+        'admin_approved_by',
+        'admin_approved_at',
     ];
 
     protected $casts = [
@@ -40,6 +44,8 @@ class Payroll extends Model
         'gross_pay' => 'decimal:2',
         'total_deductions' => 'decimal:2',
         'net_pay' => 'decimal:2',
+        'hr_approved_at' => 'datetime',
+        'admin_approved_at' => 'datetime',
     ];
 
     public function user()

@@ -22,13 +22,14 @@
         }
 
         $currentRole = strtolower($currentUser->role ?? '');
-        $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'], true);
+        $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'accounting', 'project manager', 'supervisor'], true);
         $canSeeAnalytics = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'], true);
         $canSeeCrewAssignments = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
         $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
         $canSeeActivityLogs = in_array($currentRole, ['admin', 'superadmin'], true);
         $canSeeUsers = in_array($currentRole, ['admin', 'superadmin'], true);
         $canSeeBackup = in_array($currentRole, ['superadmin'], true);
+        $canSeeAnnouncements = in_array($currentRole, ['admin', 'superadmin', 'hr'], true);
     @endphp
 
     <div class="menu-container">
@@ -57,6 +58,24 @@
 
                 <span class="menu-label">
                     Analytics
+                </span>
+
+            </span>
+        </a>
+        @endif
+
+        
+
+        @if ($canSeeAnnouncements)
+        <a href="{{ route('announcements') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'announcements' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-bullhorn"></i>
+                </span>
+
+                <span class="menu-label">
+                    Announcements
                 </span>
 
             </span>

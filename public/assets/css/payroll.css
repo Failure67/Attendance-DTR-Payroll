@@ -57,6 +57,16 @@
     box-shadow: inset 3px 0 0 #0d6efd;
 }
 
+/* Highlight selected cash advance row (match payroll/attendance behavior) */
+.table-container.cash-advances-table tbody tr {
+    cursor: pointer;
+}
+
+.table-container.cash-advances-table tbody tr.selected {
+    background-color: #f3f6ff;
+    box-shadow: inset 3px 0 0 #0d6efd;
+}
+
 /* Payroll table column sizing & alignment */
 .table-container.payroll-table table thead tr th,
 .table-container.payroll-table table tbody tr td {
@@ -79,13 +89,26 @@
 
 .table-container.payroll-table .actions {
     text-align: center;
-    width: 170px;
+    width: 230px;
 }
 
 .table-container.payroll-table .payroll-actions .btn {
     padding: 4px 12px;
     border-radius: 999px;
     font-size: 12px;
+}
+
+/* Layout actions as two fixed slots (left: approvals, right: cancel) so rows align vertically */
+.table-container.payroll-table .payroll-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    width: 100%;
+}
+
+.table-container.payroll-table .payroll-actions-left,
+.table-container.payroll-table .payroll-actions-right {
+    justify-content: center;
 }
 
 /* Attendance table styling */

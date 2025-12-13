@@ -26,11 +26,20 @@
                     <label for="period_end" class="form-label">Period end</label>
                     <input type="date" name="period_end" id="period_end" class="form-control" value="{{ $period_end ?? '' }}">
                 </div>
-                <div class="col-sm-4 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary mt-auto">Preview from attendance</button>
-                    <a href="{{ route('payroll') }}" class="btn btn-outline-secondary mt-auto">Back to payroll</a>
+                <div class="col-sm-4 d-flex flex-wrap gap-2">
+                    <div class="d-flex gap-2 mt-auto">
+                        <button type="submit" class="btn btn-primary">Preview from attendance</button>
+                        <a href="{{ route('payroll') }}" class="btn btn-outline-secondary">Back to payroll</a>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" id="preset-this-week" class="btn btn-sm btn-outline-primary">This week</button>
+                        <button type="button" id="preset-last-week" class="btn btn-sm btn-outline-primary">Last week</button>
+                    </div>
                 </div>
             </form>
+            <div class="small text-muted mt-1">
+                Company policy uses <strong>weekly</strong> payroll cycles. Use the presets above to quickly fill a one-week period.
+            </div>
         </div>
 
         @if ($errors->any())
@@ -119,8 +128,13 @@
                             $minWageValue = number_format($row['last_min_wage'], 2, '.', '');
                             $minWageInput = '<input type="number" step="0.01" min="0" name="rows[' . $index . '][min_wage]" class="form-control form-control-sm" value="' . $minWageValue . '">';
 
-                            $caBalance = number_format($row['ca_balance'] ?? 0, 2);
-                            $caBalanceCell = $caBalance;
+                            $caBalanceRaw = $row['ca_balance'] ?? 0;
+                            $caBalance = number_format($caBalanceRaw, 2);
+                            if ($caBalanceRaw >= 500) {
+                                $caBalanceCell = $caBalance . ' (min 500 recommended)';
+                            } else {
+                                $caBalanceCell = $caBalance;
+                            }
 
                             $caInputName = 'rows[' . $index . '][ca_deduction]';
                             $caInput = '<input type="number" step="0.01" min="0" name="' . $caInputName . '" class="form-control form-control-sm" value="">';
@@ -185,6 +199,7 @@
                     <div class="small text-muted mt-1">
                         Use the <strong>Action</strong> button to toggle between <strong>Include</strong> and <strong>Skip</strong> for each employee in this period.
                         Rows with issues will show details in the <strong>Flags</strong> column.
+                        When an employee's CA balance is <strong>₱500 or higher</strong>, company policy recommends deducting at least <strong>₱500</strong> per payroll (you may still override if needed).
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 mt-3">
@@ -228,6 +243,52 @@
                     }
                 });
             });
+
+            var periodStartInput = document.getElementById('period_start');
+            var periodEndInput = document.getElementById('period_end');
+            var thisWeekBtn = document.getElementById('preset-this-week');
+            var lastWeekBtn = document.getElementById('preset-last-week');
+
+            function formatDate(date) {
+                var year = date.getFullYear();
+                var month = (date.getMonth() + 1).toString().padStart(2, '0');
+                var day = date.getDate().toString().padStart(2, '0');
+                return year + '-' + month + '-' + day;
+            }
+
+            function setRange(startDate, endDate) {
+                if (!periodStartInput || !periodEndInput) return;
+                periodStartInput.value = formatDate(startDate);
+                periodEndInput.value = formatDate(endDate);
+            }
+
+            if (thisWeekBtn) {
+                thisWeekBtn.addEventListener('click', function () {
+                    var today = new Date();
+                    var day = today.getDay(); // 0 = Sun, 1 = Mon, ...
+                    var diffToMonday = (day + 6) % 7; // convert to 0 = Mon
+                    var monday = new Date(today);
+                    monday.setDate(today.getDate() - diffToMonday);
+                    var sunday = new Date(monday);
+                    sunday.setDate(monday.getDate() + 6);
+                    setRange(monday, sunday);
+                });
+            }
+
+            if (lastWeekBtn) {
+                lastWeekBtn.addEventListener('click', function () {
+                    var today = new Date();
+                    var day = today.getDay();
+                    var diffToMonday = (day + 6) % 7;
+                    var thisMonday = new Date(today);
+                    thisMonday.setDate(today.getDate() - diffToMonday);
+                    var lastMonday = new Date(thisMonday);
+                    lastMonday.setDate(thisMonday.getDate() - 7);
+                    var lastSunday = new Date(lastMonday);
+                    lastSunday.setDate(lastMonday.getDate() + 6);
+                    setRange(lastMonday, lastSunday);
+                });
+            }
         });
     </script>
 @endsection

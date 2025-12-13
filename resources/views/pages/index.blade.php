@@ -147,6 +147,23 @@
                 'tableData' => $pendingPayrollTable ?? [],
             ])
 
+            <div id="company-announcements">
+                @include('components.dashboard-card', [
+                    'cardClass' => 'active-announcements',
+                    'label' => 'Company announcements',
+                    'viewAll' => route('announcements'),
+                    'tableCol' => [
+                        'title',
+                        'effective-period',
+                    ],
+                    'tableLabel' => [
+                        'Title',
+                        'Effective',
+                    ],
+                    'tableData' => $announcementTable ?? [],
+                ])
+            </div>
+
         </div>
 
     </div>

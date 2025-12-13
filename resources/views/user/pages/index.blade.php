@@ -67,6 +67,10 @@
                     Attendance
                 </a>
 
+                <a href="{{ route('worker.cash-advance-requests') }}" class="selector-item">
+                    Cash Advance Requests
+                </a>
+
             </div>
 
         </div>
@@ -114,6 +118,32 @@
                     'countValue' => '₱ ' . number_format($caBalance ?? 0, 2),
                 ])
 
+            </div>
+
+            <div id="announcements" class="content mt-4">
+                <div class="title">Announcements</div>
+
+                @if (!empty($announcements) && $announcements->count())
+                    <div class="list-group">
+                        @foreach ($announcements as $announcement)
+                            <div class="list-group-item mb-2">
+                                <div class="fw-semibold">{{ $announcement->title }}</div>
+                                <div class="small text-muted mb-1">
+                                    @php
+                                        $starts = $announcement->starts_at ? $announcement->starts_at->format('Y-m-d') : 'Immediately';
+                                        $ends = $announcement->ends_at ? $announcement->ends_at->format('Y-m-d') : 'Open';
+                                    @endphp
+                                    Effective: {{ $starts }} – {{ $ends }}
+                                </div>
+                                <div>{{ $announcement->body }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="small text-muted">
+                        No active announcements right now.
+                    </div>
+                @endif
             </div>
 
         </div>
