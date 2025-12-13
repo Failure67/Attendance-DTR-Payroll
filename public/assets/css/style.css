@@ -122,9 +122,9 @@ header {
 
 .header-actions .announcements-btn .notification-badge {
 	position: absolute;
-	top: 0;
-	right: 0;
-	transform: translate(40%, -40%);
+	top: -3px;
+	right: -4px;
+	transform: none;
 	min-width: 16px;
 	height: 16px;
 	padding: 0 4px;
@@ -135,6 +135,9 @@ header {
 	font-weight: 600;
 	line-height: 16px;
 	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9); /* dark ring for contrast */
 }
 
@@ -609,19 +612,32 @@ header {
 .table-container.announcements-table table thead tr th.table-col {
     background-color: #205173; /* match global table header */
     color: #f1f1f1;
-    padding: 10px 14px;
-    font-size: 13px;
 }
 
 .table-container.announcements-table table tbody tr td {
-    padding: 12px 14px;
-    font-size: 13px;
+padding: 12px 14px;
+font-size: 13px;
+}
+
+.table-container.announcements-table tbody tr {
+cursor: pointer;
+}
+
+.table-container.announcements-table tbody tr:hover {
+background-color: #f3f4f6;
 }
 
 .crew-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
+width: 28px;
+height: 28px;
+border-radius: 999px;
+background-color: #0D2C42;
+color: #fff;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 12px;
+font-weight: 600;
     background-color: #0D2C42;
     color: #fff;
     display: flex;

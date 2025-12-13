@@ -30,6 +30,12 @@
         $canSeeUsers = in_array($currentRole, ['admin', 'superadmin'], true);
         $canSeeBackup = in_array($currentRole, ['superadmin'], true);
         $canSeeAnnouncements = in_array($currentRole, ['admin', 'superadmin', 'hr'], true);
+
+        // Pending cash advance requests indicator for sidebar Cash Advance menu item
+        $pendingCashAdvanceRequests = 0;
+        if ($canSeePayrollAndCa) {
+            $pendingCashAdvanceRequests = \App\Models\CashAdvanceRequest::whereIn('status', ['Pending', 'HR approved'])->count();
+        }
     @endphp
 
     <div class="menu-container">
@@ -93,6 +99,10 @@
                 <span class="menu-label">
                     Cash Advance
                 </span>
+
+                @if($pendingCashAdvanceRequests > 0)
+                    <span class="menu-notification-dot"></span>
+                @endif
 
             </span>
         </a>

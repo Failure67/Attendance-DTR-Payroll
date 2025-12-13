@@ -50,6 +50,7 @@ class AttendanceController extends Controller
             'records.*.time_out' => 'nullable|date_format:H:i',
             'records.*.status' => 'nullable|in:Present,Absent,Late,On leave',
             'records.*.attendance_id' => 'nullable|integer',
+            'records.*.include' => 'nullable|in:0,1',
         ]);
         $currentUser = auth()->user();
 
@@ -84,8 +85,9 @@ class AttendanceController extends Controller
             'period_end' => 'required|date|after_or_equal:period_start',
             'employee_id' => 'nullable|exists:users,id',
         ]);
+        $currentUser = auth()->user();
         try {
-            $this->attendanceService->generateDefaultAttendance($validated);
+            $this->attendanceService->generateDefaultAttendance($currentUser, $validated);
 
             return redirect()->route('attendance', [
                     'period_start' => $validated['period_start'],

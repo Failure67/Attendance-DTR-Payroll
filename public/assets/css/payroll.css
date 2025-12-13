@@ -67,6 +67,36 @@
     box-shadow: inset 3px 0 0 #0d6efd;
 }
 
+/* Cash advance requests admin table alignment */
+.table-container.cash-advance-requests-table table {
+    width: 100%;
+}
+
+.table-container.cash-advance-requests-table table thead tr th,
+.table-container.cash-advance-requests-table table tbody tr td {
+    padding: 10px 12px;
+    white-space: nowrap;
+}
+
+/* Ensure consistent font size across all cash advance tables */
+.table-container.cash-advances-table table thead tr th,
+.table-container.cash-advances-table table tbody tr td,
+.table-container.cash-advances-summary-table table thead tr th,
+.table-container.cash-advances-summary-table table tbody tr td,
+.table-container.cash-advance-requests-table table thead tr th,
+.table-container.cash-advance-requests-table table tbody tr td {
+    font-size: 13px;
+}
+
+.table-container.cash-advance-requests-table .status {
+    text-align: center;
+}
+
+.table-container.cash-advance-requests-table .actions {
+    text-align: center;
+    width: 230px;
+}
+
 /* Payroll table column sizing & alignment */
 .table-container.payroll-table table thead tr th,
 .table-container.payroll-table table tbody tr td {
@@ -108,6 +138,25 @@
 
 .table-container.payroll-table .payroll-actions-left,
 .table-container.payroll-table .payroll-actions-right {
+    justify-content: center;
+}
+
+/* Reuse payroll-style pill buttons and two-slot layout for cash advance requests */
+.table-container.cash-advance-requests-table .cash-advance-actions .btn {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+.table-container.cash-advance-requests-table .cash-advance-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    width: 100%;
+}
+
+.table-container.cash-advance-requests-table .cash-advance-actions-left,
+.table-container.cash-advance-requests-table .cash-advance-actions-right {
     justify-content: center;
 }
 

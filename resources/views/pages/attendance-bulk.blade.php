@@ -92,16 +92,21 @@
                                 . '<option value="On leave"' . ($statusValue === 'On leave' ? ' selected' : '') . '>On leave</option>'
                                 . '</select>';
 
+                            $actionButton = '<button type="button" class="btn btn-sm btn-outline-primary attendance-include-toggle" data-index="' . $index . '">Include</button>' .
+                                '<input type="hidden" name="records[' . $index . '][include]" value="1">';
+
                             $bulkTableData[] = [
                                 $employeeCell,
                                 $timeInInput,
                                 $timeOutInput,
                                 $statusSelect,
+                                $actionButton,
                             ];
                         }
                     } else {
                         $bulkTableData[] = [
                             '<span class="text-muted">No employees found for bulk attendance.</span>',
+                            '',
                             '',
                             '',
                             '',
@@ -116,15 +121,17 @@
                         'time-in',
                         'time-out',
                         'status',
+                        'include',
                     ],
                     'tableLabel' => [
                         'Name of employee',
                         'Time in',
                         'Time out',
                         'Status',
+                        'Action',
                     ],
                     'tableData' => $bulkTableData,
-                    'rawColumns' => ['employee-name', 'time-in', 'time-out', 'status'],
+                    'rawColumns' => ['employee-name', 'time-in', 'time-out', 'status', 'include'],
                 ])
 
                 <div class="mt-3 d-flex justify-content-end">

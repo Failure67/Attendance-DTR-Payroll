@@ -60,21 +60,31 @@
                 $announcementUrl = route('worker.announcements');
             }
 
-            // Simple notification count used for the red badge on the announcements icon.
-            // For workers: count their own active cash advance requests.
-            // For back-office roles: count pending / HR-approved cash advance requests.
-            $notificationCount = 0;
-
+            // Red notification badge for worker announcements (shows when there are
+            // announcements created/updated after the worker last viewed them).
+            $showAnnouncementsBadge = false;
+            $unreadAnnouncementsCount = 0;
             if ($roleKey === 'worker') {
-                $notificationCount = \App\Models\CashAdvanceRequest::where('user_id', $currentUser->id ?? null)
-                    ->whereIn('status', ['Pending', 'HR approved', 'Manager approved'])
-                    ->count();
-            } elseif (in_array($roleKey, $backOfficeRoles, true)) {
-                $notificationCount = \App\Models\CashAdvanceRequest::whereIn('status', ['Pending', 'HR approved'])
-                    ->count();
-            }
+                $lastSeen = session('worker_last_seen_announcement_at');
+                $lastSeenAt = $lastSeen ? \Carbon\Carbon::parse($lastSeen) : null;
 
-            $notificationBadgeText = $notificationCount > 9 ? '9+' : ($notificationCount > 0 ? (string) $notificationCount : null);
+                $unreadAnnouncementsCount = \App\Models\Announcement::when($lastSeenAt, function ($query) use ($lastSeenAt) {
+                        $query->where(function ($q) use ($lastSeenAt) {
+                            $q->whereNotNull('updated_at')->where('updated_at', '>', $lastSeenAt)
+                              ->orWhere(function ($q2) use ($lastSeenAt) {
+                                  $q2->whereNull('updated_at')->where('created_at', '>', $lastSeenAt);
+                              });
+                        });
+                    }, function ($query) {
+                        // No last seen timestamp yet: treat all announcements as unread
+                        return $query;
+                    })
+                    ->count();
+
+                if ($unreadAnnouncementsCount > 0) {
+                    $showAnnouncementsBadge = true;
+                }
+            }
         @endphp
 
         <a class="header-logo" href="{{ route($logoRouteName) }}">
@@ -86,8 +96,8 @@
             @if(!empty($announcementUrl))
                 <a href="{{ $announcementUrl }}" class="theme-toggle-btn announcements-btn" aria-label="View announcements" title="View announcements">
                     <i class="fa-solid fa-bullhorn theme-icon"></i>
-                    @if(!empty($notificationBadgeText))
-                        <span class="notification-badge">{{ $notificationBadgeText }}</span>
+                    @if(!empty($showAnnouncementsBadge))
+                        <span class="notification-badge">{{ $unreadAnnouncementsCount > 9 ? '9+' : $unreadAnnouncementsCount }}</span>
                     @endif
                 </a>
             @endif

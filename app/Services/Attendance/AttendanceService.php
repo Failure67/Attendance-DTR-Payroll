@@ -638,6 +638,11 @@ class AttendanceService
 
         try {
             foreach ($records as $record) {
+                $include = $record['include'] ?? '1';
+                if ((string) $include !== '1') {
+                    continue;
+                }
+
                 $userId = (int) ($record['user_id'] ?? 0);
                 if (!$userId || !in_array($userId, $allowedWorkerIds, true)) {
                     continue;
@@ -705,13 +710,24 @@ class AttendanceService
     /**
      * Generate default attendance records for a period.
      */
-    public function generateDefaultAttendance(array $validated): void
+    public function generateDefaultAttendance($currentUser, array $validated): void
     {
         $start = Carbon::parse($validated['period_start'])->startOfDay();
         $end = Carbon::parse($validated['period_end'])->endOfDay();
 
         $employeeQuery = User::whereNull('deleted_at')
             ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
+
+        $currentRole = strtolower($currentUser->role ?? '');
+
+        if ($currentRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+            if ($crewWorkerIds->isNotEmpty()) {
+                $employeeQuery->whereIn('id', $crewWorkerIds);
+            } else {
+                $employeeQuery->whereRaw('1 = 0');
+            }
+        }
 
         if (!empty($validated['employee_id'])) {
             $employeeQuery->where('id', $validated['employee_id']);

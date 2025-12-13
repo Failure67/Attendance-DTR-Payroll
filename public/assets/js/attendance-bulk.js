@@ -52,4 +52,25 @@ $(document).ready(function () {
             }
         });
     });
+
+    // Include/Skip toggle per row (similar to payroll process screen)
+    $table.on('click', '.attendance-include-toggle', function () {
+        const $btn = $(this);
+        const index = $btn.data('index');
+        const $hidden = $table.find('input[type="hidden"][name="records[' + index + '][include]"]');
+        if (!$hidden.length) {
+            return;
+        }
+
+        const current = $hidden.val() === '0' ? '0' : '1';
+        if (current === '1') {
+            $hidden.val('0');
+            $btn.removeClass('btn-outline-primary').addClass('btn-outline-secondary');
+            $btn.text('Skip');
+        } else {
+            $hidden.val('1');
+            $btn.removeClass('btn-outline-secondary').addClass('btn-outline-primary');
+            $btn.text('Include');
+        }
+    });
 });

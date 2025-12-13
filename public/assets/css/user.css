@@ -239,11 +239,16 @@ header {
 .container.employee .content.cards {
     display: flex;
     gap: 10px;
+    justify-content: space-between;
+}
+
+.container.employee .content.cards > .user-count {
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .user-count-container {
     background-color: var(--card-bg);
-    width: 227px;
     min-height: 130px;
     display: flex;
     flex-direction: column;

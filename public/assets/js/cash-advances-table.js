@@ -6,8 +6,9 @@ $(document).ready(function() {
 
     const $ledgerContainer = $('.table-container.cash-advances-table').closest('.container.cash-advances.table-component');
     const $summaryContainer = $('#cash-advances-summary-container');
-    const $summaryToggleBtn = $('#employee-balance-cash-advances');
-    const $requestsToggleBtn = $('#view-cash-advances');
+    const $transactionsViewBtn = $('#view-transactions-cash-advances');
+    const $balanceViewBtn = $('#view-balance-cash-advances');
+    const $requestsViewBtn = $('#view-requests-cash-advances');
 
     const $ledgerView = $('.cash-advances-view-ledger');
     const $requestsView = $('.cash-advances-view-requests');
@@ -18,6 +19,7 @@ $(document).ready(function() {
 
     let showingSummary = false;
     let showingRequests = false;
+    let currentView = 'ledger';
     const selectedCashAdvanceIds = new Set();
 
     function getActiveTable() {
@@ -28,7 +30,7 @@ $(document).ready(function() {
             }
         }
 
-        if ($requestsView.length && $requestsView.is(':visible')) {
+        if (showingRequests && $requestsView.length) {
             const $requestsTable = $requestsView.find('.table-container.cash-advance-requests-table table').first();
             if ($requestsTable.length) {
                 return $requestsTable;
@@ -89,50 +91,119 @@ $(document).ready(function() {
         }
     }
 
-    // Summary (Employee Balance) toggle
-    if ($summaryToggleBtn.length && $summaryContainer.length && $ledgerContainer.length) {
-        $summaryContainer.hide();
-        $ledgerContainer.show();
+    // View dropdown: Transactions / Employee Balance / Requests
+    if ($ledgerContainer.length && ($transactionsViewBtn.length || $balanceViewBtn.length || $requestsViewBtn.length)) {
+        function setView(view, options) {
+            const opts = options || {};
+            currentView = view;
 
-        $summaryToggleBtn.on('click', function() {
-            showingSummary = !showingSummary;
+            if (view === 'summary') {
+                showingSummary = true;
+                showingRequests = false;
 
-            if (showingSummary) {
-                $summaryContainer.show();
-                $ledgerContainer.hide();
-                $(this).find('.button-label').text('Transactions');
+                if ($summaryContainer.length) {
+                    $summaryContainer.show();
+                }
+                if ($ledgerContainer.length) {
+                    $ledgerContainer.hide();
+                }
             } else {
-                $summaryContainer.hide();
-                $ledgerContainer.show();
-                $(this).find('.button-label').text('Employee Balance');
+                showingSummary = false;
+
+                if ($summaryContainer.length) {
+                    $summaryContainer.hide();
+                }
+                if ($ledgerContainer.length) {
+                    $ledgerContainer.show();
+                }
+
+                if (view === 'requests') {
+                    showingRequests = true;
+                    if ($ledgerView.length) {
+                        $ledgerView.hide();
+                    }
+                    if ($requestsView.length) {
+                        $requestsView.show();
+                    }
+                } else { // 'ledger' (Transactions)
+                    showingRequests = false;
+                    if ($requestsView.length) {
+                        $requestsView.hide();
+                    }
+                    if ($ledgerView.length) {
+                        $ledgerView.show();
+                    }
+                }
+            }
+
+            // Persist the active view in the URL so a full-page refresh or form
+            // POST/redirect keeps you on the same tab (e.g. Requests).
+            if (!opts.skipUrlUpdate) {
+                try {
+                    const url = new URL(window.location.href);
+                    const params = url.searchParams;
+
+                    // Default Transactions view does not need an explicit param
+                    if (view === 'ledger') {
+                        params.delete('ca_view');
+                    } else {
+                        params.set('ca_view', view);
+                    }
+
+                    url.search = params.toString();
+                    window.history.replaceState({}, '', url.toString());
+                } catch (e) {
+                    // ignore URL API errors in very old browsers
+                }
             }
 
             applyFilter();
-        });
-    }
+        }
 
-    // History vs Requests toggle
-    if ($requestsToggleBtn.length && $ledgerView.length && $requestsView.length) {
-        // Default to history (ledger)
-        $ledgerView.show();
-        $requestsView.hide();
-        showingRequests = false;
-
-        $requestsToggleBtn.on('click', function() {
-            showingRequests = !showingRequests;
-
-            if (showingRequests) {
-                $ledgerView.hide();
-                $requestsView.show();
-                $(this).find('.button-label').text('View history');
-            } else {
-                $requestsView.hide();
-                $ledgerView.show();
-                $(this).find('.button-label').text('View requests');
+        // Determine initial view from query parameter so redirects after
+        // approving/releasing requests return to the Requests tab instead of
+        // always defaulting back to Transactions.
+        let initialView = 'ledger';
+        try {
+            const url = new URL(window.location.href);
+            const fromQuery = (url.searchParams.get('ca_view') || '').toLowerCase();
+            if (fromQuery === 'summary' || fromQuery === 'requests' || fromQuery === 'ledger') {
+                initialView = fromQuery;
             }
+        } catch (e) {
+            // fall back to default
+        }
 
-            applyFilter();
-        });
+        setView(initialView, { skipUrlUpdate: true });
+
+        if ($transactionsViewBtn.length) {
+            $transactionsViewBtn.on('click', function() {
+                // When viewing archived entries, Transactions should return to the
+                // main (non-archived) transactions view instead of doing nothing.
+                if (isArchivedView) {
+                    const url = new URL(window.location.href);
+                    const params = url.searchParams;
+                    params.delete('archived');
+                    url.search = params.toString();
+                    window.location.href = url.toString();
+                    return;
+                }
+
+                setView('ledger');
+            });
+        }
+
+        if ($balanceViewBtn.length) {
+            $balanceViewBtn.on('click', function() {
+                setView('summary');
+            });
+        }
+
+        if ($requestsViewBtn.length) {
+            $requestsViewBtn.on('click', function() {
+                setView('requests');
+            });
+        }
     }
 
     // Row selection on ledger table

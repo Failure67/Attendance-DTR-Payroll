@@ -142,6 +142,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
     Route::middleware(['role:Superadmin,Admin,HR'])->group(function () {
         Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements');
         Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+        Route::put('/announcements/{id}', [AnnouncementController::class, 'update'])->name('announcements.update');
         Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy'])->name('announcements.delete');
     });
 

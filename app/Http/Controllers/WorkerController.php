@@ -241,6 +241,9 @@ class WorkerController extends Controller
             abort(403);
         }
 
+        // Mark announcements as seen for this worker so the header badge disappears
+        session(['worker_last_seen_announcement_at' => now()]);
+
         $announcements = Announcement::orderByDesc('starts_at')
             ->orderByDesc('created_at')
             ->paginate(10);
