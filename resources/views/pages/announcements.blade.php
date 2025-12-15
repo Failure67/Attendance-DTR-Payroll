@@ -118,9 +118,34 @@
 
 @endsection
 
+@section('modal')
+    {{-- Admin/staff announcement detail modal (preview only; editing via button) --}}
+    <div class="modal fade" id="adminAnnouncementModal" tabindex="-1" aria-labelledby="adminAnnouncementModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="adminAnnouncementModalLabel">Announcement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-1 small text-muted" id="admin-announcement-period"></div>
+                    <div class="fw-semibold mb-2" id="admin-announcement-title"></div>
+                    <div id="admin-announcement-body"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
+
 @section('scripts')
     <script>
-        $(document).ready(function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.jQuery) {
+                return;
+            }
+
+            const $ = window.jQuery;
+
             $(document).on('click', '.announcements-table tbody tr', function (e) {
                 // Ignore clicks on buttons/links inside the row (e.g. Edit, Delete)
                 if ($(e.target).closest('a, button, input, textarea, select, label, form').length) {
@@ -132,10 +157,21 @@
                     return;
                 }
 
-                const editUrl = $preview.data('edit-url');
-                if (editUrl) {
-                    window.location.href = editUrl;
+                const title = $preview.data('title') || '';
+                const body = $preview.data('body') || '';
+                const period = $preview.data('period') || '';
+
+                $('#admin-announcement-title').text(title);
+                $('#admin-announcement-body').text(body);
+                $('#admin-announcement-period').text(period);
+
+                const modalEl = document.getElementById('adminAnnouncementModal');
+                if (!modalEl) {
+                    return;
                 }
+
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
             });
         });
     </script>

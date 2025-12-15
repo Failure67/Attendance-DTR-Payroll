@@ -10,6 +10,10 @@ class AnnouncementController extends Controller
 {
     public function index(Request $request)
     {
+        // Mark announcements as seen for staff users (Admin/Superadmin) so their
+        // header badge reflects only announcements created or updated after this visit.
+        session(['staff_last_seen_announcement_at' => now()]);
+
         $announcements = Announcement::orderByDesc('starts_at')
             ->orderByDesc('created_at')
             ->paginate(10);
@@ -23,6 +27,8 @@ class AnnouncementController extends Controller
         $tableData = $announcements->map(function (Announcement $a) {
             $startsAt = $a->starts_at ? $a->starts_at->format('Y-m-d') : 'Immediately';
             $endsAt = $a->ends_at ? $a->ends_at->format('Y-m-d') : 'Open';
+            // Use a simple ASCII dash between dates to avoid encoding issues
+            $period = $startsAt . ' - ' . $endsAt;
 
             $csrf = csrf_token();
             $editUrl = route('announcements', ['edit' => $a->id]);
@@ -34,7 +40,11 @@ class AnnouncementController extends Controller
                 . '<button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>'
                 . '</form>';
 
-            $titleHtml = '<div class="announcement-admin-preview" data-edit-url="' . e($editUrl) . '">' .
+            $titleHtml = '<div class="announcement-admin-preview"'
+                . ' data-edit-url="' . e($editUrl) . '"'
+                . ' data-title="' . e($a->title) . '"'
+                . ' data-body="' . e($a->body ?? '') . '"'
+                . ' data-period="' . e($period) . '">' .
                 '<div class="fw-semibold">' . e($a->title) . '</div>' .
                 '<div class="small text-muted">' . e(\Illuminate\Support\Str::limit($a->body ?? '', 120)) . '</div>' .
                 '</div>';
@@ -53,6 +63,44 @@ class AnnouncementController extends Controller
             'announcements' => $announcements,
             'announcementTableData' => $tableData,
             'editingAnnouncement' => $editingAnnouncement,
+        ]);
+    }
+
+    /**
+     * Read-only announcements list for staff roles (HR, Supervisor, Admin, Superadmin, etc.).
+     * Used by the header announcements icon.
+     */
+    public function staffIndex(Request $request)
+    {
+        // Mark announcements as seen for staff so the header badge clears.
+        session(['staff_last_seen_announcement_at' => now()]);
+
+        $announcements = Announcement::orderByDesc('starts_at')
+            ->orderByDesc('created_at')
+            ->paginate(10);
+
+        $tableData = $announcements->map(function (Announcement $a) {
+            $startsAt = $a->starts_at ? $a->starts_at->format('Y-m-d') : 'Immediately';
+            $endsAt = $a->ends_at ? $a->ends_at->format('Y-m-d') : 'Open';
+            // Use a simple ASCII dash between dates to avoid encoding issues
+            $period = $startsAt . ' - ' . $endsAt;
+
+            $bodyPreview = \Illuminate\Support\Str::limit($a->body ?? '', 120);
+
+            return [
+                '<div class="announcement-preview" data-title="' . e($a->title) . '" data-body="' . e($a->body ?? '') . '" data-period="' . e($period) . '">' .
+                    '<div class="fw-semibold announcement-preview-title">' . e($a->title) . '</div>' .
+                    '<div class="small text-muted announcement-preview-body">' . e($bodyPreview) . '</div>' .
+                '</div>',
+                $period,
+            ];
+        })->toArray();
+
+        return view('pages.staff-announcements', [
+            'title' => 'Announcements',
+            'pageClass' => 'staff-announcements',
+            'announcements' => $announcements,
+            'announcementTableData' => $tableData,
         ]);
     }
 

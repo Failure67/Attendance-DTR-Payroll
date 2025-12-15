@@ -139,11 +139,16 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-logs');
     });
 
-    Route::middleware(['role:Superadmin,Admin,HR'])->group(function () {
+    Route::middleware(['role:Superadmin,Admin'])->group(function () {
         Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements');
         Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
         Route::put('/announcements/{id}', [AnnouncementController::class, 'update'])->name('announcements.update');
         Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy'])->name('announcements.delete');
+    });
+
+    // Staff read-only announcements page (reached from header icon)
+    Route::middleware(['role:Superadmin,Admin,HR,Supervisor'])->group(function () {
+        Route::get('/staff/announcements', [AnnouncementController::class, 'staffIndex'])->name('staff.announcements');
     });
 
     // Worker dashboard + pages (worker-only)

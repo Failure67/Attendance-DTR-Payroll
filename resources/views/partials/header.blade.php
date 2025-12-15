@@ -49,10 +49,10 @@
 
             // URL for the header announcements button (varies by role)
             $announcementUrl = null;
-            if (in_array($roleKey, ['admin', 'superadmin', 'hr'], true)) {
-                // Admins and HR manage announcements directly
-                $announcementUrl = route('announcements');
-            } elseif (in_array($roleKey, ['accounting', 'project manager', 'supervisor'], true)) {
+            if (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor'], true)) {
+                // Staff roles view a unified read-only announcements page
+                $announcementUrl = route('staff.announcements');
+            } elseif (in_array($roleKey, ['accounting', 'project manager'], true)) {
                 // Other back-office roles view announcements on the dashboard card
                 $announcementUrl = route('admin.dashboard') . '#company-announcements';
             } elseif ($roleKey === 'worker') {
@@ -60,12 +60,20 @@
                 $announcementUrl = route('worker.announcements');
             }
 
-            // Red notification badge for worker announcements (shows when there are
-            // announcements created/updated after the worker last viewed them).
+            // Red notification badge for announcements (shows when there are
+            // announcements created/updated after the user last viewed them).
             $showAnnouncementsBadge = false;
             $unreadAnnouncementsCount = 0;
+
+            $lastSeenKey = null;
             if ($roleKey === 'worker') {
-                $lastSeen = session('worker_last_seen_announcement_at');
+                $lastSeenKey = 'worker_last_seen_announcement_at';
+            } elseif (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor'], true)) {
+                $lastSeenKey = 'staff_last_seen_announcement_at';
+            }
+
+            if ($lastSeenKey !== null) {
+                $lastSeen = session($lastSeenKey);
                 $lastSeenAt = $lastSeen ? \Carbon\Carbon::parse($lastSeen) : null;
 
                 $unreadAnnouncementsCount = \App\Models\Announcement::when($lastSeenAt, function ($query) use ($lastSeenAt) {
