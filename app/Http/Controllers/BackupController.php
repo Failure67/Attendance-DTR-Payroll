@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,6 +30,7 @@ class BackupController extends Controller
                 'status' => 'Configure your backup schedule on the server.',
             ],
             'storage' => $this->buildStorageSummary($backups),
+            'cloud' => $this->buildCloudSummary(),
         ];
 
         $backupHistoryTable = $this->buildHistoryTable($backups);
@@ -132,6 +134,35 @@ class BackupController extends Controller
         }
     }
 
+    public function runCloudBackup(Request $request)
+    {
+        try {
+            $exitCode = Artisan::call('sync:to-supabase');
+            $output = trim((string) Artisan::output());
+
+            if ($exitCode !== 0) {
+                $message = 'Cloud backup to Supabase failed. Exit code: ' . $exitCode;
+                if ($output !== '') {
+                    $message .= ' - ' . $output;
+                }
+
+                return redirect()->route('backup')
+                    ->with('backup_error', $message);
+            }
+
+            $message = 'Cloud backup to Supabase completed.';
+            if ($output !== '') {
+                $message .= ' ' . $output;
+            }
+
+            return redirect()->route('backup')
+                ->with('backup_success', $message);
+        } catch (\Throwable $e) {
+            return redirect()->route('backup')
+                ->with('backup_error', 'Cloud backup failed: ' . $e->getMessage());
+        }
+    }
+
     protected function listBackupFiles(): array
     {
         $directory = storage_path('app/backups');
@@ -178,6 +209,35 @@ class BackupController extends Controller
             'used' => $this->formatBytes($totalBytes),
             'limit' => null,
             'percentage' => null,
+        ];
+    }
+
+    protected function buildCloudSummary(): array
+    {
+        $enabled = filter_var(env('SUPABASE_SYNC_ENABLED', false), FILTER_VALIDATE_BOOLEAN);
+        $baseUrl = rtrim((string) env('SUPABASE_URL', ''), '/');
+        $serviceKey = (string) env('SUPABASE_SERVICE_KEY', '');
+
+        if (! $enabled) {
+            return [
+                'status' => 'Disabled',
+                'encryption' => 'Not available (Supabase sync is disabled)',
+                'retention' => 'Not available',
+            ];
+        }
+
+        if ($baseUrl === '' || $serviceKey === '') {
+            return [
+                'status' => 'Misconfigured (missing URL or service key)',
+                'encryption' => 'Unknown (Supabase not fully configured)',
+                'retention' => 'Not configured',
+            ];
+        }
+
+        return [
+            'status' => 'Ready (manual sync)',
+            'encryption' => 'Supabase-managed (TLS in transit, encrypted at rest)',
+            'retention' => 'Managed in Supabase (tables keep data until manually removed)',
         ];
     }
 
