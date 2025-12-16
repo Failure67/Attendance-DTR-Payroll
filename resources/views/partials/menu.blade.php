@@ -1,4 +1,4 @@
-<div class="menu">
+<div class="menu {{ Route::currentRouteName() === 'payroll' ? 'payroll' : null }}">
 
     @php
         $guardHint = request()->query('guard');
