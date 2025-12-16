@@ -121,6 +121,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/backup/create', [BackupController::class, 'createBackup'])->name('backup.create');
         Route::get('/backup/download/{file}', [BackupController::class, 'downloadBackup'])->name('backup.download');
         Route::post('/backup/restore', [BackupController::class, 'restoreBackup'])->name('backup.restore');
+        Route::post('/backup/cloud', [BackupController::class, 'runCloudBackup'])->name('backup.cloud');
     });
 
     Route::middleware(['role:Superadmin,Admin'])->group(function () {

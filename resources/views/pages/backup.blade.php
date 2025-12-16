@@ -32,6 +32,11 @@
             $lastBackup = $summary['last_backup'] ?? ['label' => 'No backups yet', 'status' => 'No completed backups have been recorded.'];
             $nextBackup = $summary['next_backup'] ?? ['label' => 'Not scheduled', 'status' => 'Configure your backup schedule on the server.'];
             $storage = $summary['storage'] ?? ['used' => null, 'limit' => null, 'percentage' => null];
+            $cloud = $summary['cloud'] ?? [
+                'status' => 'Unknown',
+                'encryption' => 'Unknown',
+                'retention' => 'Unknown',
+            ];
 
             $storageLabel = $storage['used'] !== null && $storage['limit'] !== null
                 ? ($storage['used'] . ' / ' . $storage['limit'])
@@ -124,27 +129,30 @@
                         <div class="backup-card-body">
                             <div class="backup-card-row">
                                 <span class="label">Status</span>
-                                <span class="value">Not connected</span>
+                                <span class="value">{{ $cloud['status'] ?? 'Unknown' }}</span>
                             </div>
                             <div class="backup-card-row">
                                 <span class="label">Encryption</span>
-                                <span class="value">To be configured</span>
+                                <span class="value">{{ $cloud['encryption'] ?? 'Unknown' }}</span>
                             </div>
                             <div class="backup-card-row">
                                 <span class="label">Retention</span>
-                                <span class="value">Not configured</span>
+                                <span class="value">{{ $cloud['retention'] ?? 'Unknown' }}</span>
                             </div>
                         </div>
 
                         <div class="backup-card-actions">
-                            @include('components.button', [
-                                'buttonType' => 'secondary',
-                                'buttonVar' => 'backup-connect-cloud',
-                                'buttonSrc' => 'backup',
-                                'buttonIcon' => '<i class="fa-solid fa-cloud-arrow-up"></i>',
-                                'buttonLabel' => 'Configure cloud backup (UI only)',
-                                'btnAttribute' => 'type="button" disabled title="Cloud backup integration not yet implemented"',
-                            ])
+                            <form method="POST" action="{{ route('backup.cloud') }}">
+                                @csrf
+                                @include('components.button', [
+                                    'buttonType' => 'secondary',
+                                    'buttonVar' => 'backup-run-cloud',
+                                    'buttonSrc' => 'backup',
+                                    'buttonIcon' => '<i class="fa-solid fa-cloud-arrow-up"></i>',
+                                    'buttonLabel' => 'Run cloud backup now',
+                                    'isSubmit' => true,
+                                ])
+                            </form>
                         </div>
                     </div>
 
