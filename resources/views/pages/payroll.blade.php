@@ -215,7 +215,8 @@
                             $csrf = csrf_token();
 
                             // HR approval action (no separate HR-approved badge in actions column)
-                            if ($canHrApprove && !$payroll->hr_approved_at) {
+                            // Superadmin should not see this button; they can directly use Approve & release.
+                            if ($canHrApprove && $currentRole !== 'Superadmin' && !$payroll->hr_approved_at) {
                                 $leftParts[] =
                                     '<form method="POST" action="' . route('payroll.hr-approve', ['id' => $payroll->id]) . '" style="display:inline-block;margin-right:4px;">'
                                     . '<input type="hidden" name="_token" value="' . $csrf . '">'

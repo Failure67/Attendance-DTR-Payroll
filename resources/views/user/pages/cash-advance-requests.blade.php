@@ -63,16 +63,6 @@
 
         <div class="container employee">
 
-            <div class="content cards mb-3">
-                @include('user.components.count', [
-                    'countClass' => 'ca-balance',
-                    'countLabel' => 'Current CA Balance',
-                    'countDesc' => '',
-                    'countIcon' => '<i class="fa-solid fa-file-waveform"></i>',
-                    'countValue' => '₱ ' . number_format($caBalance ?? 0, 2),
-                ])
-            </div>
-
             <div class="content payroll-breakdown mb-3">
                 <div class="title">New cash advance request</div>
 

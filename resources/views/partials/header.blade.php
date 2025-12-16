@@ -49,10 +49,10 @@
 
             // URL for the header announcements button (varies by role)
             $announcementUrl = null;
-            if (in_array($roleKey, ['admin', 'superadmin', 'hr'], true)) {
-                // Admins and HR manage announcements directly
-                $announcementUrl = route('announcements');
-            } elseif (in_array($roleKey, ['accounting', 'project manager', 'supervisor'], true)) {
+            if (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor'], true)) {
+                // Staff roles view a unified read-only announcements page
+                $announcementUrl = route('staff.announcements');
+            } elseif (in_array($roleKey, ['accounting', 'project manager'], true)) {
                 // Other back-office roles view announcements on the dashboard card
                 $announcementUrl = route('admin.dashboard') . '#company-announcements';
             } elseif ($roleKey === 'worker') {
@@ -60,21 +60,39 @@
                 $announcementUrl = route('worker.announcements');
             }
 
-            // Simple notification count used for the red badge on the announcements icon.
-            // For workers: count their own active cash advance requests.
-            // For back-office roles: count pending / HR-approved cash advance requests.
-            $notificationCount = 0;
+            // Red notification badge for announcements (shows when there are
+            // announcements created/updated after the user last viewed them).
+            $showAnnouncementsBadge = false;
+            $unreadAnnouncementsCount = 0;
 
+            $lastSeenKey = null;
             if ($roleKey === 'worker') {
-                $notificationCount = \App\Models\CashAdvanceRequest::where('user_id', $currentUser->id ?? null)
-                    ->whereIn('status', ['Pending', 'HR approved', 'Manager approved'])
-                    ->count();
-            } elseif (in_array($roleKey, $backOfficeRoles, true)) {
-                $notificationCount = \App\Models\CashAdvanceRequest::whereIn('status', ['Pending', 'HR approved'])
-                    ->count();
+                $lastSeenKey = 'worker_last_seen_announcement_at';
+            } elseif (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor'], true)) {
+                $lastSeenKey = 'staff_last_seen_announcement_at';
             }
 
-            $notificationBadgeText = $notificationCount > 9 ? '9+' : ($notificationCount > 0 ? (string) $notificationCount : null);
+            if ($lastSeenKey !== null) {
+                $lastSeen = session($lastSeenKey);
+                $lastSeenAt = $lastSeen ? \Carbon\Carbon::parse($lastSeen) : null;
+
+                $unreadAnnouncementsCount = \App\Models\Announcement::when($lastSeenAt, function ($query) use ($lastSeenAt) {
+                        $query->where(function ($q) use ($lastSeenAt) {
+                            $q->whereNotNull('updated_at')->where('updated_at', '>', $lastSeenAt)
+                              ->orWhere(function ($q2) use ($lastSeenAt) {
+                                  $q2->whereNull('updated_at')->where('created_at', '>', $lastSeenAt);
+                              });
+                        });
+                    }, function ($query) {
+                        // No last seen timestamp yet: treat all announcements as unread
+                        return $query;
+                    })
+                    ->count();
+
+                if ($unreadAnnouncementsCount > 0) {
+                    $showAnnouncementsBadge = true;
+                }
+            }
         @endphp
 
         <a class="header-logo" href="{{ route($logoRouteName) }}">
@@ -86,8 +104,8 @@
             @if(!empty($announcementUrl))
                 <a href="{{ $announcementUrl }}" class="theme-toggle-btn announcements-btn" aria-label="View announcements" title="View announcements">
                     <i class="fa-solid fa-bullhorn theme-icon"></i>
-                    @if(!empty($notificationBadgeText))
-                        <span class="notification-badge">{{ $notificationBadgeText }}</span>
+                    @if(!empty($showAnnouncementsBadge))
+                        <span class="notification-badge">{{ $unreadAnnouncementsCount > 9 ? '9+' : $unreadAnnouncementsCount }}</span>
                     @endif
                 </a>
             @endif

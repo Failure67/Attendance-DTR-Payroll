@@ -35,22 +35,27 @@
                     'buttonTarget' => 'cashAdvanceModal'
                 ])
 
-                @include('components.button', [
-                    'buttonType' => 'secondary',
-                    'buttonVar' => 'employee-balance',
-                    'buttonSrc' => 'cash-advances',
-                    'buttonLabel' => 'Employee Balance',
-                    'buttonModal' => false,
-                ])
-
-                @include('components.button', [
-                    'buttonType' => 'secondary',
-                    'buttonVar' => 'view',
-                    'buttonSrc' => 'cash-advances',
-                    'buttonIcon' => '<i class="fa-solid fa-list-check"></i>',
-                    'buttonLabel' => 'View requests',
-                    'buttonModal' => false,
-                ])
+                <div class="dropdown">
+                    @include('components.button', [
+                        'buttonType' => 'secondary',
+                        'buttonVar' => 'view',
+                        'buttonSrc' => 'cash-advances',
+                        'buttonIcon' => '<i class="fa-solid fa-list-check"></i>',
+                        'buttonLabel' => 'View',
+                        'btnAttribute' => 'data-bs-toggle="dropdown" aria-expanded="false"',
+                    ])
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <button type="button" class="dropdown-item" id="view-transactions-cash-advances">Transactions</button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="view-balance-cash-advances">Employee Balance</button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="view-requests-cash-advances">Requests</button>
+                        </li>
+                    </ul>
+                </div>
 
                 @include('components.button', [
                     'buttonType' => 'danger',

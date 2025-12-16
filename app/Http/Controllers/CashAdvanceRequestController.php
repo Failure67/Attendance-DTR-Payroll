@@ -60,7 +60,6 @@ class CashAdvanceRequestController extends Controller
         $statusOptions = [
             'Pending' => 'Pending',
             'HR approved' => 'HR approved',
-            'Manager approved' => 'Manager approved',
             'Released' => 'Released',
             'Rejected' => 'Rejected',
             'Cancelled' => 'Cancelled',
@@ -171,14 +170,20 @@ class CashAdvanceRequestController extends Controller
         $request = CashAdvanceRequest::findOrFail($id);
 
         if ($request->status !== 'Pending') {
-            return redirect()->back()->with('error', 'Only pending requests can be HR approved.');
+            return redirect()->back()->with('error', 'Only pending requests can be approved.');
         }
 
+        // Record the HR approval timestamp, then immediately release the
+        // request so that a single Approve action behaves like
+        // "Approve & release" (similar to payroll).
         $request->status = 'HR approved';
         $request->hr_approved_at = now();
         $request->save();
 
-        return redirect()->back()->with('success', 'Cash advance request marked as HR approved.');
+        // Delegate to the release logic, which will create the actual
+        // CashAdvance entry and set the status to Released while keeping
+        // the user on the same page via redirect()->back().
+        return $this->release($id);
     }
 
     public function managerApprove($id)
@@ -297,40 +302,43 @@ class CashAdvanceRequestController extends Controller
 
         $role = $user->role ?? '';
         $csrf = csrf_token();
-        $actions = [];
+        // Mirror the payroll table's two-slot actions layout so rows stay aligned.
+        $leftParts = [];
+        $rightParts = [];
 
+        // Left slot: main positive action (Approve / Release)
         if (in_array($role, ['Superadmin', 'Admin', 'HR'], true) && $request->status === 'Pending') {
-            $actions[] = '<form method="POST" action="' . route('cash-advance-requests.hr-approve', ['id' => $request->id]) . '" style="display:inline-block;margin-right:4px;">'
+            $leftParts[] = '<form method="POST" action="' . route('cash-advance-requests.hr-approve', ['id' => $request->id]) . '" style="display:inline-block;margin-right:4px;">'
                 . '<input type="hidden" name="_token" value="' . $csrf . '">' 
-                . '<button type="submit" class="btn btn-outline-primary btn-sm">HR approve</button>'
+                . '<button type="submit" class="btn btn-outline-primary btn-sm">Approve</button>'
                 . '</form>';
         }
 
-        if (in_array($role, ['Superadmin', 'Admin', 'Supervisor'], true) && in_array($request->status, ['Pending', 'HR approved'], true)) {
-            $actions[] = '<form method="POST" action="' . route('cash-advance-requests.manager-approve', ['id' => $request->id]) . '" style="display:inline-block;margin-right:4px;">'
-                . '<input type="hidden" name="_token" value="' . $csrf . '">' 
-                . '<button type="submit" class="btn btn-outline-secondary btn-sm">Manager approve</button>'
-                . '</form>';
-        }
-
-        if (in_array($role, ['Superadmin', 'Admin', 'HR'], true) && in_array($request->status, ['HR approved', 'Manager approved'], true)) {
-            $actions[] = '<form method="POST" action="' . route('cash-advance-requests.release', ['id' => $request->id]) . '" style="display:inline-block;margin-right:4px;" onsubmit="return confirm(\'Release this cash advance to the employee?\');">'
+        if (in_array($role, ['Superadmin', 'Admin', 'HR'], true) && $request->status === 'HR approved') {
+            $leftParts[] = '<form method="POST" action="' . route('cash-advance-requests.release', ['id' => $request->id]) . '" style="display:inline-block;margin-right:4px;" onsubmit="return confirm(\'Release this cash advance to the employee?\');">'
                 . '<input type="hidden" name="_token" value="' . $csrf . '">' 
                 . '<button type="submit" class="btn btn-success btn-sm">Release</button>'
                 . '</form>';
         }
 
+        // Right slot: negative action (Reject)
         if (in_array($role, ['Superadmin', 'Admin', 'HR', 'Supervisor'], true) && !in_array($request->status, ['Released', 'Rejected', 'Cancelled'], true)) {
-            $actions[] = '<form method="POST" action="' . route('cash-advance-requests.reject', ['id' => $request->id]) . '" style="display:inline-block;" onsubmit="return confirm(\'Reject this cash advance request?\');">'
+            $rightParts[] = '<form method="POST" action="' . route('cash-advance-requests.reject', ['id' => $request->id]) . '" style="display:inline-block;" onsubmit="return confirm(\'Reject this cash advance request?\');">'
                 . '<input type="hidden" name="_token" value="' . $csrf . '">' 
                 . '<button type="submit" class="btn btn-outline-danger btn-sm">Reject</button>'
                 . '</form>';
         }
 
-        if (empty($actions)) {
+        if (empty($leftParts) && empty($rightParts)) {
             return '<span class="text-muted">No actions</span>';
         }
 
-        return '<div class="d-flex flex-wrap gap-1">' . implode('', $actions) . '</div>';
+        $leftHtml = implode('', $leftParts) ?: '&nbsp;';
+        $rightHtml = implode('', $rightParts) ?: '&nbsp;';
+
+        return '<div class="cash-advance-actions d-flex align-items-center">'
+            . '<div class="cash-advance-actions-left flex-grow-1 d-flex justify-content-center">' . $leftHtml . '</div>'
+            . '<div class="cash-advance-actions-right flex-grow-1 d-flex justify-content-center">' . $rightHtml . '</div>'
+            . '</div>';
     }
 }

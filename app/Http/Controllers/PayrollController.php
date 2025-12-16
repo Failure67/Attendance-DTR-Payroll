@@ -565,7 +565,7 @@ class PayrollController extends Controller
     public function updatePayrollStatus(Request $request, $id)
     {
         $validated = $request->validate([
-            'status' => 'required|in:Pending,Completed,Cancelled',
+            'status' => 'required|in:Pending,Released,Cancelled',
         ]);
 
         $payroll = Payroll::findOrFail($id);
@@ -648,7 +648,7 @@ class PayrollController extends Controller
         $payroll->admin_approved_by = $user->id;
         $payroll->save();
 
-        $this->payrollService->updatePayrollStatus($payroll, 'Completed');
+        $this->payrollService->updatePayrollStatus($payroll, 'Released');
 
         return redirect()->back()->with('success', 'Payroll approved and released.');
     }

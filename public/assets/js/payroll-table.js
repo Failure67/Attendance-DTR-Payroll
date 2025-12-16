@@ -182,9 +182,12 @@ $(document).ready(function() {
                 $payrollForm.find('input[name="gross_pay"]').val(gross.toFixed(2)).trigger('input');
             }
 
-            // Status (map Released -> Completed for UI)
+            // Status (use DB values directly: Pending / Released / Cancelled)
+            // Some older records may still have "Completed" stored; treat that as Released
             let statusUi = data.status || 'Pending';
-            if (statusUi === 'Released') statusUi = 'Completed';
+            if (statusUi === 'Completed') {
+                statusUi = 'Released';
+            }
             $payrollForm.find('select[name="status"]').val(statusUi).trigger('change');
 
             // Deductions
@@ -470,7 +473,7 @@ $(document).ready(function() {
             const employeeName = $row.find('.payroll-employee').text().trim() || 'this employee';
 
             const confirmText = isComplete
-                ? `Mark payroll for ${employeeName} as completed?`
+                ? `Mark payroll for ${employeeName} as released?`
                 : `Cancel payroll for ${employeeName}?`;
 
             if (!confirm(confirmText)) {
@@ -505,7 +508,7 @@ $(document).ready(function() {
             const statusInput = document.createElement('input');
             statusInput.type = 'hidden';
             statusInput.name = 'status';
-            statusInput.value = isComplete ? 'Completed' : 'Cancelled';
+            statusInput.value = isComplete ? 'Released' : 'Cancelled';
             form.appendChild(statusInput);
 
             document.body.appendChild(form);
