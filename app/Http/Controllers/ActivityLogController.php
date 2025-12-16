@@ -17,7 +17,7 @@ class ActivityLogController extends Controller
             $logsQuery->where('role', $role);
         }
 
-        $logs = $logsQuery->paginate(50)->withQueryString();
+        $logs = $logsQuery->paginate(25)->withQueryString();
 
         return view('pages.activity-logs', [
             'title' => 'Activity logs',

@@ -229,6 +229,10 @@
                     Attendance
                 </a>
 
+                <a href="{{ route('worker.cash-advance-requests') }}" class="selector-item">
+                    Cash Advance Requests
+                </a>
+
             </div>
 
         </div>

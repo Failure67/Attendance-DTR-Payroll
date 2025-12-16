@@ -31,6 +31,7 @@ class BackupController extends Controller
             ],
             'storage' => $this->buildStorageSummary($backups),
             'cloud' => $this->buildCloudSummary(),
+            'local_backup_count' => count($backups),
         ];
 
         $backupHistoryTable = $this->buildHistoryTable($backups);

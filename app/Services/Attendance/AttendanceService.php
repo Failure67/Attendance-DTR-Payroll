@@ -811,6 +811,10 @@ class AttendanceService
         $totalHours = 0.0;
         $overtimeHours = 0.0;
 
+        // Build the configured shift start and grace window once so we can reuse
+        $shiftStart = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $shiftStartStr);
+        $graceEnd = $shiftStart->copy()->addMinutes($lateGraceMinutes);
+
         if ($statusInput === 'On leave') {
             return [
                 'time_in' => null,
@@ -827,7 +831,15 @@ class AttendanceService
             if ($timeOutStr) {
                 $timeOut = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $timeOutStr);
 
-                $minutes = max(0, $timeIn->diffInMinutes($timeOut, false));
+                // Option A: ignore the grace window (e.g., 07:30–08:00) for pay and overtime.
+                // If the employee times in within [shiftStart, graceEnd], treat hours as starting
+                // from graceEnd; earlier than shiftStart still counts as paid time.
+                $effectiveTimeIn = $timeIn;
+                if ($timeIn->greaterThanOrEqualTo($shiftStart) && $timeIn->lessThanOrEqualTo($graceEnd)) {
+                    $effectiveTimeIn = $graceEnd;
+                }
+
+                $minutes = max(0, $effectiveTimeIn->diffInMinutes($timeOut, false));
 
                 $lunchMinutes = 60;
                 // Subtract lunch break for any shift that meets or exceeds standard daily hours
@@ -846,8 +858,7 @@ class AttendanceService
             if (!$timeIn && !$timeOut) {
                 $status = 'Absent';
             } else {
-                $shiftStart = Carbon::createFromFormat('Y-m-d H:i', $date->format('Y-m-d') . ' ' . $shiftStartStr);
-                $lateThreshold = $shiftStart->copy()->addMinutes($lateGraceMinutes);
+                $lateThreshold = $graceEnd;
 
                 if ($timeIn && $timeIn->greaterThan($lateThreshold)) {
                     $status = 'Late';
