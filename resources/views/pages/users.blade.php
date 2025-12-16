@@ -432,13 +432,11 @@
                     'rawColumns' => ['user', 'role', 'actions'],
                 ])
 
-                <div class="container {{ $pageClass }} pagination">
-
+                <div class="mt-2">
                     @include('components.pagination', [
                         'paginationClass' => 'users-active',
                         'paginator' => $users ?? null,
                     ])
-
                 </div>
             </div>
 

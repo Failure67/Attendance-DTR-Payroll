@@ -30,20 +30,21 @@
         @php
             $summary = $summary ?? [];
             $lastBackup = $summary['last_backup'] ?? ['label' => 'No backups yet', 'status' => 'No completed backups have been recorded.'];
-            $nextBackup = $summary['next_backup'] ?? ['label' => 'Not scheduled', 'status' => 'Configure your backup schedule on the server.'];
             $storage = $summary['storage'] ?? ['used' => null, 'limit' => null, 'percentage' => null];
             $cloud = $summary['cloud'] ?? [
                 'status' => 'Unknown',
                 'encryption' => 'Unknown',
                 'retention' => 'Unknown',
             ];
+            $localBackupCount = (int) ($summary['local_backup_count'] ?? 0);
 
-            $storageLabel = $storage['used'] !== null && $storage['limit'] !== null
-                ? ($storage['used'] . ' / ' . $storage['limit'])
-                : 'Not available';
-            $storageSubLabel = $storage['percentage'] !== null
-                ? ($storage['percentage'] . '% of configured limit')
-                : 'Storage usage information is not configured';
+            $localBackupLabel = $localBackupCount > 0
+                ? $localBackupCount . ' file' . ($localBackupCount === 1 ? '' : 's')
+                : 'No backups yet';
+
+            $localBackupSubLabel = $storage['used']
+                ? ('Total size: ' . $storage['used'])
+                : 'No backup files stored yet';
         @endphp
 
         <div class="container {{ $pageClass }} summary mb-3">
@@ -57,19 +58,19 @@
             ])
 
             @include('components.dashboard-count', [
-                'countClass' => 'backup-next',
-                'countLabel' => 'Next scheduled',
-                'countSublabel' => $nextBackup['status'] ?? '',
-                'countIcon' => '<i class="fa-solid fa-clock-rotate-left"></i>',
-                'countValue' => $nextBackup['label'] ?? '—',
+                'countClass' => 'backup-local',
+                'countLabel' => 'Local backups',
+                'countSublabel' => $localBackupSubLabel,
+                'countIcon' => '<i class="fa-solid fa-hard-drive"></i>',
+                'countValue' => $localBackupLabel,
             ])
 
             @include('components.dashboard-count', [
-                'countClass' => 'backup-storage',
-                'countLabel' => 'Storage used',
-                'countSublabel' => $storageSubLabel,
-                'countIcon' => '<i class="fa-solid fa-hard-drive"></i>',
-                'countValue' => $storageLabel,
+                'countClass' => 'backup-cloud',
+                'countLabel' => 'Cloud backup',
+                'countSublabel' => $cloud['encryption'] ?? '',
+                'countIcon' => '<i class="fa-solid fa-cloud"></i>',
+                'countValue' => $cloud['status'] ?? 'Unknown',
             ])
 
         </div>
