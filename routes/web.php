@@ -61,6 +61,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
         Route::get('/', [DashboardController::class, 'index'])->name('index');
         Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
+        Route::get('/analytics/export-pdf', [AnalyticsController::class, 'exportPdf'])->name('analytics.export-pdf');
 
         Route::get('/attendance', [AttendanceController::class, 'viewAttendance'])->name('attendance');
         Route::post('/attendance', [AttendanceController::class, 'storeAttendance'])->name('attendance.store');

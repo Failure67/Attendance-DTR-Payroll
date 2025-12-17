@@ -17,22 +17,22 @@
         </div>
 
         <div class="container {{ $pageClass }} mb-3">
-            <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-2 align-items-end">
                 <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_date" class="form-label mb-1">Date</label>
                     <input type="date" name="date" id="bulk_attendance_date" class="form-control" value="{{ $filters['date'] ?? $bulkDate }}">
                 </div>
                 <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_employee" class="form-label mb-1">Employee</label>
-                    <select name="employee_id" id="bulk_attendance_employee" class="form-select">
+                    <select name="employee_id" id="bulk_attendance_employee" class="form-control">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-lg-3 d-flex align-items-end justify-content-lg-end">
-                    <button type="submit" class="btn btn-primary w-100 w-lg-auto">Load</button>
+                <div class="col-12 col-md-4 col-lg-auto ms-lg-auto d-flex align-items-end justify-content-end">
+                    <button type="submit" class="button main filter">Load</button>
                 </div>
             </form>
         </div>
@@ -56,7 +56,7 @@
                     </div>
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_status" class="form-label mb-1">Default status</label>
-                        <select id="bulk_default_status" class="form-select">
+                        <select id="bulk_default_status" class="form-control">
                             <option value="">Auto (Present/Late/Absent)</option>
                             <option value="Present">Present</option>
                             <option value="Late">Late</option>
@@ -64,8 +64,8 @@
                             <option value="On leave">On leave</option>
                         </select>
                     </div>
-                    <div class="col-12 col-lg-3 d-flex align-items-end justify-content-lg-end">
-                        <button type="button" id="bulk-apply-to-all" class="btn btn-secondary w-100 w-lg-auto">Apply to all rows</button>
+                    <div class="col-12 col-md-4 col-lg-auto ms-lg-auto d-flex align-items-end justify-content-end">
+                        <button type="button" id="bulk-apply-to-all" class="button secondary filter">Apply to all rows</button>
                     </div>
                 </div>
 

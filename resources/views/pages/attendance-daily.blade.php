@@ -17,33 +17,31 @@
         </div>
 
         <div class="container {{ $pageClass }} mb-3">
-            <form method="GET" action="{{ route('attendance.daily') }}" class="row g-3 align-items-end">
+            <form method="GET" action="{{ route('attendance.daily') }}" class="row g-2 align-items-end">
                 <div class="col-12 col-md-4">
                     <label for="daily_attendance_date" class="form-label mb-1">Date</label>
                     <input type="date" name="date" id="daily_attendance_date" class="form-control" value="{{ $filters['date'] ?? $dailyDate }}">
                 </div>
                 <div class="col-12 col-md-4">
                     <label for="daily_attendance_employee" class="form-label mb-1">Employee</label>
-                    <select name="employee_id" id="daily_attendance_employee" class="form-select">
+                    <select name="employee_id" id="daily_attendance_employee" class="form-control">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end">
-                    <button type="submit" class="btn btn-primary w-100 w-md-auto">Load</button>
+                <div class="col-12 col-md-4 d-flex align-items-end justify-content-end gap-2">
+                    <button type="submit" class="button main filter">Load</button>
+                    <button type="button" class="button secondary filter" onclick="window.print()">Print</button>
                 </div>
             </form>
         </div>
 
         <div class="container {{ $pageClass }} table-component mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex justify-content-start align-items-center mb-2">
                 <div>
                     <strong>Date:</strong> {{ $dailyDate }}
-                </div>
-                <div>
-                    <button type="button" class="btn btn-secondary" onclick="window.print()">Print</button>
                 </div>
             </div>
 

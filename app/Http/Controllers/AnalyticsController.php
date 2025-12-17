@@ -7,6 +7,7 @@ use App\Models\CashAdvance;
 use App\Models\CrewAssignment;
 use App\Models\Payroll;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -52,6 +53,54 @@ class AnalyticsController extends Controller
             'attendanceAnalytics' => $attendanceAnalytics,
             'payrollAnalytics' => $payrollAnalytics,
         ]);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $currentUser = auth()->user();
+        $roleKey = strtolower($currentUser->role ?? '');
+
+        $filters = [
+            'employee_id' => $request->input('employee_id'),
+            'period_start' => $request->input('period_start'),
+            'period_end' => $request->input('period_end'),
+        ];
+
+        [$periodStart, $periodEnd] = $this->normalizePeriod($filters['period_start'], $filters['period_end']);
+
+        $filters['period_start'] = $periodStart->toDateString();
+        $filters['period_end'] = $periodEnd->toDateString();
+
+        $employeeOptions = $this->buildEmployeeOptions($currentUser, $roleKey);
+
+        $mode = $this->resolveMode($roleKey);
+
+        $attendanceAnalytics = null;
+        $payrollAnalytics = null;
+
+        if ($mode === 'attendance' || $mode === 'combined') {
+            $attendanceAnalytics = $this->buildAttendanceAnalytics($currentUser, $roleKey, $filters);
+        }
+
+        if ($mode === 'payroll' || $mode === 'combined') {
+            $payrollAnalytics = $this->buildPayrollAnalytics($filters);
+        }
+
+        $generatedAt = now();
+
+        $pdf = Pdf::loadView('pdf.analytics', [
+            'title' => 'Analytics Report',
+            'mode' => $mode,
+            'filters' => $filters,
+            'employeeOptions' => $employeeOptions,
+            'attendanceAnalytics' => $attendanceAnalytics,
+            'payrollAnalytics' => $payrollAnalytics,
+            'generatedAt' => $generatedAt,
+        ])->setPaper('a4', 'landscape');
+
+        $filename = 'analytics_report_' . $generatedAt->format('Ymd_His') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     private function normalizePeriod(?string $start, ?string $end): array

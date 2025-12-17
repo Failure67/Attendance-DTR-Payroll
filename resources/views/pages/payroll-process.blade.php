@@ -18,22 +18,29 @@
 
         <div class="container payroll-process filter mb-3">
             <form method="GET" action="{{ route('payroll.process') }}" class="row g-2 align-items-end">
-                <div class="col-sm-4">
+                <div class="col-12 col-md-3">
                     <label for="period_start" class="form-label">Period start</label>
                     <input type="date" name="period_start" id="period_start" class="form-control" value="{{ $period_start ?? '' }}">
                 </div>
-                <div class="col-sm-4">
+
+                <div class="col-12 col-md-3">
                     <label for="period_end" class="form-label">Period end</label>
                     <input type="date" name="period_end" id="period_end" class="form-control" value="{{ $period_end ?? '' }}">
                 </div>
-                <div class="col-sm-4 d-flex flex-wrap gap-2">
-                    <div class="d-flex gap-2 mt-auto">
-                        <button type="submit" class="btn btn-primary">Preview from attendance</button>
-                        <a href="{{ route('payroll') }}" class="btn btn-outline-secondary">Back to payroll</a>
-                    </div>
-                    <div class="d-flex gap-2 mt-2">
-                        <button type="button" id="preset-this-week" class="btn btn-sm btn-outline-primary">This week</button>
-                        <button type="button" id="preset-last-week" class="btn btn-sm btn-outline-primary">Last week</button>
+
+                <div class="col-12 col-md-6 d-flex align-items-end mt-2 mt-md-0">
+                    <div class="d-flex w-100 align-items-center">
+
+                        <div class="d-flex gap-2">
+                            <button type="button" id="preset-this-week" class="btn btn-week-range btn-sm">This week</button>
+                            <button type="button" id="preset-last-week" class="btn btn-week-range btn-sm">Last week</button>
+                        </div>
+
+                        <div class="d-flex gap-2 ms-2">
+                            <button type="submit" class="btn btn-primary">Preview from attendance</button>
+                            <a href="{{ route('payroll') }}" class="btn btn-secondary">Back to payroll</a>
+                        </div>
+
                     </div>
                 </div>
             </form>

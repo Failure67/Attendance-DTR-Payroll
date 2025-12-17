@@ -6,6 +6,18 @@
 
     <div class="wrapper {{ $pageClass }}">
 
+        @php
+            $currentFilters = $filters ?? [];
+            $exportQuery = array_filter([
+                'employee_id' => $currentFilters['employee_id'] ?? null,
+                'period_start' => $currentFilters['period_start'] ?? null,
+                'period_end' => $currentFilters['period_end'] ?? null,
+            ], function ($value) {
+                return !is_null($value) && $value !== '';
+            });
+            $exportPdfUrl = route('analytics.export-pdf') . (count($exportQuery) ? ('?' . http_build_query($exportQuery)) : '');
+        @endphp
+
         <div class="page-header">
             <div class="page-title">
                 <span class="page-icon"><i class="fa-solid fa-chart-line"></i></span>
@@ -13,6 +25,9 @@
                     <h1>{{ $title }}</h1>
                     <p>Comprehensive analytics for attendance and payroll</p>
                 </div>
+            </div>
+            <div class="page-actions ms-auto">
+                <button type="button" class="button secondary filter" id="analytics-export-pdf" onclick="window.location.href='{{ $exportPdfUrl }}';">Export PDF</button>
             </div>
         </div>
 

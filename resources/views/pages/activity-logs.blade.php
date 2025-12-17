@@ -64,7 +64,10 @@
                 ])
 
                 <div class="mt-2">
-                    {{ $logs->links() }}
+                    @include('components.pagination', [
+                        'paginationClass' => 'activity-logs',
+                        'paginator' => $logs ?? null,
+                    ])
                 </div>
             </div>
 
