@@ -8,10 +8,20 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-
         "laravel": "php artisan serve --host=127.0.0.1 --port=8000",
         "electron": "wait-on tcp:127.0.0.1:8000 --timeout 60000 --interval 500 && node ./node_modules/electron/cli.js electron/main.js",
-        "start": "concurrently -k -n \"laravel,electron\" -c \"green,cyan\" \"npm run laravel\" \"npm run electron\""
+        "start": "concurrently -k -n \"laravel,electron\" -c \"green,cyan\" \"npm run laravel\" \"npm run electron\"",
+        
+        "prebuild:electron": "npm run prepare:production",
+        "prepare:production": "composer install --no-dev --optimize-autoloader && php artisan config:cache && php artisan route:cache && php artisan view:cache",
+        "postbuild:electron": "npm run prepare:dev",
+        "prepare:dev": "composer install && php artisan config:clear && php artisan route:clear && php artisan view:clear",
+        
+        "electron:build": "npm run prebuild:electron && electron-builder && npm run postbuild:electron",
+        "electron:build:win": "npm run prebuild:electron && electron-builder --win && npm run postbuild:electron",
+        "electron:build:mac": "npm run prebuild:electron && electron-builder --mac && npm run postbuild:electron",
+        "electron:build:linux": "npm run prebuild:electron && electron-builder --linux && npm run postbuild:electron",
+        "dist": "npm run build && npm run electron:build"
     },
     "devDependencies": {
         "axios": "^1.6.4",
@@ -21,5 +31,56 @@
         "electron-builder": "^24.9.1",
         "concurrently": "^8.2.2",
         "wait-on": "^7.2.0"
+    },
+    "build": {
+        "appId": "com.rmcs.payroll",
+        "productName": "RMCS Payroll",
+        "directories": {
+            "output": "dist-electron"
+        },
+        "files": [
+            "electron/**/*",
+            "public/**/*",
+            "!public/storage",
+            "app/**/*",
+            "bootstrap/**/*",
+            "config/**/*",
+            "database/**/*",
+            "resources/**/*",
+            "routes/**/*",
+            "storage/**/*",
+            "!storage/logs/**/*",
+            "vendor/**/*",
+            "artisan",
+            ".env.example",
+            "composer.json",
+            "composer.lock"
+        ],
+        "extraResources": [
+            {
+                "from": "php-runtime",
+                "to": "php",
+                "filter": ["**/*"]
+            }
+        ],
+        "win": {
+            "target": ["nsis"],
+            "icon": "public/assets/img/favicon/favicon.ico"
+        },
+        "mac": {
+            "target": ["dmg"],
+            "icon": "public/icon.icns"
+        },
+        "linux": {
+            "target": ["AppImage", "deb"],
+            "icon": "public/icon.png",
+            "category": "Office"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
+        }
     }
 }
