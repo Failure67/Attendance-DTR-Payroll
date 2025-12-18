@@ -107,7 +107,7 @@ class CashAdvanceRequestController extends Controller
 
             if (in_array($entry->status, ['Pending', 'HR approved'], true)) {
                 $csrf = csrf_token();
-                $actions = '<form method="POST" action="' . route('worker.cash-advance-requests.cancel', ['id' => $entry->id]) . '" style="display:inline-block;" onsubmit="return confirm(\'Cancel this cash advance request?\');">'
+                $actions = '<form method="POST" action="' . route('worker.cash-advance-requests.cancel', ['id' => $entry->id]) . '" style="display:inline-block;" data-confirm="Cancel this cash advance request?">'
                     . '<input type="hidden" name="_token" value="' . $csrf . '">'
                     . '<button type="submit" class="btn btn-outline-danger btn-sm">Cancel</button>'
                     . '</form>';
@@ -315,7 +315,7 @@ class CashAdvanceRequestController extends Controller
         }
 
         if (in_array($role, ['Superadmin', 'Admin', 'HR'], true) && $request->status === 'HR approved') {
-            $leftParts[] = '<form method="POST" action="' . route('cash-advance-requests.release', ['id' => $request->id]) . '" style="display:inline-block;margin-right:4px;" onsubmit="return confirm(\'Release this cash advance to the employee?\');">'
+            $leftParts[] = '<form method="POST" action="' . route('cash-advance-requests.release', ['id' => $request->id]) . '" style="display:inline-block;margin-right:4px;" data-confirm="Release this cash advance to the employee?">'
                 . '<input type="hidden" name="_token" value="' . $csrf . '">' 
                 . '<button type="submit" class="btn btn-success btn-sm">Release</button>'
                 . '</form>';
@@ -323,7 +323,7 @@ class CashAdvanceRequestController extends Controller
 
         // Right slot: negative action (Reject)
         if (in_array($role, ['Superadmin', 'Admin', 'HR', 'Supervisor'], true) && !in_array($request->status, ['Released', 'Rejected', 'Cancelled'], true)) {
-            $rightParts[] = '<form method="POST" action="' . route('cash-advance-requests.reject', ['id' => $request->id]) . '" style="display:inline-block;" onsubmit="return confirm(\'Reject this cash advance request?\');">'
+            $rightParts[] = '<form method="POST" action="' . route('cash-advance-requests.reject', ['id' => $request->id]) . '" style="display:inline-block;" data-confirm="Reject this cash advance request?">'
                 . '<input type="hidden" name="_token" value="' . $csrf . '">' 
                 . '<button type="submit" class="btn btn-outline-danger btn-sm">Reject</button>'
                 . '</form>';

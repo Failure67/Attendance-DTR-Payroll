@@ -73,4 +73,35 @@ $(document).ready(function () {
             $btn.text('Include');
         }
     });
+
+    // Confirm before submitting bulk save using styled modal
+	const $bulkForm = $wrapper.find('form').filter(function () {
+		const method = ($(this).attr('method') || '').toUpperCase();
+		return method === 'POST';
+	}).first();
+
+	if ($bulkForm.length) {
+		$bulkForm.on('submit', function (e) {
+			const form = this;
+			const dateVal = ($(form).find('input[name="date"]').val() || '').trim();
+			const message = dateVal
+				? 'Save bulk attendance for ' + dateVal + ' ?'
+				: 'Save bulk attendance for all listed employees?';
+
+			e.preventDefault();
+
+			if (typeof window.appConfirm === 'function') {
+				window.appConfirm(message).then(function (ok) {
+					if (!ok) {
+						return;
+					}
+					form.submit();
+				});
+			} else {
+				if (window.confirm(message)) {
+					form.submit();
+				}
+			}
+		});
+	}
 });

@@ -16,6 +16,24 @@
             </div>
         </div>
 
+        @if (session('success') || session('error'))
+            <div class="container {{ $pageClass }} mb-3">
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if (session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} tab">
 
             @include('components.search', [
@@ -187,14 +205,14 @@
                     if ($isArchivedView) {
                         $csrf = csrf_token();
 
-                        $restoreForm = "<form method=\"POST\" action=\"" . route('payroll.restore', ['id' => $payroll->id]) . "\" style=\"display:inline-block;margin-right:4px;\" onsubmit=\"return confirm('Recover this payroll record?');\">"
+                        $restoreForm = "<form method=\"POST\" action=\"" . route('payroll.restore', ['id' => $payroll->id]) . "\" style=\"display:inline-block;margin-right:4px;\" data-confirm=\"Recover this payroll record?\">"
                             . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                             '<button type="submit" class="btn btn-outline-success btn-sm" title="Recover">'
                             . '<i class="fa-solid fa-rotate-left"></i>' .
                             '</button>' .
                             '</form>';
 
-                        $deleteForm = "<form method=\"POST\" action=\"" . route('payroll.delete', ['id' => $payroll->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Permanently delete this payroll record? This cannot be undone.');\">"
+                        $deleteForm = "<form method=\"POST\" action=\"" . route('payroll.delete', ['id' => $payroll->id]) . "\" style=\"display:inline-block;\" data-confirm=\"Permanently delete this payroll record? This cannot be undone.\">"
                             . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                             '<input type="hidden" name="_method" value="DELETE">'
                             . '<input type="hidden" name="archived" value="1">'
@@ -239,7 +257,7 @@
                             // Cancel payroll lives on the right side
                             if ($canCancelPayroll) {
                                 $rightParts[] =
-                                    '<form method="POST" action="' . route('payroll.update-status', ['id' => $payroll->id]) . '" style="display:inline-block;" onsubmit="return confirm(\'Cancel payroll for ' . e($employeeName) . '?\');">'
+                                    '<form method="POST" action="' . route('payroll.update-status', ['id' => $payroll->id]) . '" style="display:inline-block;" data-confirm="Cancel payroll for ' . e($employeeName) . ' ?">'
                                     . '<input type="hidden" name="_token" value="' . $csrf . '">'
                                     . '<input type="hidden" name="_method" value="PATCH">'
                                     . '<input type="hidden" name="status" value="Cancelled">'

@@ -275,14 +275,14 @@ class PayrollController extends Controller
             if ($showArchivedLocal) {
                 $csrf = csrf_token();
 
-                $restoreForm = "<form method=\"POST\" action=\"" . route('cash-advances.restore', ['id' => $entry->id]) . "\" style=\"display:inline-block;margin-right:4px;\" onsubmit=\"return confirm('Recover this cash advance entry?');\">"
+                $restoreForm = "<form method=\"POST\" action=\"" . route('cash-advances.restore', ['id' => $entry->id]) . "\" style=\"display:inline-block;margin-right:4px;\" data-confirm=\"Recover this cash advance entry?\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<button type="submit" class="btn btn-outline-success btn-sm" title="Recover">'
                     . '<i class="fa-solid fa-rotate-left"></i>' .
                     '</button>' .
                     '</form>';
 
-                $deleteForm = "<form method=\"POST\" action=\"" . route('cash-advances.delete', ['id' => $entry->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Permanently delete this cash advance entry? This cannot be undone.');\">"
+                $deleteForm = "<form method=\"POST\" action=\"" . route('cash-advances.delete', ['id' => $entry->id]) . "\" style=\"display:inline-block;\" data-confirm=\"Permanently delete this cash advance entry? This cannot be undone.\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<input type="hidden" name="_method" value="DELETE">'
                     . '<input type="hidden" name="archived" value="1">'

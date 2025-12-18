@@ -16,6 +16,24 @@
             </div>
         </div>
 
+        @if (session('success') || $errors->has('error'))
+            <div class="container {{ $pageClass }} mb-3">
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if ($errors->has('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ $errors->first('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} summary mb-3">
 
             @php

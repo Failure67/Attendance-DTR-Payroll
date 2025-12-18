@@ -64,7 +64,7 @@ class CrewAssignmentController extends Controller
                 $workerCell = e($name);
 
                 $csrf = csrf_token();
-                $deleteForm = "<form method=\"POST\" action=\"" . route('crew.assignments.delete', ['id' => $assignment->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Remove this worker from the crew?');\">"
+                $deleteForm = "<form method=\"POST\" action=\"" . route('crew.assignments.delete', ['id' => $assignment->id]) . "\" style=\"display:inline-block;\" data-confirm=\"Remove this worker from the crew?\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<input type="hidden" name="_method" value="DELETE">'
                     . '<button type="submit" class="btn btn-outline-danger btn-sm" title="Remove from crew">'

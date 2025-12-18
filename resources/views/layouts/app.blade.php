@@ -34,5 +34,27 @@
 
     @yield('modal')
 
+    {{-- Global confirm modal used by JS helper (appConfirm) for styled confirmations --}}
+    <div class="modal fade" id="globalConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog confirm">
+            <div class="modal-content confirm">
+                <div class="modal-body confirm">
+                    <div class="modal-container confirm">
+                        <div class="confirm-icon">
+                            <i class="fa-regular fa-circle-question"></i>
+                        </div>
+                        <div class="confirm-label" data-confirm-message>
+                            Are you sure you want to proceed?
+                        </div>
+                    </div>
+                    <div class="modal-container confirm-buttons">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" data-confirm-ok>Confirm</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

@@ -200,14 +200,14 @@ class AttendanceService
             if ($showArchived) {
                 $csrf = csrf_token();
 
-                $restoreForm = "<form method=\"POST\" action=\"" . route('attendance.restore', ['attendance' => $attendance->id]) . "\" style=\"display:inline-block;margin-right:4px;\" onsubmit=\"return confirm('Recover this attendance record?');\">"
+                $restoreForm = "<form method=\"POST\" action=\"" . route('attendance.restore', ['attendance' => $attendance->id]) . "\" style=\"display:inline-block;margin-right:4px;\" data-confirm=\"Recover this attendance record?\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<button type="submit" class="btn btn-outline-success btn-sm" title="Recover">'
                     . '<i class="fa-solid fa-rotate-left"></i>' .
                     '</button>' .
                     '</form>';
 
-                $deleteForm = "<form method=\"POST\" action=\"" . route('attendance.delete', ['id' => $attendance->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Permanently delete this attendance record? This cannot be undone.');\">"
+                $deleteForm = "<form method=\"POST\" action=\"" . route('attendance.delete', ['id' => $attendance->id]) . "\" style=\"display:inline-block;\" data-confirm=\"Permanently delete this attendance record? This cannot be undone.\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<input type="hidden" name="_method" value="DELETE">'
                     . '<input type="hidden" name="archived" value="1">'

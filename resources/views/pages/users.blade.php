@@ -186,8 +186,10 @@
                         break;
                     }
 
-                    case 'archive':
-                        if (confirm('Are you sure you want to archive this user?')) {
+                    case 'archive': {
+                        const message = 'Are you sure you want to archive this user?';
+
+                        const proceedArchive = function () {
                             fetch(`/users/${id}/archive`, {
                                 method: 'POST',
                                 headers: {
@@ -208,11 +210,26 @@
                                     console.error('Error:', error);
                                     alert('An error occurred while archiving the user');
                                 });
-                        }
-                        break;
+                        };
 
-                    case 'restore':
-                        if (confirm('Restore this user?')) {
+                        if (typeof window.appConfirm === 'function') {
+                            window.appConfirm(message).then(function (ok) {
+                                if (!ok) {
+                                    return;
+                                }
+                                proceedArchive();
+                            });
+                        } else if (window.confirm(message)) {
+                            proceedArchive();
+                        }
+
+                        break;
+                    }
+
+                    case 'restore': {
+                        const message = 'Restore this user?';
+
+                        const proceedRestore = function () {
                             fetch(`/users/${id}/restore`, {
                                 method: 'POST',
                                 headers: {
@@ -233,8 +250,21 @@
                                     console.error('Error:', error);
                                     alert('An error occurred while restoring the user');
                                 });
+                        };
+
+                        if (typeof window.appConfirm === 'function') {
+                            window.appConfirm(message).then(function (ok) {
+                                if (!ok) {
+                                    return;
+                                }
+                                proceedRestore();
+                            });
+                        } else if (window.confirm(message)) {
+                            proceedRestore();
                         }
+
                         break;
+                    }
 
                     case 'delete':
                         const deleteForm = document.getElementById('deleteUserForm');
@@ -415,7 +445,7 @@
                             $registeredAt,
                             // Actions with data attributes for JS
                             '<div class="users-actions d-flex align-items-center gap-1">'
-                                . '<button type="button" class="btn btn-outline-warning btn-sm btn-icon action-btn edit"'
+                                . '<button type="button" class="btn btn-outline-warning btn-sm btn-icon action-btn edit" title="Edit user" aria-label="Edit user"'
                                     . ' data-id="' . $user->id . '"'
                                     . ' data-name="' . e($displayName) . '"'
                                     . ' data-email="' . e($user->email) . '"'
