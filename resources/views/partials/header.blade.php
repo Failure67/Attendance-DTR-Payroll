@@ -101,10 +101,11 @@
 
         @php
             $isDebug = true;
+            $debugUrl = route('new');
         @endphp
         
         @if ($isDebug === true)
-            <a href="debug" style="color: white; text-decoration: none;">
+            <a href="{{ $debugUrl }}" style="color: white; text-decoration: none;">
                 Debug
             </a>
         @endif

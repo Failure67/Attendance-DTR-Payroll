@@ -6,7 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CrewAssignmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AnalyticsController;
-use App\Http\Controllers\DebugController;
+use App\Http\Controllers\NewController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkerController;
@@ -28,6 +28,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// new
+Route::get('/new', [NewController::class, 'newUser'])->name('new');
+
 // auth routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('auth.login.show');
@@ -39,7 +42,6 @@ Route::middleware('guest')->group(function () {
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('auth.reset.show');
     Route::post('/reset-password', [AuthController::class, 'handleReset'])->name('auth.reset.handle');
 });
-
 
 // Superadmin + Admin + worker authenticated routes
 Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(function () {
