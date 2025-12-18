@@ -160,7 +160,7 @@
                                             <span class="crew-worker-name">{{ $name }}</span>
                                         </div>
                                         <div class="crew-table-cell actions">
-                                            <form method="POST" action="{{ route('crew.assignments.delete', ['id' => $assignment->id]) }}" onsubmit="return confirm('Remove this worker from the crew?');">
+                                            <form method="POST" action="{{ route('crew.assignments.delete', ['id' => $assignment->id]) }}" data-confirm="Remove this worker from the crew?">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="crew-remove-btn" title="Remove from crew">

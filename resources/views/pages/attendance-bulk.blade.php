@@ -38,6 +38,20 @@
         </div>
 
         <div class="container {{ $pageClass }} table-component mb-3">
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
+            @if ($errors->has('error'))
+                <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+                    {{ $errors->first('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('attendance.bulk.store') }}">
                 @csrf
 

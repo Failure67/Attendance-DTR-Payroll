@@ -476,43 +476,54 @@ $(document).ready(function() {
                 ? `Mark payroll for ${employeeName} as released?`
                 : `Cancel payroll for ${employeeName}?`;
 
-            if (!confirm(confirmText)) {
-                return;
+            const proceed = function () {
+                // Optimistic UI: hide actions in this row immediately
+                const $actionsContainer = $row.find('.payroll-actions');
+                if ($actionsContainer.length) {
+                    $actionsContainer.remove();
+                }
+
+                const csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/payroll/${payrollId}/status`;
+                form.style.display = 'none';
+
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+
+                const methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'PATCH';
+                form.appendChild(methodInput);
+
+                const statusInput = document.createElement('input');
+                statusInput.type = 'hidden';
+                statusInput.name = 'status';
+                statusInput.value = isComplete ? 'Released' : 'Cancelled';
+                form.appendChild(statusInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            };
+
+            if (typeof window.appConfirm === 'function') {
+                window.appConfirm(confirmText).then(function (ok) {
+                    if (!ok) {
+                        return;
+                    }
+                    proceed();
+                });
+            } else {
+                if (window.confirm(confirmText)) {
+                    proceed();
+                }
             }
-
-            // Optimistic UI: hide actions in this row immediately
-            const $actionsContainer = $row.find('.payroll-actions');
-            if ($actionsContainer.length) {
-                $actionsContainer.remove();
-            }
-
-            const csrfToken = $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val();
-
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/payroll/${payrollId}/status`;
-            form.style.display = 'none';
-
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = csrfToken;
-            form.appendChild(csrfInput);
-
-            const methodInput = document.createElement('input');
-            methodInput.type = 'hidden';
-            methodInput.name = '_method';
-            methodInput.value = 'PATCH';
-            form.appendChild(methodInput);
-
-            const statusInput = document.createElement('input');
-            statusInput.type = 'hidden';
-            statusInput.name = 'status';
-            statusInput.value = isComplete ? 'Released' : 'Cancelled';
-            form.appendChild(statusInput);
-
-            document.body.appendChild(form);
-            form.submit();
         });
     }
 

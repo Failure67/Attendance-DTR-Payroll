@@ -35,11 +35,11 @@
             
             <div class="item-action">
                 
-                <div class="item-edit">
+                <div class="item-edit" title="Edit item" role="button" tabindex="0">
                     <i class="fa-solid fa-pencil"></i>
                 </div>
 
-                <div class="item-remove">
+                <div class="item-remove" title="Remove item" role="button" tabindex="0">
                     <i class="fa-solid fa-xmark"></i>
                 </div>
 
@@ -72,11 +72,11 @@
 
         <div class="new-item-action">
         
-            <div class="new-item add">
+            <div class="new-item add" title="Save item" role="button" tabindex="0">
                 <i class="fa-solid fa-check"></i>
             </div>
 
-            <div class="new-item-cancel">
+            <div class="new-item-cancel" title="Cancel" role="button" tabindex="0">
                 <i class="fa-solid fa-xmark"></i>
             </div>
 

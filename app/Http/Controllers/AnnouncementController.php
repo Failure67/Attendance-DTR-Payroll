@@ -34,7 +34,7 @@ class AnnouncementController extends Controller
             $editUrl = route('announcements', ['edit' => $a->id]);
 
             $actions = '<a href="' . $editUrl . '" class="btn btn-outline-primary btn-sm me-1">Edit</a>';
-            $actions .= '<form method="POST" action="' . route('announcements.delete', ['id' => $a->id]) . '" style="display:inline-block;" onsubmit="return confirm(\'Delete this announcement?\');">'
+            $actions .= '<form method="POST" action="' . route('announcements.delete', ['id' => $a->id]) . '" style="display:inline-block;" data-confirm="Delete this announcement?">'
                 . '<input type="hidden" name="_token" value="' . $csrf . '">'
                 . '<input type="hidden" name="_method" value="DELETE">'
                 . '<button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>'

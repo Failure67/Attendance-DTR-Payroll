@@ -456,7 +456,20 @@ $('#delete-attendance').on('click', function() {
     const $generateDefaultsForm = $('#attendance-generate-defaults-form');
     if ($moreGenerateDefaults.length && $generateDefaultsForm.length) {
         $moreGenerateDefaults.on('click', function () {
-            $generateDefaultsForm.submit();
+            const message = 'Generate default attendance for the selected period? This may create or update multiple records.';
+
+            if (typeof window.appConfirm === 'function') {
+                window.appConfirm(message).then(function (ok) {
+                    if (!ok) {
+                        return;
+                    }
+                    $generateDefaultsForm.submit();
+                });
+            } else {
+                if (window.confirm(message)) {
+                    $generateDefaultsForm.submit();
+                }
+            }
         });
     }
 
