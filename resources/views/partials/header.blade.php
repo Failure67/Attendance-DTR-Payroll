@@ -99,6 +99,16 @@
             <img src="{{ asset('assets/img/logo/logo.webp') }}" alt="Logo" width="200">
         </a>
 
+        @php
+            $isDebug = true;
+        @endphp
+        
+        @if ($isDebug === true)
+            <a href="debug" style="color: white; text-decoration: none;">
+                Debug
+            </a>
+        @endif
+
         <div class="header-actions">
 
             @if(!empty($announcementUrl))
