@@ -22,20 +22,55 @@
         }
 
         $currentRole = strtolower($currentUser->role ?? '');
-        $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'accounting', 'project manager', 'supervisor'], true);
-        $canSeeAnalytics = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'], true);
-        $canSeeCrewAssignments = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
-        $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager'], true);
+        $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'accounting', 'project manager', 'manager', 'supervisor'], true);
+        $canSeeAnalytics = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'manager', 'supervisor'], true);
+        $canSeeCrewAssignments = in_array($currentRole, ['admin', 'superadmin', 'accounting', 'project manager', 'manager'], true);
+        $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'manager'], true);
+        $canSeeCashAdvance = $canSeePayrollAndCa || $currentRole === 'supervisor';
+        $canSeeLeaveRequests = in_array($currentRole, ['admin', 'superadmin', 'hr', 'manager', 'supervisor'], true);
         $canSeeActivityLogs = in_array($currentRole, ['admin', 'superadmin'], true);
+        $canSeeApprovalLogs = $canSeeActivityLogs;
         $canSeeUsers = in_array($currentRole, ['admin', 'superadmin'], true);
         $canSeeBackup = in_array($currentRole, ['superadmin'], true);
         // Only Admin/Superadmin can access the announcements management page via sidebar
         $canSeeAnnouncements = in_array($currentRole, ['admin', 'superadmin'], true);
 
         // Pending cash advance requests indicator for sidebar Cash Advance menu item
+        // Show a red dot only when the CURRENT role has actionable requests.
         $pendingCashAdvanceRequests = 0;
-        if ($canSeePayrollAndCa) {
-            $pendingCashAdvanceRequests = \App\Models\CashAdvanceRequest::whereIn('status', ['Pending', 'HR approved'])->count();
+        if ($canSeeCashAdvance) {
+            $roleKey = $currentRole; // already lowercase
+            $query = \App\Models\CashAdvanceRequest::query()
+                ->whereNotIn('status', ['Rejected', 'Cancelled', 'Released']);
+
+            if ($roleKey === 'supervisor') {
+                // Supervisors: only requests from their crew and still Pending
+                $crewWorkerIds = \App\Models\CrewAssignment::where('supervisor_id', $currentUser->id)
+                    ->pluck('worker_id');
+                if ($crewWorkerIds->isNotEmpty()) {
+                    $query->whereIn('user_id', $crewWorkerIds)
+                          ->where('status', 'Pending');
+                } else {
+                    // No crew: no actionable requests
+                    $query->whereRaw('1=0');
+                }
+            } elseif ($roleKey === 'manager') {
+                // Managers: Supervisor-approved requests awaiting manager approval
+                $query->where('status', 'Supervisor approved');
+            } elseif ($roleKey === 'hr') {
+                // HR: Manager-approved requests awaiting HR approval
+                // Note: We intentionally do NOT include 'HR approved' (release stage)
+                // so the dot disappears immediately after HR approves.
+                $query->where('status', 'Manager approved');
+            } elseif (in_array($roleKey, ['admin', 'superadmin'], true)) {
+                // Admin/Superadmin: show if there are any requests in the approval pipeline
+                $query->whereIn('status', ['Pending', 'Supervisor approved', 'Manager approved']);
+            } else {
+                // Other roles: no actionable request dot
+                $query->whereRaw('1=0');
+            }
+
+            $pendingCashAdvanceRequests = $query->count();
         }
     @endphp
 
@@ -71,8 +106,23 @@
         </a>
         @endif
 
-        
+        @if ($canSeeLeaveRequests)
+        <a href="{{ route('leave-requests') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'leave-requests' ? 'selected' : '' }}">
 
+                <span class="menu-icon">
+                    <i class="fa-solid fa-person-walking-arrow-right"></i>
+                </span>
+
+                <span class="menu-label">
+                    Leave requests
+                </span>
+
+            </span>
+        </a>
+        @endif
+
+        
         @if ($canSeeAnnouncements)
         <a href="{{ route('announcements') }}">
             <span class="menu-item {{ Route::currentRouteName() == 'announcements' ? 'selected' : '' }}">
@@ -89,7 +139,7 @@
         </a>
         @endif
 
-        @if ($canSeePayrollAndCa)
+        @if ($canSeeCashAdvance)
         <a href="{{ route('cash-advances') }}">
             <span class="menu-item {{ Route::currentRouteName() == 'cash-advances' ? 'selected' : '' }}">
 
@@ -119,6 +169,22 @@
 
                 <span class="menu-label">
                     Activity logs
+                </span>
+
+            </span>
+        </a>
+        @endif
+
+        @if ($canSeeApprovalLogs)
+        <a href="{{ route('approval-logs') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'approval-logs' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                </span>
+
+                <span class="menu-label">
+                    Approval logs
                 </span>
 
             </span>

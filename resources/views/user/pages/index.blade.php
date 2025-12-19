@@ -71,6 +71,10 @@
                     Cash Advance Requests
                 </a>
 
+                <a href="{{ route('worker.leave-requests') }}" class="selector-item">
+                    Leave Requests
+                </a>
+
             </div>
 
         </div>

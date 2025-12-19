@@ -13,3 +13,69 @@ table th, table td {
     padding: 0.75rem;
     vertical-align: middle;
 }
+
+/* Users page: rows are not row-clickable. Force default cursor on
+   users/archived users tables so only real controls (buttons/links)
+   show a pointer. This sits after all other CSS so it wins. */
+.table-container.users-table table tbody tr,
+.table-container.users-table table tbody tr td,
+.table-container.archived-users-table table tbody tr,
+.table-container.archived-users-table table tbody tr td {
+    cursor: default !important;
+}
+
+/* Normalize modal header close buttons to always show an X icon. */
+.modal-header .btn-close {
+    background: none !important;
+    position: relative;
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #000 !important;
+    opacity: 1 !important;
+}
+
+.modal-header .btn-close::before {
+    content: "\00d7";
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+/* Ensure announcement rows always look clickable, regardless of role. */
+.table-container.announcements-table tbody tr,
+.table-container.staff-announcements-table tbody tr {
+    cursor: pointer !important;
+}
+
+/* Back-office: leave requests and cash advance requests rows open a details
+   modal when clicked (except on action buttons). Make these rows visually
+   clickable with a pointer cursor and subtle hover highlight. */
+.table-container.leave-requests-table tbody tr,
+.table-container.cash-advance-requests-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.table-container.leave-requests-table tbody tr:hover,
+.table-container.cash-advance-requests-table tbody tr:hover {
+    background-color: #e2edf7;
+}
+
+.leave-linked-badge {
+    background-color: #e2edf7 !important;
+    color: #0b5ed7 !important;
+}
+
+.table-container.attendance-bulk-table input.leave-linked-input,
+.table-container.attendance-bulk-table select.leave-linked-input {
+    background-color: #f5f7fb;
+    border-color: #d0d7ec;
+}
+
+.table-container.attendance-bulk-table input.leave-linked-input:disabled,
+.table-container.attendance-bulk-table select.leave-linked-input:disabled {
+    color: #6c757d;
+    cursor: not-allowed;
+}

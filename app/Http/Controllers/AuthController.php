@@ -51,6 +51,7 @@ class AuthController extends Controller
         $backOfficeRoles = [
             'admin',
             'hr',
+            'manager',
             'accounting',
             'project manager',
             'supervisor',

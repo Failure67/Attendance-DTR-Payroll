@@ -31,7 +31,7 @@
             $currentRole = $currentUser->role ?? null;
             $roleKey = strtolower($currentRole ?? '');
 
-            $backOfficeRoles = ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor'];
+            $backOfficeRoles = ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'supervisor', 'manager'];
 
             if (in_array($roleKey, $backOfficeRoles, true)) {
                 $logoutRoute = 'auth.logout.admin';
@@ -49,7 +49,7 @@
 
             // URL for the header announcements button (varies by role)
             $announcementUrl = null;
-            if (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor'], true)) {
+            if (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor', 'manager'], true)) {
                 // Staff roles view a unified read-only announcements page
                 $announcementUrl = route('staff.announcements');
             } elseif (in_array($roleKey, ['accounting', 'project manager'], true)) {
@@ -68,7 +68,7 @@
             $lastSeenKey = null;
             if ($roleKey === 'worker') {
                 $lastSeenKey = 'worker_last_seen_announcement_at';
-            } elseif (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor'], true)) {
+            } elseif (in_array($roleKey, ['admin', 'superadmin', 'hr', 'supervisor', 'manager'], true)) {
                 $lastSeenKey = 'staff_last_seen_announcement_at';
             }
 
@@ -93,6 +93,47 @@
                     $showAnnouncementsBadge = true;
                 }
             }
+
+            // Cash advance requests notification indicator for HR/Admin/Superadmin/Supervisor/Manager
+            $caRequestsUrl = null;
+            $pendingCaRequestsCount = 0;
+            $showCaRequestsBadge = false;
+
+            // Only check for pending requests if the user is logged in and has a role
+            if ($currentUser) {
+                // Define which roles can see the cash advance requests
+                $caRequestRoles = ['admin', 'superadmin', 'hr', 'supervisor', 'manager'];
+                
+                if (in_array(strtolower($currentRole), $caRequestRoles, true)) {
+                    // All roles use the same cash-advances route but with different views
+                    $caRequestsUrl = route('cash-advances', ['ca_view' => 'requests']);
+
+                    // Count pending requests that the current user can act on
+                    $query = \App\Models\CashAdvanceRequest::query()
+                        ->whereNotIn('status', ['Rejected', 'Cancelled', 'Released']);
+
+                    // Filter by role-specific permissions
+                    if (strtolower($currentRole) === 'supervisor') {
+                        $workerIds = \App\Models\CrewAssignment::where('supervisor_id', $currentUser->id)
+                            ->pluck('worker_id');
+                        $query->whereIn('user_id', $workerIds)
+                              ->where('status', 'Pending');
+                    } elseif (strtolower($currentRole) === 'manager') {
+                        $query->where('status', 'Supervisor approved');
+                    } elseif (strtolower($currentRole) === 'hr') {
+                        $query->where('status', 'Manager approved');
+                    } else {
+                        // Admin/Superadmin can see all pending requests
+                        $query->whereIn('status', ['Pending', 'Supervisor approved', 'Manager approved']);
+                    }
+
+                    $pendingCaRequestsCount = $query->count();
+                    $showCaRequestsBadge = $pendingCaRequestsCount > 0;
+                }
+            }
+
+            // Remove duplicate/legacy counting logic. The per-role logic above
+            // already sets $caRequestsUrl and $pendingCaRequestsCount correctly.
         @endphp
 
         <a class="header-logo" href="{{ route($logoRouteName) }}">
@@ -106,6 +147,15 @@
                     <i class="fa-solid fa-bullhorn theme-icon"></i>
                     @if(!empty($showAnnouncementsBadge))
                         <span class="notification-badge">{{ $unreadAnnouncementsCount > 9 ? '9+' : $unreadAnnouncementsCount }}</span>
+                    @endif
+                </a>
+            @endif
+
+            @if(!empty($caRequestsUrl))
+                <a href="{{ $caRequestsUrl }}" class="theme-toggle-btn ca-requests-btn" aria-label="View cash advance requests" title="View cash advance requests">
+                    <i class="fa-solid fa-file-invoice-dollar theme-icon"></i>
+                    @if($pendingCaRequestsCount > 0)
+                        <span class="notification-badge">{{ $pendingCaRequestsCount > 9 ? '9+' : $pendingCaRequestsCount }}</span>
                     @endif
                 </a>
             @endif

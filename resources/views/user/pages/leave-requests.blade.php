@@ -2,7 +2,7 @@
 
 @section('content')
 
-    <div class="wrapper employee employee-cash-advance-requests">
+    <div class="wrapper employee employee-leave-requests">
 
         <div class="container employee header">
 
@@ -53,11 +53,11 @@
                     Attendance
                 </a>
 
-                <a href="{{ route('worker.cash-advance-requests') }}" class="selector-item selected">
+                <a href="{{ route('worker.cash-advance-requests') }}" class="selector-item">
                     Cash Advance Requests
                 </a>
 
-                <a href="{{ route('worker.leave-requests') }}" class="selector-item">
+                <a href="{{ route('worker.leave-requests') }}" class="selector-item selected">
                     Leave Requests
                 </a>
 
@@ -68,19 +68,51 @@
         <div class="container employee">
 
             <div class="content payroll-breakdown mb-3">
-                <div class="title">New cash advance request</div>
+                <div class="title">New leave request</div>
 
-                <form method="POST" action="{{ route('worker.cash-advance-requests.store') }}" class="row g-3 mt-2">
+                <form method="POST" action="{{ route('worker.leave-requests.store') }}" class="row g-3 mt-2">
                     @csrf
 
                     <div class="col-md-4">
-                        <label for="amount" class="form-label">Amount</label>
-                        <input type="number" step="0.01" min="0.01" name="amount" id="amount" class="form-control" value="{{ old('amount') }}" required>
+                        <label for="type" class="form-label">Leave type</label>
+                        <select name="type" id="type" class="form-select" required>
+                            <option value="">Select type</option>
+                            <option value="vacation" {{ old('type') === 'vacation' ? 'selected' : '' }}>Vacation</option>
+                            <option value="sick" {{ old('type') === 'sick' ? 'selected' : '' }}>Sick</option>
+                            <option value="emergency" {{ old('type') === 'emergency' ? 'selected' : '' }}>Emergency</option>
+                            <option value="pto" {{ old('type') === 'pto' ? 'selected' : '' }}>Paid time off (PTO)</option>
+                            <option value="lwop" {{ old('type') === 'lwop' ? 'selected' : '' }}>Leave without pay (LWOP)</option>
+                            <option value="awol" {{ old('type') === 'awol' ? 'selected' : '' }}>AWOL</option>
+                            <option value="unpaid" {{ old('type') === 'unpaid' ? 'selected' : '' }}>Unpaid leave</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="is_paid" class="form-label">Paid?</label>
+                        <select name="is_paid" id="is_paid" class="form-select" required>
+                            <option value="1" {{ old('is_paid', '1') === '1' ? 'selected' : '' }}>Paid</option>
+                            <option value="0" {{ old('is_paid') === '0' ? 'selected' : '' }}>Unpaid</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="duration_days" class="form-label">Duration (days)</label>
+                        <input type="number" step="0.125" min="0.125" name="duration_days" id="duration_days" class="form-control" value="{{ old('duration_days', '1.0') }}" required>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="date_start" class="form-label">Start date</label>
+                        <input type="date" name="date_start" id="date_start" class="form-control" value="{{ old('date_start') }}" required>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label for="date_end" class="form-label">End date</label>
+                        <input type="date" name="date_end" id="date_end" class="form-control" value="{{ old('date_end') }}" required>
                     </div>
 
                     <div class="col-12">
                         <label for="reason" class="form-label">Reason</label>
-                        <textarea name="reason" id="reason" class="form-control" rows="3" maxlength="1000" required>{{ old('reason') }}</textarea>
+                        <textarea name="reason" id="reason" class="form-control" rows="3" maxlength="255" required>{{ old('reason') }}</textarea>
                     </div>
 
                     <div class="col-12 d-flex justify-content-end">
@@ -110,23 +142,27 @@
             </div>
 
             <div class="content payroll-history">
-                <div class="title mb-2">Your cash advance requests</div>
+                <div class="title mb-2">Your leave requests</div>
 
                 @php
                     $tableData = $requestTableData ?? [];
                 @endphp
 
                 @include('user.components.table', [
-                    'tableClass' => 'worker-cash-advance-requests',
+                    'tableClass' => 'worker-leave-requests',
                     'tableCol' => [
-                        'created-at',
-                        'amount',
+                        'date-range',
+                        'type',
+                        'duration',
+                        'paidness',
                         'status',
                         'actions',
                     ],
                     'tableLabel' => [
-                        'Requested on',
-                        'Amount',
+                        'Period',
+                        'Type',
+                        'Days',
+                        'Paid / unpaid',
                         'Status',
                         'Actions',
                     ],

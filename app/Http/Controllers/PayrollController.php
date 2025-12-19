@@ -230,6 +230,15 @@ class PayrollController extends Controller
 
     public function viewCashAdvances()
     {
+        $currentUser = auth()->user();
+        $currentRole = $currentUser->role ?? '';
+        // Roles that can create/archive/delete ledger entries (cash_advanced rows)
+        $ledgerRoles = ['Superadmin', 'Admin', 'Accounting', 'Project Manager', 'Supervisor'];
+        $canManageLedger = in_array($currentRole, $ledgerRoles, true);
+
+        // Roles that should see only the Requests view on the Cash advances page
+        $requestsOnly = in_array($currentRole, ['HR', 'Manager'], true);
+
         $employees = User::whereNull('deleted_at')
             ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
             ->get();
@@ -333,11 +342,22 @@ class PayrollController extends Controller
             $amount = '₱ ' . number_format((float) $entry->amount, 2);
             $status = $entry->status ?? 'Pending';
             $createdAt = $entry->created_at ? $entry->created_at->format('Y-m-d') : '—';
+            $reason = $entry->reason ?? '';
 
             $actions = app(\App\Http\Controllers\CashAdvanceRequestController::class)->buildActionsHtml($entry);
 
+            // First column is rendered as raw HTML so we can attach metadata for
+            // the "view details" modal on the cash advance requests tab.
+            $employeeCell = '<span class="ca-request-row-trigger"'
+                . ' data-ca-id="' . e($entry->id) . '"'
+                . ' data-ca-employee="' . e($employeeName) . '"'
+                . ' data-ca-amount="' . e($amount) . '"'
+                . ' data-ca-status="' . e($status) . '"'
+                . ' data-ca-requested="' . e($createdAt) . '"'
+                . ' data-ca-reason="' . e($reason) . '">' . e($employeeName) . '</span>';
+
             return [
-                e($employeeName),
+                $employeeCell,
                 $amount,
                 e($status),
                 e($createdAt),
@@ -354,11 +374,21 @@ class PayrollController extends Controller
             'cashAdvanceRequestsTableData' => $cashAdvanceRequestsTableData,
             'employeeOptions' => $employeeOptions,
             'showArchived' => $showArchived,
+            'canManageLedger' => $canManageLedger,
+            'requestsOnly' => $requestsOnly,
+            'currentRole' => $currentRole,
         ]);
     }
 
     public function deleteCashAdvance(Request $request, $id)
     {
+        $user = $request->user();
+        $role = $user->role ?? '';
+        $ledgerRoles = ['Superadmin', 'Admin', 'Accounting', 'Project Manager', 'Supervisor'];
+        if (!in_array($role, $ledgerRoles, true)) {
+            abort(403, 'You are not allowed to modify cash advance entries.');
+        }
+
         $cashAdvance = \App\Models\CashAdvance::withTrashed()->findOrFail($id);
 
         $stayOnArchived = $request->boolean('archived');
@@ -378,6 +408,13 @@ class PayrollController extends Controller
 
     public function restoreCashAdvance($id)
     {
+        $user = auth()->user();
+        $role = $user->role ?? '';
+        $ledgerRoles = ['Superadmin', 'Admin', 'Accounting', 'Project Manager', 'Supervisor'];
+        if (!in_array($role, $ledgerRoles, true)) {
+            abort(403, 'You are not allowed to modify cash advance entries.');
+        }
+
         $cashAdvance = \App\Models\CashAdvance::withTrashed()->findOrFail($id);
 
         if ($cashAdvance->trashed()) {
@@ -390,6 +427,13 @@ class PayrollController extends Controller
 
     public function deleteMultipleCashAdvances(Request $request)
     {
+        $user = $request->user();
+        $role = $user->role ?? '';
+        $ledgerRoles = ['Superadmin', 'Admin', 'Accounting', 'Project Manager', 'Supervisor'];
+        if (!in_array($role, $ledgerRoles, true)) {
+            abort(403, 'You are not allowed to modify cash advance entries.');
+        }
+
         $validated = $request->validate([
             'cash_advance_ids' => 'required|array',
             'cash_advance_ids.*' => 'exists:cash_advances,id',
@@ -417,6 +461,13 @@ class PayrollController extends Controller
 
     public function storeCashAdvance(Request $request)
     {
+        $user = $request->user();
+        $role = $user->role ?? '';
+        $ledgerRoles = ['Superadmin', 'Admin', 'Accounting', 'Project Manager', 'Supervisor'];
+        if (!in_array($role, $ledgerRoles, true)) {
+            abort(403, 'You are not allowed to create cash advance entries.');
+        }
+
         $request->merge([
             'amount' => str_replace(',', '', (string) $request->input('amount')),
         ]);
@@ -432,18 +483,18 @@ class PayrollController extends Controller
         $type = $validated['type'];
         $amount = (float) $validated['amount'];
 
+        $totalAdvancesBefore = (float) \App\Models\CashAdvance::where('user_id', $userId)
+            ->where('type', 'advance')
+            ->sum('amount');
+
+        $totalRepaymentsBefore = (float) \App\Models\CashAdvance::where('user_id', $userId)
+            ->where('type', 'repayment')
+            ->sum('amount');
+
+        $outstandingBefore = max(0, $totalAdvancesBefore - $totalRepaymentsBefore);
+
         if ($type === 'repayment') {
-            $totalAdvances = (float) \App\Models\CashAdvance::where('user_id', $userId)
-                ->where('type', 'advance')
-                ->sum('amount');
-
-            $totalRepayments = (float) \App\Models\CashAdvance::where('user_id', $userId)
-                ->where('type', 'repayment')
-                ->sum('amount');
-
-            $outstanding = max(0, $totalAdvances - $totalRepayments);
-
-            if ($amount > $outstanding + 0.0001) {
+            if ($amount > $outstandingBefore + 0.0001) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors([
@@ -452,13 +503,28 @@ class PayrollController extends Controller
             }
         }
 
-        \App\Models\CashAdvance::create([
+        $entry = \App\Models\CashAdvance::create([
             'user_id' => $userId,
             'type' => $type,
             'amount' => $amount,
             'description' => $validated['description'] ?? null,
             'source' => 'admin',
             'payroll_id' => null,
+        ]);
+
+        $outstandingAfter = $outstandingBefore;
+        if ($type === 'advance') {
+            $outstandingAfter = $outstandingBefore + $amount;
+        } elseif ($type === 'repayment') {
+            $outstandingAfter = max(0, $outstandingBefore - $amount);
+        }
+
+        $this->logApproval('cash_advance_ledger', $entry->id, $type === 'advance' ? 'manual_advance_created' : 'manual_repayment_created', [
+            'for_user_id' => $userId,
+            'amount' => $amount,
+            'type' => $type,
+            'outstanding_before' => $outstandingBefore,
+            'outstanding_after' => $outstandingAfter,
         ]);
 
         return redirect()->route('cash-advances')->with('success', 'Cash advance entry saved successfully.');
@@ -471,6 +537,66 @@ class PayrollController extends Controller
         $cashAdvanceRepayments = $payroll->cashAdvances
             ? $payroll->cashAdvances->where('type', 'repayment')
             : collect();
+
+        $snapshot = $payroll->snapshot ?? [];
+
+        $overtimePremiumTotal = 0.0;
+        $overtimePremiumEntries = [];
+
+        $leavePaidDays = 0.0;
+        $leaveUnpaidDays = 0.0;
+        $leaveEntries = [];
+
+        if (is_array($snapshot) && isset($snapshot['overtime_premium']) && is_array($snapshot['overtime_premium'])) {
+            $overtimePremiumTotal = (float) ($snapshot['overtime_premium']['total'] ?? 0);
+
+            $rawEntries = $snapshot['overtime_premium']['entries'] ?? [];
+
+            if (is_array($rawEntries)) {
+                foreach ($rawEntries as $entry) {
+                    if (!is_array($entry)) {
+                        continue;
+                    }
+
+                    $overtimePremiumEntries[] = [
+                        'entry_id' => isset($entry['entry_id']) ? (int) $entry['entry_id'] : null,
+                        'date' => isset($entry['date']) ? (string) $entry['date'] : null,
+                        'hours' => isset($entry['hours']) ? (float) $entry['hours'] : 0.0,
+                        'premium_multiplier' => isset($entry['premium_multiplier']) ? (float) $entry['premium_multiplier'] : null,
+                        'premium_amount' => isset($entry['premium_amount']) ? (float) $entry['premium_amount'] : 0.0,
+                    ];
+                }
+            }
+        }
+
+        if (is_array($snapshot) && isset($snapshot['leave_ledger']) && is_array($snapshot['leave_ledger'])) {
+            $leavePaidDays = isset($snapshot['leave_ledger']['paid_days'])
+                ? (float) $snapshot['leave_ledger']['paid_days']
+                : 0.0;
+
+            $leaveUnpaidDays = isset($snapshot['leave_ledger']['unpaid_days'])
+                ? (float) $snapshot['leave_ledger']['unpaid_days']
+                : 0.0;
+
+            $rawLeaveEntries = $snapshot['leave_ledger']['entries'] ?? [];
+
+            if (is_array($rawLeaveEntries)) {
+                foreach ($rawLeaveEntries as $entry) {
+                    if (!is_array($entry)) {
+                        continue;
+                    }
+
+                    $leaveEntries[] = [
+                        'entry_id' => isset($entry['entry_id']) ? (int) $entry['entry_id'] : null,
+                        'date_start' => isset($entry['date_start']) ? (string) $entry['date_start'] : null,
+                        'date_end' => isset($entry['date_end']) ? (string) $entry['date_end'] : null,
+                        'duration_days' => isset($entry['duration_days']) ? (float) $entry['duration_days'] : 0.0,
+                        'type' => isset($entry['type']) ? (string) $entry['type'] : null,
+                        'is_paid' => !empty($entry['is_paid']),
+                    ];
+                }
+            }
+        }
 
         return response()->json([
             'id' => $payroll->id,
@@ -503,6 +629,11 @@ class PayrollController extends Controller
                     'description' => $ca->description,
                 ];
             })->values(),
+            'overtime_premium_total' => $overtimePremiumTotal,
+            'overtime_premium_entries' => $overtimePremiumEntries,
+            'leave_paid_days' => $leavePaidDays,
+            'leave_unpaid_days' => $leaveUnpaidDays,
+            'leave_entries' => $leaveEntries,
         ]);
     }
 
@@ -584,30 +715,49 @@ class PayrollController extends Controller
 
         $role = (string) ($user->role ?? '');
 
-        // HR stage is restricted to HR, with Superadmin as override (Admin should not act as HR)
-        if (!in_array($role, ['Superadmin', 'HR'], true)) {
+        // HR stage is restricted to HR (with Superadmin override)
+        if (!in_array($role, ['HR', 'Superadmin'], true)) {
             abort(403, 'You are not allowed to approve payroll at HR stage.');
         }
 
         $payroll = Payroll::findOrFail($id);
+
+        // Enforce global payroll approval policy (no Superadmin, no self-approval).
+        $this->authorize('approve', $payroll);
 
         if ($payroll->status === 'Cancelled') {
             return redirect()->back()->with('error', 'Cancelled payrolls cannot be approved.');
         }
 
         if ($payroll->status === 'Released') {
+            if (!$payroll->hr_approved_at) {
+                $payroll->hr_approved_at = now();
+                $payroll->hr_approved_by = $user->id;
+                $payroll->save();
+            }
+
             return redirect()->back()->with('success', 'This payroll is already released.');
         }
 
+        if (!$payroll->admin_approved_at) {
+            return redirect()->back()->with('error', 'Admin must approve the payroll before HR can release it.');
+        }
+
         if ($payroll->hr_approved_at) {
-            return redirect()->back()->with('success', 'Payroll is already HR approved.');
+            return redirect()->back()->with('success', 'Payroll is already HR approved and released.');
         }
 
         $payroll->hr_approved_at = now();
         $payroll->hr_approved_by = $user->id;
         $payroll->save();
 
-        return redirect()->back()->with('success', 'Payroll marked as HR approved.');
+        $this->payrollService->updatePayrollStatus($payroll, 'Released');
+
+        $this->logApproval('payroll', $payroll->id, 'hr_approved_and_released', [
+            'payroll_status' => $payroll->status,
+        ]);
+
+        return redirect()->back()->with('success', 'Payroll approved and released.');
     }
 
     public function adminApprove(Request $request, $id)
@@ -626,6 +776,9 @@ class PayrollController extends Controller
 
         $payroll = Payroll::findOrFail($id);
 
+        // Enforce global payroll approval policy (no Superadmin, no self-approval).
+        $this->authorize('approve', $payroll);
+
         if ($payroll->status === 'Cancelled') {
             return redirect()->back()->with('error', 'Cancelled payrolls cannot be approved.');
         }
@@ -640,17 +793,19 @@ class PayrollController extends Controller
             return redirect()->back()->with('success', 'This payroll is already released.');
         }
 
-        if (!$payroll->hr_approved_at && $role !== 'Superadmin') {
-            return redirect()->back()->with('error', 'HR must approve the payroll before final approval.');
+        if ($payroll->admin_approved_at) {
+            return redirect()->back()->with('success', 'Payroll is already admin approved.');
         }
 
         $payroll->admin_approved_at = now();
         $payroll->admin_approved_by = $user->id;
         $payroll->save();
 
-        $this->payrollService->updatePayrollStatus($payroll, 'Released');
+        $this->logApproval('payroll', $payroll->id, 'admin_approved', [
+            'payroll_status' => $payroll->status,
+        ]);
 
-        return redirect()->back()->with('success', 'Payroll approved and released.');
+        return redirect()->back()->with('success', 'Payroll marked as admin approved.');
     }
 
     public function restorePayroll($id)

@@ -308,6 +308,12 @@
             // default view
             setView(false);
 
+            // Hard-override cursor on users tables so rows never look clickable.
+            document.querySelectorAll('.table-container.users-table tbody tr, .table-container.archived-users-table tbody tr')
+                .forEach(function (row) {
+                    row.style.cursor = 'default';
+                });
+
             // Ensure the New button opens the modal in create mode
             const addUserBtn = document.getElementById('users-add-users');
             if (addUserBtn) {
@@ -365,6 +371,7 @@
                         <option value="Admin">Admin</option>
                     @endif
                     <option value="HR">HR</option>
+                    <option value="Manager">Manager</option>
                     <option value="Supervisor">Supervisor</option>
                     <option value="Worker">Worker</option>
                 </select>
@@ -579,6 +586,7 @@
                 'selectData' => [
                     'Admin' => 'Admin',
                     'HR' => 'HR',
+                    'Manager' => 'Manager',
                     'Supervisor' => 'Supervisor',
                     'Worker' => 'Worker',
                 ],

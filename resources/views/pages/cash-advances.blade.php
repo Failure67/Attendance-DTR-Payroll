@@ -4,7 +4,7 @@
 
     @include('partials.menu')
 
-    <div class="wrapper cash-advances" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}">
+    <div class="wrapper cash-advances" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}" data-requests-only="{{ ($requestsOnly ?? false) ? '1' : '0' }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -16,6 +16,105 @@
             </div>
         </div>
 
+    {{-- Details modal for cash advance requests (view-only) --}}
+    <div class="modal fade" id="cashAdvanceRequestDetailsModal" tabindex="-1" aria-labelledby="cashAdvanceRequestDetailsLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cashAdvanceRequestDetailsLabel">Cash advance request details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Employee</dt>
+                        <dd class="col-sm-8" id="ca-detail-employee">—</dd>
+
+                        <dt class="col-sm-4">Amount</dt>
+                        <dd class="col-sm-8" id="ca-detail-amount">—</dd>
+
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8" id="ca-detail-status">—</dd>
+
+                        <dt class="col-sm-4">Requested on</dt>
+                        <dd class="col-sm-8" id="ca-detail-requested">—</dd>
+
+                        <dt class="col-sm-4">Reason</dt>
+                        <dd class="col-sm-8" id="ca-detail-reason">—</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @php
+        $currentRoleLocal = strtolower($currentRole ?? '');
+    @endphp
+
+    @if ($currentRoleLocal === 'supervisor')
+    <div class="modal fade cash-advance-modal" id="cashAdvanceRequestModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="cashAdvanceRequestForm" method="POST" action="{{ route('cash-advance-requests.store-supervisor') }}">
+                    @csrf
+
+                    <div class="modal-header">
+                        <div class="modal-title">
+                            New cash advance request
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <div class="modal-body">
+
+                        @include('components.modal-error')
+
+                        @include('components.select', [
+                            'selectType' => 'select2',
+                            'selectSrc' => 'cash-advance-requests',
+                            'selectVar' => 'employee-request',
+                            'selectName' => 'user_id',
+                            'selectLabel' => 'Employee',
+                            'selectPlaceholder' => 'Select employee',
+                            'selectData' => $employeeOptions ?? [],
+                            'isShort' => false,
+                        ])
+
+                        @include('components.input-field', [
+                            'inputType' => 'amount',
+                            'inputSrc' => 'cash-advance-requests',
+                            'inputVar' => 'amount-request',
+                            'inputName' => 'amount',
+                            'inputLabel' => 'Amount',
+                            'inputPlaceholder' => '0.00',
+                            'inputInDecrement' => false,
+                            'isRequired' => true,
+                        ])
+
+                        @include('components.input-field', [
+                            'inputType' => 'textarea',
+                            'inputSrc' => 'cash-advance-requests',
+                            'inputVar' => 'reason-request',
+                            'inputName' => 'reason',
+                            'inputLabel' => 'Reason',
+                            'inputPlaceholder' => 'Enter reason...',
+                            'isRequired' => true,
+                        ])
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
         <div class="container cash-advances tab">
 
             @include('components.search', [
@@ -25,51 +124,76 @@
 
             <div class="crud-buttons">
 
-                @include('components.button', [
-                    'buttonType' => 'main',
-                    'buttonVar' => 'add',
-                    'buttonSrc' => 'cash-advances',
-                    'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
-                    'buttonLabel' => 'New',
-                    'buttonModal' => true,
-                    'buttonTarget' => 'cashAdvanceModal'
-                ])
+                @php
+                    $canManageLedgerLocal = $canManageLedger ?? false;
+                    $currentRoleLocal = strtolower($currentRole ?? '');
+                @endphp
 
-                <div class="dropdown">
+                @if ($canManageLedgerLocal)
+                    @php
+                        $isSupervisor = $currentRoleLocal === 'supervisor';
+                        $buttonLabel = 'NEW';
+                        $formAction = $isSupervisor ? route('cash-advance-requests.store-supervisor') : route('cash-advances.store');
+                    @endphp
+
+                    @include('components.button', [
+                        'buttonType' => 'main',
+                        'buttonVar' => 'add',
+                        'buttonSrc' => 'cash-advances',
+                        'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
+                        'buttonLabel' => $buttonLabel,
+                        'buttonModal' => true,
+                        'buttonTarget' => 'cashAdvanceModal'
+                    ])
+
+                    <div class="dropdown">
+                        @include('components.button', [
+                            'buttonType' => 'secondary',
+                            'buttonVar' => 'view',
+                            'buttonSrc' => 'cash-advances',
+                            'buttonIcon' => '<i class="fa-solid fa-list-check"></i>',
+                            'buttonLabel' => 'View',
+                            'btnAttribute' => 'data-bs-toggle="dropdown" aria-expanded="false"',
+                        ])
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <button type="button" class="dropdown-item" id="view-transactions-cash-advances">Transactions</button>
+                            </li>
+                            <li>
+                                <button type="button" class="dropdown-item" id="view-balance-cash-advances">Employee Balance</button>
+                            </li>
+                            <li>
+                                <button type="button" class="dropdown-item" id="view-requests-cash-advances">Requests</button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    @include('components.button', [
+                        'buttonType' => 'danger',
+                        'buttonVar' => 'delete',
+                        'buttonSrc' => 'cash-advances',
+                        'buttonIcon' => '<i class="fa-solid fa-clock-rotate-left"></i>',
+                        'buttonLabel' => ($showArchived ?? false) ? 'Back to cash advances' : 'View archived',
+                        'buttonModal' => false,
+                    ])
+
+                @else
+                    {{-- HR and Manager: No View button, just show the Requests table --}}
                     @include('components.button', [
                         'buttonType' => 'secondary',
-                        'buttonVar' => 'view',
+                        'buttonVar' => 'view-requests',
                         'buttonSrc' => 'cash-advances',
                         'buttonIcon' => '<i class="fa-solid fa-list-check"></i>',
-                        'buttonLabel' => 'View',
-                        'btnAttribute' => 'data-bs-toggle="dropdown" aria-expanded="false"',
+                        'buttonLabel' => 'Requests',
+                        'btnAttribute' => 'id="view-requests-cash-advances" style="visibility: hidden;"',
                     ])
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <button type="button" class="dropdown-item" id="view-transactions-cash-advances">Transactions</button>
-                        </li>
-                        <li>
-                            <button type="button" class="dropdown-item" id="view-balance-cash-advances">Employee Balance</button>
-                        </li>
-                        <li>
-                            <button type="button" class="dropdown-item" id="view-requests-cash-advances">Requests</button>
-                        </li>
-                    </ul>
-                </div>
-
-                @include('components.button', [
-                    'buttonType' => 'danger',
-                    'buttonVar' => 'delete',
-                    'buttonSrc' => 'cash-advances',
-                    'buttonIcon' => '<i class="fa-solid fa-clock-rotate-left"></i>',
-                    'buttonLabel' => ($showArchived ?? false) ? 'Back to cash advances' : 'View archived',
-                    'buttonModal' => false,
-                ])
+                @endif
 
             </div>
 
         </div>
 
+        @if ($canManageLedger ?? false)
         <div class="container cash-advances table-component" id="cash-advances-summary-container" style="display: none;">
 
             @include('components.table', [
@@ -91,11 +215,13 @@
             ])
 
         </div>
+        @endif
 
         <div class="container cash-advances table-component">
 
             <div class="cash-advances-table-views">
 
+                @if ($canManageLedger ?? false)
                 <div class="cash-advances-view cash-advances-view-ledger">
 
                     @php
@@ -135,11 +261,13 @@
                         'rawColumns' => $ledgerRawColumns,
                     ])
                 </div>
+                @endif
 
-                <div class="cash-advances-view cash-advances-view-requests" style="display: none;">
-                    @php
-                        $caRequestTableData = $cashAdvanceRequestsTableData ?? [];
-                    @endphp
+                @php
+                    $caRequestTableData = $cashAdvanceRequestsTableData ?? [];
+                @endphp
+
+                <div class="cash-advances-view cash-advances-view-requests" @if($canManageLedger ?? false) style="display: none;" @endif>
 
                     @include('components.table', [
                         'tableClass' => 'cash-advance-requests-table',
@@ -158,7 +286,7 @@
                             'Actions',
                         ],
                         'tableData' => $caRequestTableData,
-                        'rawColumns' => ['actions'],
+                        'rawColumns' => ['employee-name', 'actions'],
                     ])
 
                     @if(isset($cashAdvanceRequests) && ($cashAdvanceRequests instanceof \Illuminate\Pagination\LengthAwarePaginator || $cashAdvanceRequests instanceof \Illuminate\Pagination\Paginator))
@@ -181,7 +309,11 @@
     @if ($errors->any())
         <script>
             $(document).ready(function() {
-                const $modal = $('#cashAdvanceModal');
+                @if ($errors->has('reason'))
+                    const $modal = $('#cashAdvanceRequestModal');
+                @else
+                    const $modal = $('#cashAdvanceModal');
+                @endif
                 if ($modal.length) {
                     $modal.modal('show');
                 }
@@ -195,12 +327,12 @@
     <div class="modal fade cash-advance-modal" id="cashAdvanceModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form id="cashAdvanceForm" method="POST" action="{{ route('cash-advances.store') }}">
+                <form id="cashAdvanceForm" method="POST" action="{{ $formAction ?? route('cash-advances.store') }}">
                     @csrf
 
                     <div class="modal-header">
                         <div class="modal-title">
-                            New cash advance entry
+                            {{ ($isSupervisor ?? false) ? 'New Cash Advance Request' : 'New Cash Advance Entry' }}
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -244,21 +376,29 @@
                         ])
 
                         {{-- 
-                        <div class="mb-3 mt-2">
-                            <label for="cash-advance-description" class="form-label">Description</label>
-                            <textarea name="description" id="cash-advance-description" class="form-control" rows="2" maxlength="255"></textarea>
-                        </div>
                         --}}
 
-                        @include('components.input-field', [
-                            'inputType' => 'textarea',
-                            'inputSrc' => 'description',
-                            'inputVar' => 'reason',
-                            'inputName' => 'cash-advance',
-                            'inputLabel' => 'Reason',
-                            'inputPlaceholder' => 'Enter reason...',
-                            'isRequired' => true,
-                        ])
+                        @if($isSupervisor ?? false)
+                            @include('components.input-field', [
+                                'inputType' => 'textarea',
+                                'inputSrc' => 'cash-advance-requests',
+                                'inputVar' => 'reason',
+                                'inputName' => 'reason',
+                                'inputLabel' => 'Reason',
+                                'inputPlaceholder' => 'Enter reason for cash advance...',
+                                'isRequired' => true,
+                            ])
+                        @else
+                            @include('components.input-field', [
+                                'inputType' => 'textarea',
+                                'inputSrc' => 'description',
+                                'inputVar' => 'reason',
+                                'inputName' => 'description',
+                                'inputLabel' => 'Notes',
+                                'inputPlaceholder' => 'Enter notes...',
+                                'isRequired' => false,
+                            ])
+                        @endif
 
                     </div>
 

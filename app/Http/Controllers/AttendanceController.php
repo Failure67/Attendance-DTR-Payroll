@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\CrewAssignment;
+use App\Models\LeaveEntry;
+use App\Models\OvertimeEntry;
+use App\Models\Payroll;
 use App\Models\User;
 use App\Services\Attendance\AttendanceService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -82,10 +85,14 @@ class AttendanceController extends Controller
     {
         $validated = $request->validate([
             'period_start' => 'required|date',
-            'period_end' => 'required|date|after_or_equal:period_start',
+            'period_end' => 'nullable|date|after_or_equal:period_start',
             'employee_id' => 'nullable|exists:users,id',
         ]);
         $currentUser = auth()->user();
+        
+        if (empty($validated['period_end'])) {
+            $validated['period_end'] = $validated['period_start'];
+        }
         try {
             $this->attendanceService->generateDefaultAttendance($currentUser, $validated);
 
@@ -121,10 +128,40 @@ class AttendanceController extends Controller
             $validated['status'] ?? null
         );
 
+        $dateString = $date->toDateString();
+
+        $linkedLeave = LeaveEntry::where('user_id', $validated['user_id'])
+            ->where('status', 'approved')
+            ->whereDate('date_start', '<=', $dateString)
+            ->whereDate('date_end', '>=', $dateString)
+            ->first();
+
+        if ($linkedLeave) {
+            $newStatus = $calculated['status'];
+            $leaveApproved = $request->boolean('leave_approved') && ($newStatus === 'On leave');
+
+            if ($newStatus !== 'On leave' || !$leaveApproved) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'status' => 'This attendance date is covered by an approved leave request from ' . $linkedLeave->date_start->toDateString() . ' to ' . $linkedLeave->date_end->toDateString() . '. Edit or cancel the leave request instead of changing attendance directly.',
+                    ]);
+            }
+        }
+
         $overtimeApproved = $request->boolean('overtime_approved') && $calculated['overtime_hours'] > 0;
         $leaveApproved = $request->boolean('leave_approved') && ($calculated['status'] === 'On leave');
 
-        Attendance::create([
+        if ($overtimeApproved || $leaveApproved) {
+            // Enforce global attendance approval policy (no Superadmin, no self-approval).
+            $tempAttendance = new Attendance([
+                'user_id' => $validated['user_id'],
+            ]);
+
+            $this->authorize('approve', $tempAttendance);
+        }
+
+        $attendance = Attendance::create([
             'user_id' => $validated['user_id'],
             'date' => $date->format('Y-m-d'),
             'time_in' => $calculated['time_in'],
@@ -135,6 +172,36 @@ class AttendanceController extends Controller
             'overtime_approved' => $overtimeApproved,
             'leave_approved' => $leaveApproved,
         ]);
+
+        if ($overtimeApproved) {
+            $multiplier = (float) config('payroll.overtime_multiplier', 1.30);
+            $currentUser = auth()->user();
+
+            OvertimeEntry::updateOrCreate(
+                ['attendance_id' => $attendance->id],
+                [
+                    'user_id' => $attendance->user_id,
+                    'date' => $attendance->date ? $attendance->date->toDateString() : $date->toDateString(),
+                    'hours' => $attendance->overtime_hours,
+                    'premium_multiplier' => $multiplier,
+                    'status' => 'approved',
+                    'requested_by_id' => $attendance->user_id,
+                    'approved_by_id' => $currentUser ? $currentUser->id : null,
+                    'approved_at' => now(),
+                ]
+            );
+
+            $this->logApproval('attendance', $attendance->id, 'overtime_approved', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                'overtime_hours' => (float) $attendance->overtime_hours,
+            ]);
+        }
+
+        if ($leaveApproved) {
+            $this->logApproval('attendance', $attendance->id, 'leave_approved', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+            ]);
+        }
 
         $redirectParams = $request->query();
 
@@ -163,8 +230,54 @@ class AttendanceController extends Controller
             $validated['status'] ?? $attendance->status
         );
 
+        $dateString = $date->toDateString();
+        $newStatus = $calculated['status'];
+
+        $linkedLeave = LeaveEntry::where('user_id', $attendance->user_id)
+            ->where('status', 'approved')
+            ->whereDate('date_start', '<=', $dateString)
+            ->whereDate('date_end', '>=', $dateString)
+            ->first();
+
+        if ($linkedLeave) {
+            $newLeaveApproved = $request->boolean('leave_approved') && ($newStatus === 'On leave');
+
+            if ($newStatus !== 'On leave' || !$newLeaveApproved) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'status' => 'This attendance record is linked to an approved leave request from ' . $linkedLeave->date_start->toDateString() . ' to ' . $linkedLeave->date_end->toDateString() . '. Edit or cancel the leave request instead of changing this attendance directly.',
+                    ]);
+            }
+        }
+
         $overtimeApproved = $request->boolean('overtime_approved') && $calculated['overtime_hours'] > 0;
         $leaveApproved = $request->boolean('leave_approved') && ($calculated['status'] === 'On leave');
+        $previousOvertimeApproved = (bool) $attendance->overtime_approved;
+        $previousLeaveApproved = (bool) $attendance->leave_approved;
+
+        if ($overtimeApproved !== $previousOvertimeApproved) {
+            $dateString = $date->toDateString();
+
+            $hasReleasedPayroll = Payroll::where('user_id', $attendance->user_id)
+                ->where('status', 'Released')
+                ->whereDate('period_start', '<=', $dateString)
+                ->whereDate('period_end', '>=', $dateString)
+                ->exists();
+
+            if ($hasReleasedPayroll) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'overtime_approved' => 'Overtime approval cannot be changed because a released payroll already exists for this date.',
+                    ]);
+            }
+        }
+
+        if ($overtimeApproved || $leaveApproved) {
+            // Enforce global attendance approval policy (no Superadmin, no self-approval).
+            $this->authorize('approve', $attendance);
+        }
 
         $attendance->update([
             'user_id' => $validated['user_id'],
@@ -177,6 +290,59 @@ class AttendanceController extends Controller
             'overtime_approved' => $overtimeApproved,
             'leave_approved' => $leaveApproved,
         ]);
+
+        $attendance->refresh();
+
+        if (!$previousOvertimeApproved && $attendance->overtime_approved) {
+            $this->logApproval('attendance', $attendance->id, 'overtime_approved', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                'overtime_hours' => (float) $attendance->overtime_hours,
+            ]);
+        } elseif ($previousOvertimeApproved && !$attendance->overtime_approved) {
+            $this->logApproval('attendance', $attendance->id, 'overtime_unapproved', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+            ]);
+        }
+
+        $currentUser = auth()->user();
+        $multiplier = (float) config('payroll.overtime_multiplier', 1.30);
+
+        if ($attendance->overtime_approved) {
+            OvertimeEntry::updateOrCreate(
+                ['attendance_id' => $attendance->id],
+                [
+                    'user_id' => $attendance->user_id,
+                    'date' => $attendance->date ? $attendance->date->toDateString() : $date->toDateString(),
+                    'hours' => $attendance->overtime_hours,
+                    'premium_multiplier' => $multiplier,
+                    'status' => 'approved',
+                    'requested_by_id' => $attendance->user_id,
+                    'approved_by_id' => $currentUser ? $currentUser->id : null,
+                    'approved_at' => now(),
+                ]
+            );
+        } elseif ($previousOvertimeApproved && !$attendance->overtime_approved) {
+            $entry = OvertimeEntry::where('attendance_id', $attendance->id)
+                ->latest('id')
+                ->first();
+
+            if ($entry) {
+                $entry->status = 'cancelled';
+                $entry->approved_by_id = $currentUser ? $currentUser->id : null;
+                $entry->approved_at = now();
+                $entry->save();
+            }
+        }
+
+        if (!$previousLeaveApproved && $attendance->leave_approved) {
+            $this->logApproval('attendance', $attendance->id, 'leave_approved', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+            ]);
+        } elseif ($previousLeaveApproved && !$attendance->leave_approved) {
+            $this->logApproval('attendance', $attendance->id, 'leave_unapproved', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+            ]);
+        }
 
         $redirectParams = $request->query();
 
@@ -340,6 +506,135 @@ class AttendanceController extends Controller
         ])->setPaper('a4', 'landscape');
 
         $filename = 'attendance_report_' . $generatedAt->format('Ymd_His') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function exportAttendanceDtr(Request $request)
+    {
+        $employeeId = $request->query('employee_id');
+
+        if (empty($employeeId)) {
+            return redirect()->route('attendance', $request->query())
+                ->withErrors(['error' => 'Please select an employee before exporting a DTR report.']);
+        }
+
+        $exportData = $this->attendanceService->getExportAttendanceData($request->query());
+
+        /** @var \Illuminate\Support\Collection $attendances */
+        $attendances = $exportData['attendances'];
+        $periodStart = $exportData['period_start'] ?? null;
+        $periodEnd = $exportData['period_end'] ?? null;
+
+        // Restrict to the selected employee and index by date string for easy lookup
+        $employeeAttendances = $attendances
+            ->where('user_id', (int) $employeeId)
+            ->sortBy(function ($attendance) {
+                /** @var \App\Models\Attendance $attendance */
+                if ($attendance->date) {
+                    return $attendance->date->toDateString();
+                }
+
+                if ($attendance->time_in) {
+                    return $attendance->time_in->toDateString();
+                }
+
+                return '';
+            });
+
+        $employee = $employeeAttendances->first()?->user ?? User::find($employeeId);
+
+        // Build continuous day rows between period_start and period_end (if provided)
+        $dtrRows = [];
+
+        if ($periodStart && $periodEnd) {
+            $start = Carbon::parse($periodStart)->startOfDay();
+            $end = Carbon::parse($periodEnd)->startOfDay();
+
+            // Group records by date string for quick lookup
+            $byDate = $employeeAttendances->groupBy(function ($attendance) {
+                /** @var \App\Models\Attendance $attendance */
+                if ($attendance->date) {
+                    return $attendance->date->toDateString();
+                }
+
+                if ($attendance->time_in) {
+                    return $attendance->time_in->toDateString();
+                }
+
+                return null;
+            });
+
+            for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+                $dateKey = $date->toDateString();
+                $record = null;
+
+                if ($byDate->has($dateKey)) {
+                    // In practice there should only be one record per day; take the first
+                    $record = $byDate->get($dateKey)->first();
+                }
+
+                $dtrRows[] = [
+                    'date' => $date->copy(),
+                    'record' => $record,
+                ];
+            }
+        } else {
+            // Fallback: just use whatever records exist for the employee in the export set
+            foreach ($employeeAttendances as $attendance) {
+                /** @var \App\Models\Attendance $attendance */
+                $date = $attendance->date
+                    ? $attendance->date->copy()
+                    : ($attendance->time_in ? $attendance->time_in->copy() : null);
+
+                if ($date === null) {
+                    continue;
+                }
+
+                $dtrRows[] = [
+                    'date' => $date->startOfDay(),
+                    'record' => $attendance,
+                ];
+            }
+
+            // Ensure stable ordering by date
+            usort($dtrRows, function ($a, $b) {
+                /** @var \Carbon\Carbon $dateA */
+                /** @var \Carbon\Carbon $dateB */
+                $dateA = $a['date'];
+                $dateB = $b['date'];
+
+                if ($dateA->eq($dateB)) {
+                    return 0;
+                }
+
+                return $dateA->lt($dateB) ? -1 : 1;
+            });
+        }
+
+        $generatedAt = now();
+
+        $pdf = Pdf::loadView('pdf.attendance-dtr', [
+            'title' => 'Daily Time Record',
+            'employee' => $employee,
+            'dtrRows' => $dtrRows,
+            'period_start' => $periodStart,
+            'period_end' => $periodEnd,
+            'generatedAt' => $generatedAt,
+        ])->setPaper('a4', 'portrait');
+
+        $employeeName = $employee ? ($employee->full_name ?? $employee->username ?? ('employee_' . $employee->id)) : 'employee';
+        $safeName = preg_replace('/[^A-Za-z0-9_-]+/', '_', $employeeName);
+
+        $filenameParts = ['dtr', $safeName];
+        if ($periodStart) {
+            $filenameParts[] = str_replace('-', '', $periodStart);
+        }
+        if ($periodEnd && $periodEnd !== $periodStart) {
+            $filenameParts[] = str_replace('-', '', $periodEnd);
+        }
+
+        $filename = implode('_', $filenameParts) . '_' . $generatedAt->format('Ymd_His') . '.pdf';
 
         return $pdf->download($filename);
     }

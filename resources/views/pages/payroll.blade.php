@@ -155,12 +155,13 @@
 
                 $currentUser = auth()->user();
                 $currentRole = $currentUser->role ?? '';
-                // HR approval stage: HR only, with Superadmin override
-                $canHrApprove = in_array($currentRole, ['Superadmin', 'HR'], true);
-                $canFinalApprove = in_array($currentRole, ['Superadmin', 'Admin', 'Accounting'], true);
+                // HR final release stage: HR (and Superadmin) can release after admin approval
+                $canHrApproveAndRelease = in_array($currentRole, ['Superadmin', 'HR'], true);
+                // Admin/Accounting (and Superadmin) can perform initial approval
+                $canAdminApprove = in_array($currentRole, ['Superadmin', 'Admin', 'Accounting'], true);
                 $canCancelPayroll = in_array($currentRole, ['Superadmin', 'Admin', 'HR', 'Accounting'], true);
 
-                $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) use ($isArchivedView, $canHrApprove, $canFinalApprove, $canCancelPayroll, $currentRole) {
+                $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) use ($isArchivedView, $canHrApproveAndRelease, $canAdminApprove, $canCancelPayroll, $currentRole) {
                     $employeeName = $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : 'Unknown employee';
 
                     $minWage = '₱ ' . number_format($payroll->min_wage ?? 0, 2);
@@ -181,10 +182,10 @@
                     $netPay = '₱ ' . number_format($payroll->net_pay ?? 0, 2);
 
                     if ($payroll->status === 'Pending') {
-                        if ($payroll->hr_approved_at) {
-                            $statusLabel = 'Pending (Admin)';
-                        } else {
+                        if ($payroll->admin_approved_at) {
                             $statusLabel = 'Pending (HR)';
+                        } else {
+                            $statusLabel = 'Pending (Admin)';
                         }
                     } elseif ($payroll->status === 'Released') {
                         $statusLabel = 'Released';
@@ -232,23 +233,23 @@
                         if ($payroll->status === 'Pending') {
                             $csrf = csrf_token();
 
-                            // HR approval action (no separate HR-approved badge in actions column)
-                            // Superadmin should not see this button; they can directly use Approve & release.
-                            if ($canHrApprove && $currentRole !== 'Superadmin' && !$payroll->hr_approved_at) {
+                            // Admin/Accounting (and Superadmin) initial approval
+                            if ($canAdminApprove && !$payroll->admin_approved_at) {
                                 $leftParts[] =
-                                    '<form method="POST" action="' . route('payroll.hr-approve', ['id' => $payroll->id]) . '" style="display:inline-block;margin-right:4px;">'
+                                    '<form method="POST" action="' . route('payroll.admin-approve', ['id' => $payroll->id]) . '" style="display:inline-block;margin-right:4px;">'
                                     . '<input type="hidden" name="_token" value="' . $csrf . '">'
-                                    . '<button type="submit" class="btn btn-outline-primary btn-sm">HR approve</button>'
+                                    . '<button type="submit" class="btn btn-outline-primary btn-sm">Approve</button>'
                                     . '</form>';
                             }
 
-                            if ($canFinalApprove) {
-                                $canReleaseNow = $payroll->hr_approved_at || $currentRole === 'Superadmin';
+                            // HR (and Superadmin) final approve & release; requires admin approval first (unless Superadmin)
+                            if ($canHrApproveAndRelease && !$payroll->hr_approved_at) {
+                                $canReleaseNow = $payroll->admin_approved_at || $currentRole === 'Superadmin';
                                 $disabledAttr = $canReleaseNow ? '' : ' disabled';
-                                $titleAttr = $canReleaseNow ? '' : ' title="HR must approve before final release."';
+                                $titleAttr = $canReleaseNow ? '' : ' title="Admin must approve before HR can release."';
 
                                 $leftParts[] =
-                                    '<form method="POST" action="' . route('payroll.admin-approve', ['id' => $payroll->id]) . '" style="display:inline-block;margin-left:4px;">'
+                                    '<form method="POST" action="' . route('payroll.hr-approve', ['id' => $payroll->id]) . '" style="display:inline-block;margin-left:4px;">'
                                     . '<input type="hidden" name="_token" value="' . $csrf . '">'
                                     . '<button type="submit" class="btn btn-success btn-sm"' . $disabledAttr . $titleAttr . '>Approve &amp; release</button>'
                                     . '</form>';
@@ -266,13 +267,24 @@
                             }
                         }
 
-                        $leftHtml = implode('', $leftParts) ?: '&nbsp;';
-                        $rightHtml = implode('', $rightParts) ?: '&nbsp;';
+                        $leftHtml = implode('', $leftParts) ?: '';
+                        $rightHtml = implode('', $rightParts) ?: '';
 
-                        $actionsHtml = '<div class="payroll-actions d-flex align-items-center">'
-                            . '<div class="payroll-actions-left flex-grow-1 d-flex justify-content-center">' . $leftHtml . '</div>'
-                            . '<div class="payroll-actions-right flex-grow-1 d-flex justify-content-center">' . $rightHtml . '</div>'
-                            . '</div>';
+                        // If only one side has content, center it within the cell so it aligns with the Actions header
+                        if ($leftHtml && !$rightHtml) {
+                            $actionsHtml = '<div class="payroll-actions d-flex align-items-center justify-content-center">'
+                                . $leftHtml
+                                . '</div>';
+                        } elseif (!$leftHtml && $rightHtml) {
+                            $actionsHtml = '<div class="payroll-actions d-flex align-items-center justify-content-center">'
+                                . $rightHtml
+                                . '</div>';
+                        } else {
+                            $actionsHtml = '<div class="payroll-actions d-flex align-items-center">'
+                                . '<div class="payroll-actions-left flex-grow-1 d-flex justify-content-center">' . $leftHtml . '</div>'
+                                . '<div class="payroll-actions-right flex-grow-1 d-flex justify-content-center">' . $rightHtml . '</div>'
+                                . '</div>';
+                        }
                     }
 
                     return [
@@ -562,6 +574,7 @@
                                 <li><span class="text-muted">Regular hours:</span> <span id="payroll-details-regular-hours">0.00</span></li>
                                 <li><span class="text-muted">Overtime hours:</span> <span id="payroll-details-overtime-hours">0.00</span></li>
                                 <li><span class="text-muted">Absent days:</span> <span id="payroll-details-absent-days">0.00</span></li>
+                                <li><span class="text-muted">Leave (ledger):</span> <span id="payroll-details-leave-days">0.00 paid / 0.00 unpaid</span></li>
                             </ul>
                         </div>
                         <div class="col-md-6">
@@ -570,6 +583,7 @@
                                 <li><span class="text-muted">Gross pay:</span> <span id="payroll-details-gross-pay">₱ 0.00</span></li>
                                 <li><span class="text-muted">Total deductions:</span> <span id="payroll-details-total-deductions">₱ 0.00</span></li>
                                 <li><span class="text-muted">Net pay:</span> <span id="payroll-details-net-pay">₱ 0.00</span></li>
+                                <li><span class="text-muted">Overtime premium:</span> <span id="payroll-details-overtime-premium">₱ 0.00</span></li>
                             </ul>
                         </div>
                     </div>
@@ -585,6 +599,22 @@
                             <h6 class="fw-semibold">Cash advance repayments</h6>
                             <ul class="list-unstyled small" id="payroll-details-ca-list">
                                 <li class="text-muted">No cash advance deductions in this payroll.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="fw-semibold">Overtime premium breakdown</h6>
+                            <ul class="list-unstyled small" id="payroll-details-ot-list">
+                                <li class="text-muted">No overtime premium in this payroll.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="fw-semibold">Leave ledger breakdown</h6>
+                            <ul class="list-unstyled small" id="payroll-details-leave-list">
+                                <li class="text-muted">No leave entries in this payroll.</li>
                             </ul>
                         </div>
                     </div>

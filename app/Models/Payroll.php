@@ -22,6 +22,7 @@ class Payroll extends Model
         'total_deductions',
         'net_pay',
         'status',
+        'snapshot',
         'period_start',
         'period_end',
         'user_id',
@@ -46,6 +47,7 @@ class Payroll extends Model
         'net_pay' => 'decimal:2',
         'hr_approved_at' => 'datetime',
         'admin_approved_at' => 'datetime',
+        'snapshot' => 'array',
     ];
 
     public function user()

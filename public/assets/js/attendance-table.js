@@ -526,6 +526,27 @@ $('#delete-attendance').on('click', function() {
         });
     }
 
+    const $moreExportDtr = $('#attendance-more-export-dtr');
+    if ($moreExportDtr.length) {
+        $moreExportDtr.on('click', function () {
+            const currentUrl = new URL(window.location.href);
+            const params = currentUrl.searchParams;
+            const employeeId = params.get('employee_id');
+            if (!employeeId) {
+                alert('Please select an employee in the filters before exporting a DTR report.');
+                return;
+            }
+            let exportUrl = new URL(window.location.origin + '/attendance/dtr-pdf');
+            ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir', 'search'].forEach(function (key) {
+                const value = params.get(key);
+                if (value !== null && value !== '') {
+                    exportUrl.searchParams.set(key, value);
+                }
+            });
+            window.location.href = exportUrl.toString();
+        });
+    }
+
     // Column header sorting (server-side via query params) on detailed table only
     if ($detailTable.length) {
         $detailTable.find('thead th[data-sort-key]').on('click', function () {

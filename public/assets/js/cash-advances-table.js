@@ -3,6 +3,7 @@ $(document).ready(function() {
     const $search = $('#cash-advances-search');
     const $wrapper = $('.wrapper.cash-advances');
     const isArchivedView = $wrapper.data('archived') === 1 || $wrapper.data('archived') === '1';
+    const requestsOnlyMode = $wrapper.data('requestsOnly') === 1 || $wrapper.data('requestsOnly') === '1';
 
     const $ledgerContainer = $('.table-container.cash-advances-table').closest('.container.cash-advances.table-component');
     const $summaryContainer = $('#cash-advances-summary-container');
@@ -22,22 +23,29 @@ $(document).ready(function() {
     let currentView = 'ledger';
     const selectedCashAdvanceIds = new Set();
 
+    // Determine which table is currently active for filtering. Instead of
+    // relying only on internal flags, prefer whichever table container is
+    // actually visible. This makes the search work even for requests-only
+    // roles (Manager/HR) where there is no ledger container.
     function getActiveTable() {
-        if (showingSummary && $summaryContainer.length) {
+        // 1) Summary container, if present and visible
+        if ($summaryContainer.length && $summaryContainer.is(':visible')) {
             const $summaryTable = $summaryContainer.find('table').first();
             if ($summaryTable.length) {
                 return $summaryTable;
             }
         }
 
-        if (showingRequests && $requestsView.length) {
+        // 2) Requests view, if present and visible
+        if ($requestsView.length && $requestsView.is(':visible')) {
             const $requestsTable = $requestsView.find('.table-container.cash-advance-requests-table table').first();
             if ($requestsTable.length) {
                 return $requestsTable;
             }
         }
 
-        if ($ledgerContainer.length) {
+        // 3) Ledger container as a fallback
+        if ($ledgerContainer.length && $ledgerContainer.is(':visible')) {
             const $ledgerTable = $ledgerContainer.find('.table-container.cash-advances-table table').first();
             if ($ledgerTable.length) {
                 return $ledgerTable;
@@ -92,6 +100,9 @@ $(document).ready(function() {
     }
 
     // View dropdown: Transactions / Employee Balance / Requests
+    // For Manager/HR (requests-only), there is no ledger container. In that
+    // case we skip the view toggle logic entirely and always treat the
+    // Requests view as active via getActiveTable().
     if ($ledgerContainer.length && ($transactionsViewBtn.length || $balanceViewBtn.length || $requestsViewBtn.length)) {
         function setView(view, options) {
             const opts = options || {};
@@ -160,18 +171,21 @@ $(document).ready(function() {
             applyFilter();
         }
 
-        // Determine initial view from query parameter so redirects after
-        // approving/releasing requests return to the Requests tab instead of
-        // always defaulting back to Transactions.
+        // Determine initial view. Requests-only roles (HR/Manager) should land
+        // directly on the Requests tab; others can use the ca_view query param.
         let initialView = 'ledger';
-        try {
-            const url = new URL(window.location.href);
-            const fromQuery = (url.searchParams.get('ca_view') || '').toLowerCase();
-            if (fromQuery === 'summary' || fromQuery === 'requests' || fromQuery === 'ledger') {
-                initialView = fromQuery;
+        if (requestsOnlyMode) {
+            initialView = 'requests';
+        } else {
+            try {
+                const url = new URL(window.location.href);
+                const fromQuery = (url.searchParams.get('ca_view') || '').toLowerCase();
+                if (fromQuery === 'summary' || fromQuery === 'requests' || fromQuery === 'ledger') {
+                    initialView = fromQuery;
+                }
+            } catch (e) {
+                // fall back to default
             }
-        } catch (e) {
-            // fall back to default
         }
 
         setView(initialView, { skipUrlUpdate: true });
@@ -318,6 +332,30 @@ $(document).ready(function() {
 
         document.body.appendChild(form);
         form.submit();
+    });
+
+    // Show details for cash advance requests when clicking a row (except on
+    // action buttons/links/forms).
+    $(document).on('click', '.cash-advance-requests-table tbody tr', function(e) {
+        if ($(e.target).closest('form,button,a,.cash-advance-actions').length) {
+            return;
+        }
+
+        const $trigger = $(this).find('.ca-request-row-trigger').first();
+        if (!$trigger.length) {
+            return;
+        }
+
+        $('#ca-detail-employee').text($trigger.data('ca-employee') || '—');
+        $('#ca-detail-amount').text($trigger.data('ca-amount') || '—');
+        $('#ca-detail-status').text($trigger.data('ca-status') || '—');
+        $('#ca-detail-requested').text($trigger.data('ca-requested') || '—');
+        $('#ca-detail-reason').text($trigger.data('ca-reason') || '—');
+
+        const modalEl = document.getElementById('cashAdvanceRequestDetailsModal');
+        if (!modalEl) return;
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
     });
 
     if ($search.length && $search.val()) {

@@ -56,7 +56,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'role' => 'required|in:Admin,HR,Supervisor,Worker',
+            'role' => 'required|in:Admin,HR,Manager,Supervisor,Worker',
             'password' => 'required|string|min:12',
         ]);
 
@@ -94,7 +94,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|in:Admin,HR,Supervisor,Worker',
+            'role' => 'required|in:Admin,HR,Manager,Supervisor,Worker',
             'password' => 'nullable|string|min:12',
         ]);
 

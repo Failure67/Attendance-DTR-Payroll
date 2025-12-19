@@ -158,6 +158,9 @@
                         <li>
                             <button type="button" class="dropdown-item" id="attendance-more-export-pdf">Export detailed PDF</button>
                         </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="attendance-more-export-dtr">Export DTR (paper-style PDF)</button>
+                        </li>
                     </ul>
                 </div>
 
@@ -273,6 +276,12 @@
                         'currentSortBy' => $sortBy ?? null,
                         'currentSortDir' => $sortDir ?? 'asc',
                     ])
+
+                    @if (!empty($hasLeaveLinkedRows))
+                        <div class="mt-2 small text-muted">
+                            Days covered by approved leave can only be changed via the Leave Requests page.
+                        </div>
+                    @endif
 
                 </div>
 

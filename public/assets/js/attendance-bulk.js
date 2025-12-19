@@ -30,20 +30,24 @@ $(document).ready(function () {
 
         $table.find('tbody tr').each(function () {
             const $row = $(this);
+            const isLeaveLinked = $row.find('[data-leave-linked="1"]').length > 0;
+            if (isLeaveLinked) {
+                return;
+            }
 
             const $timeInInput = $row.find('input[name$="[time_in]"]');
             const $timeOutInput = $row.find('input[name$="[time_out]"]');
             const $statusSelect = $row.find('select[name$="[status]"]');
 
-            if ($timeInInput.length && timeIn) {
+            if ($timeInInput.length && timeIn && !$timeInInput.prop('disabled')) {
                 $timeInInput.val(timeIn);
             }
 
-            if ($timeOutInput.length && timeOut) {
+            if ($timeOutInput.length && timeOut && !$timeOutInput.prop('disabled')) {
                 $timeOutInput.val(timeOut);
             }
 
-            if ($statusSelect.length) {
+            if ($statusSelect.length && !$statusSelect.prop('disabled')) {
                 if (status !== '') {
                     $statusSelect.val(status);
                 } else {

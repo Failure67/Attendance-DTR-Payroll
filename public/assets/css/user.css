@@ -78,7 +78,7 @@ header {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    max-width: 1380px;
+    max-width: 1500px;
 }
 
 .header-logo {
@@ -140,7 +140,7 @@ header {
     border: 1px solid var(--card-border);
     padding: 30px;
     width: 100%;
-    max-width: 1150px;
+    max-width: 1400px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -158,8 +158,10 @@ header {
     font-weight: 600;
     font-size: 30px;
     width: 100%;
-    max-width: 450px;
+    max-width: 600px;
     overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     line-height: 1.3;
 }
 
