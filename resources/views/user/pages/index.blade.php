@@ -30,9 +30,14 @@
                     </div>
                 
                     <div class="name-info">
-                        
+
                         <div class="name-container">
                             {{ $user->full_name ?? $user->username }}
+                            @php
+                                $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                                $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+                            @endphp
+                            <span class="badge bg-light text-dark ms-2" style="font-size: 0.75rem;">{{ $employmentTypeLabel }}</span>
                         </div>
 
                         <div class="id-number">
@@ -86,6 +91,21 @@
                 $latestPeriod = $latestPayroll && $latestPayroll->period_start && $latestPayroll->period_end
                     ? $latestPayroll->period_start->format('Y-m-d') . ' to ' . $latestPayroll->period_end->format('Y-m-d')
                     : null;
+
+                $presentThisMonth = (int) ($monthPresentDays ?? 0);
+                $awolThisMonth = (int) ($monthAwolDays ?? 0);
+                $leaveThisMonth = (int) ($monthLeaveDays ?? 0);
+
+                $pendingLeave = (int) ($pendingLeaveCount ?? 0);
+                $pendingCa = (int) ($pendingCashAdvanceCount ?? 0);
+
+                $usage = $leaveUsage ?? null;
+                $leaveYearLabel = $usage['year_label'] ?? now()->format('Y');
+                $leavePaidYear = (float) ($usage['paid_days'] ?? 0);
+                $leaveUnpaidYear = (float) ($usage['unpaid_days'] ?? 0);
+
+                $limit = $caLimit ?? null;
+                $caEffective = $limit['effective'] ?? null;
             @endphp
 
             <div class="content cards">
@@ -96,6 +116,7 @@
                     'countDesc' => 'As of ' . date('F d, Y'),
                     'countIcon' => '<i class="fa-solid fa-money-bills"></i>',
                     'countValue' => '₱ ' . ($latestNet ?? '0.00'),
+                    'countHref' => route('worker.payroll-history'),
                 ])
                 
                 @include('user.components.count', [
@@ -104,6 +125,7 @@
                     'countDesc' => 'As of ' . date('F Y'),
                     'countIcon' => '<i class="fa-solid fa-clock"></i>',
                     'countValue' => number_format($monthHours ?? 0) . 'h',
+                    'countHref' => route('worker.attendance'),
                 ])
 
                 @include('user.components.count', [
@@ -112,6 +134,7 @@
                     'countDesc' => 'As of ' . date('F Y'),
                     'countIcon' => '<i class="fa-solid fa-bars-staggered"></i>',
                     'countValue' => number_format($monthOvertime ?? 0) . 'h',
+                    'countHref' => route('worker.attendance'),
                 ])
 
                 @include('user.components.count', [
@@ -120,6 +143,24 @@
                     'countDesc' => '',
                     'countIcon' => '<i class="fa-solid fa-file-waveform"></i>',
                     'countValue' => '₱ ' . number_format($caBalance ?? 0, 2),
+                    'countHref' => route('worker.cash-advance-requests'),
+                ])
+
+                @php
+                    $pendingLeaveCount = (int) ($pendingLeave ?? 0);
+                    $pendingCaCount = (int) ($pendingCa ?? 0);
+                    $pendingHref = $pendingLeaveCount > 0
+                        ? route('worker.leave-requests')
+                        : route('worker.cash-advance-requests');
+                @endphp
+
+                @include('user.components.count', [
+                    'countClass' => 'pending-approvals',
+                    'countLabel' => 'Requests in approval',
+                    'countDesc' => 'Leave / Cash advance',
+                    'countIcon' => '<i class="fa-solid fa-inbox"></i>',
+                    'countValue' => 'Leave ' . $pendingLeaveCount . ' / CA ' . $pendingCaCount,
+                    'countHref' => $pendingHref,
                 ])
 
             </div>

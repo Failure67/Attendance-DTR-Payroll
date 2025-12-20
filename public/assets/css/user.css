@@ -250,6 +250,10 @@ header {
     min-width: 0;
 }
 
+.user-count-link {
+    display: block;
+}
+
 .user-count-container {
     background-color: var(--card-bg);
     min-height: 130px;

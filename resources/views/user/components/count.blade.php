@@ -1,5 +1,11 @@
 <div class="user-count {{ $countClass }}">
 
+    @php $href = $countHref ?? null; @endphp
+
+    @if (!empty($href))
+        <a href="{{ $href }}" class="user-count-link">
+    @endif
+
     <div class="user-count-container">
 
         <div class="user-count-wrapper label">
@@ -39,5 +45,9 @@
         </div>
 
     </div>
+
+    @if (!empty($href))
+        </a>
+    @endif
 
 </div>

@@ -152,7 +152,11 @@
                 return;
             }
 
-            $('#leave-detail-employee').text($trigger.data('leave-employee') || '—');
+            var empName = $trigger.data('leave-employee') || '—';
+            var empType = $trigger.data('leave-employment-type') || '';
+            var empDisplay = empType ? (empName + ' (' + empType + ')') : empName;
+
+            $('#leave-detail-employee').text(empDisplay);
             $('#leave-detail-period').text($trigger.data('leave-period') || '—');
             $('#leave-detail-type').text($trigger.data('leave-type') || '—');
             $('#leave-detail-paid').text($trigger.data('leave-paid') || '—');

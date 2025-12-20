@@ -15,6 +15,9 @@ class UserCredential extends Model
         'lastname',
         'birthdate',
         'gender',
+        'sss_number',
+        'philhealth_number',
+        'pagibig_number',
         'user_id',
     ];
 

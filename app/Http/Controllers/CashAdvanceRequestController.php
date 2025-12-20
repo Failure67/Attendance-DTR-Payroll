@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CashAdvance;
 use App\Models\CashAdvanceRequest;
 use App\Models\CrewAssignment;
+use App\Models\Payroll;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -122,10 +123,99 @@ class CashAdvanceRequestController extends Controller
 
         $caBalance = max(0, $totalAdvances - $totalRepayments);
 
+        // Estimate how much this worker could reasonably request under
+        // current CA policy, without enforcing a hard server-side limit.
+        // This combines the employment-type cap with an approximate
+        // salary-based limit from the latest released payroll.
+        $caConfig = (array) config('payroll.ca', []);
+        $caps = (array) ($caConfig['cap'] ?? []);
+        $employmentType = $user->employment_type ?? User::EMPLOYMENT_TYPE_REGULAR;
+        $typeCap = isset($caps[$employmentType]) ? (float) $caps[$employmentType] : null;
+
+        $lastPayroll = Payroll::where('user_id', $user->id)
+            ->where('status', 'Released')
+            ->orderByDesc('period_end')
+            ->orderByDesc('created_at')
+            ->first();
+
+        $salaryBasedLimit = null;
+        if ($lastPayroll && $lastPayroll->period_start && $lastPayroll->period_end) {
+            $periodStart = $lastPayroll->period_start;
+            $periodEnd = $lastPayroll->period_end;
+            $daysInPeriod = max(1, $periodStart->diffInDays($periodEnd) + 1);
+            $daysPerMonth = (int) config('payroll.days_per_month', 26);
+
+            $netForPeriod = (float) ($lastPayroll->net_pay ?? 0);
+            if ($netForPeriod > 0 && $daysInPeriod > 0 && $daysPerMonth > 0) {
+                $monthlyApprox = ($netForPeriod / $daysInPeriod) * $daysPerMonth;
+                $maxPercent = (float) ($caConfig['max_percent_of_monthly_net'] ?? 0.8);
+
+                if ($monthlyApprox > 0 && $maxPercent > 0) {
+                    $salaryBasedLimit = $monthlyApprox * $maxPercent;
+                }
+            }
+        }
+
+        $effectiveLimit = null;
+        if ($typeCap !== null && $salaryBasedLimit !== null) {
+            $effectiveLimit = min($typeCap, $salaryBasedLimit);
+        } elseif ($typeCap !== null) {
+            $effectiveLimit = $typeCap;
+        } elseif ($salaryBasedLimit !== null) {
+            $effectiveLimit = $salaryBasedLimit;
+        }
+
+        // If part-time workers are not allowed to request CAs at all, we do
+        // not show a capacity figure to avoid implying they are eligible.
+        $allowPartTime = (bool) ($caConfig['allow_part_time'] ?? false);
+        if (!$user->isRegular() && !$allowPartTime) {
+            $effectiveLimit = null;
+            $typeCap = null;
+            $salaryBasedLimit = null;
+        }
+
+        $caLimit = [
+            'type_cap' => $typeCap,
+            'salary_based' => $salaryBasedLimit,
+            'effective' => $effectiveLimit,
+        ];
+
         $tableData = $requests->map(function (CashAdvanceRequest $entry) {
             $date = $entry->created_at ? $entry->created_at->format('Y-m-d') : '—';
+            $fullRequested = $entry->created_at ? $entry->created_at->format('Y-m-d H:i') : $date;
             $amount = '₱ ' . number_format((float) $entry->amount, 2);
-            $status = $entry->status ?? 'Pending';
+            [$statusLabel, $statusTooltip] = $this->getWorkerStatusLabelAndTooltip($entry);
+
+            $rawStatus = $entry->status ?? 'Pending';
+
+            $statusClass = 'badge rounded-pill ';
+            if ($rawStatus === 'Released') {
+                $statusClass .= 'bg-success-subtle text-success';
+            } elseif (in_array($rawStatus, ['Rejected', 'Cancelled'], true)) {
+                $statusClass .= 'bg-secondary-subtle text-secondary';
+            } else {
+                $statusClass .= 'bg-warning-subtle text-warning';
+            }
+
+            $statusHtml = '<span class="' . $statusClass . '"';
+
+            if ($statusTooltip !== '') {
+                $statusHtml .= ' title="' . e($statusTooltip) . '"';
+            }
+
+            $statusHtml .= '>' . e($statusLabel) . '</span>';
+
+            $reasonText = $entry->reason ?? '';
+
+            $dateCell = '<span class="worker-ca-request-row-trigger"'
+                . ' data-ca-id="' . e($entry->id) . '"'
+                . ' data-ca-date="' . e($fullRequested) . '"'
+                . ' data-ca-amount="' . e($amount) . '"'
+                . ' data-ca-status="' . e($statusLabel) . '"'
+                . ' data-ca-timeline="' . e($statusTooltip) . '"'
+                . ' data-ca-reason="' . e($reasonText) . '">'
+                . e($date)
+                . '</span>';
 
             if (in_array($entry->status, ['Pending', 'HR approved'], true)) {
                 $csrf = csrf_token();
@@ -138,9 +228,9 @@ class CashAdvanceRequestController extends Controller
             }
 
             return [
-                e($date),
+                $dateCell,
                 $amount,
-                e($status),
+                $statusHtml,
                 $actions,
             ];
         })->toArray();
@@ -150,9 +240,66 @@ class CashAdvanceRequestController extends Controller
             'pageClass' => 'employee-cash-advance-requests',
             'user' => $user,
             'caBalance' => $caBalance,
+            'totalAdvances' => $totalAdvances,
+            'totalRepayments' => $totalRepayments,
+            'caLimit' => $caLimit,
             'requests' => $requests,
             'requestTableData' => $tableData,
         ]);
+    }
+
+    protected function getWorkerStatusLabelAndTooltip(CashAdvanceRequest $entry): array
+    {
+        $status = $entry->status ?? 'Pending';
+
+        $label = $status;
+
+        if ($status === 'Pending') {
+            $label = 'Pending – waiting for supervisor';
+        } elseif ($status === 'Supervisor approved') {
+            $label = 'Approved by supervisor – waiting for manager';
+        } elseif ($status === 'Manager approved') {
+            $label = 'Approved by manager – waiting for HR';
+        } elseif ($status === 'HR approved') {
+            $label = 'Approved by HR – waiting for release';
+        } elseif ($status === 'Released') {
+            $label = 'Released';
+        } elseif ($status === 'Rejected') {
+            $label = 'Rejected';
+        } elseif ($status === 'Cancelled') {
+            $label = 'Cancelled';
+        }
+
+        $parts = [];
+
+        if ($entry->created_at) {
+            $parts[] = 'Requested ' . $entry->created_at->format('Y-m-d H:i');
+        }
+
+        if (property_exists($entry, 'supervisor_approved_at') && $entry->supervisor_approved_at) {
+            $parts[] = 'Supervisor approved ' . $entry->supervisor_approved_at->format('Y-m-d H:i');
+        }
+
+        if ($entry->manager_approved_at) {
+            $parts[] = 'Manager approved ' . $entry->manager_approved_at->format('Y-m-d H:i');
+        }
+
+        if (property_exists($entry, 'hr_approved_at') && $entry->hr_approved_at) {
+            $parts[] = 'HR approved ' . $entry->hr_approved_at->format('Y-m-d H:i');
+        }
+
+        if ($entry->released_at) {
+            $parts[] = 'Released ' . $entry->released_at->format('Y-m-d H:i');
+        }
+
+        if ($entry->rejected_at) {
+            $reason = $entry->rejection_reason ?: 'Rejected';
+            $parts[] = $reason . ' on ' . $entry->rejected_at->format('Y-m-d H:i');
+        }
+
+        $tooltip = implode(' | ', $parts);
+
+        return [$label, $tooltip];
     }
 
     public function store(Request $request)
@@ -160,6 +307,19 @@ class CashAdvanceRequestController extends Controller
         $user = auth()->user();
         if (!$user) {
             abort(403);
+        }
+
+        // Enforce employment-type CA eligibility: by default only regular employees may request.
+        if (!$user->isRegular()) {
+            $allowPartTime = (bool) config('payroll.ca.allow_part_time', false);
+
+            if (!$allowPartTime) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'amount' => 'Cash advances are available only to regular employees. Please contact HR for assistance.',
+                    ]);
+            }
         }
 
         // Normalize formatted amount (e.g. "1,234.56") before validation
@@ -228,6 +388,21 @@ class CashAdvanceRequestController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'reason' => 'required|string|max:1000',
         ]);
+
+        // Enforce CA employment-type rules on the target employee.
+        $targetUser = User::whereNull('deleted_at')->findOrFail((int) $validated['user_id']);
+
+        if (!$targetUser->isRegular()) {
+            $allowPartTime = (bool) config('payroll.ca.allow_part_time', false);
+
+            if (!$allowPartTime) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'user_id' => 'Cash advances are normally available only to regular employees. For part-time staff, please coordinate with HR/Admin for documented exceptions.',
+                    ]);
+            }
+        }
 
         // Ensure supervisors only create requests for their own crew members
         if ($user->role === 'Supervisor') {

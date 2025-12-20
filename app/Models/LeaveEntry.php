@@ -28,6 +28,7 @@ class LeaveEntry extends Model
         'meta',
         'payroll_id',
         'paid_amount',
+        'leave_credit_transaction_id',
     ];
 
     protected $casts = [
@@ -51,6 +52,11 @@ class LeaveEntry extends Model
     public function payroll()
     {
         return $this->belongsTo(Payroll::class, 'payroll_id');
+    }
+
+    public function leaveCreditTransaction()
+    {
+        return $this->belongsTo(LeaveCreditTransaction::class, 'leave_credit_transaction_id');
     }
 
     public function requestedBy()

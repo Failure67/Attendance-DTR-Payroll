@@ -2,6 +2,7 @@
 
 namespace App\Services\Attendance;
 
+use App\Models\ApprovalLog;
 use App\Models\Attendance;
 use App\Models\CrewAssignment;
 use App\Models\LeaveEntry;
@@ -9,6 +10,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class AttendanceService
 {
@@ -163,6 +165,7 @@ class AttendanceService
                 'Present' => 'bg-success-subtle text-success',
                 'Late' => 'bg-warning-subtle text-warning',
                 'Absent' => 'bg-danger-subtle text-danger',
+                'AWOL' => 'bg-danger-subtle text-danger',
                 'On leave' => 'bg-secondary-subtle text-secondary',
                 default => 'bg-light text-dark',
             };
@@ -254,7 +257,8 @@ class AttendanceService
         $totalOvertime = (float) $summaryAttendances->sum('overtime_hours');
         $recordCount = $summaryAttendances->count();
         $workedDays = $summaryAttendances->whereIn('status', ['Present', 'Late'])->count();
-        $absentDays = $summaryAttendances->where('status', 'Absent')->count();
+        $awolDays = $summaryAttendances->where('status', 'AWOL')->count();
+        $absentDays = $summaryAttendances->whereIn('status', ['Absent', 'AWOL'])->count();
         $leaveDays = $summaryAttendances->where('status', 'On leave')->count();
         $attendanceRate = $recordCount > 0 ? round(($workedDays / $recordCount) * 100) : 0;
 
@@ -276,6 +280,7 @@ class AttendanceService
             'records' => $recordCount,
             'worked_days' => $workedDays,
             'absent_days' => $absentDays,
+            'awol_days' => $awolDays,
             'leave_days' => $leaveDays,
             'period_start' => $periodStart,
             'period_end' => $periodEnd,
@@ -670,6 +675,7 @@ class AttendanceService
             $presentDays = $records->where('status', 'Present')->count();
             $lateDays = $records->where('status', 'Late')->count();
             $absentDays = $records->where('status', 'Absent')->count();
+            $awolDays = $records->where('status', 'AWOL')->count();
             $leaveDays = $records->where('status', 'On leave')->count();
 
             $totalHours = (float) $records->sum('total_hours');
@@ -681,6 +687,7 @@ class AttendanceService
                 $presentDays,
                 $lateDays,
                 $absentDays,
+                $awolDays,
                 $leaveDays,
                 number_format($totalHours, 2),
                 number_format($overtimeHours, 2),
@@ -732,6 +739,15 @@ class AttendanceService
                     continue;
                 }
 
+                $targetUser = User::find($userId);
+                if (!$targetUser) {
+                    continue;
+                }
+
+                if (!$this->canBulkEditAttendanceFor($currentUser, $targetUser)) {
+                    continue;
+                }
+
                 $timeInStr = $record['time_in'] ?? null;
                 $timeOutStr = $record['time_out'] ?? null;
                 $statusInput = $record['status'] ?? null;
@@ -770,6 +786,8 @@ class AttendanceService
                     }
                 }
 
+                $previousStatus = $attendance ? (string) $attendance->status : null;
+
                 if ($attendance) {
                     $attendance->update([
                         'date' => $date->format('Y-m-d'),
@@ -780,7 +798,7 @@ class AttendanceService
                         'status' => $calculated['status'],
                     ]);
                 } else {
-                    Attendance::create([
+                    $attendance = Attendance::create([
                         'user_id' => $userId,
                         'date' => $date->format('Y-m-d'),
                         'time_in' => $calculated['time_in'],
@@ -792,6 +810,14 @@ class AttendanceService
                         'leave_approved' => false,
                     ]);
                 }
+
+                $newStatus = $calculated['status'];
+
+                if ($previousStatus !== 'AWOL' && $newStatus === 'AWOL') {
+                    $this->logAwolStatusChange($attendance, 'status_awol_set', $previousStatus, $newStatus);
+                } elseif ($previousStatus === 'AWOL' && $newStatus !== 'AWOL') {
+                    $this->logAwolStatusChange($attendance, 'status_awol_cleared', $previousStatus, $newStatus);
+                }
             }
 
             DB::commit();
@@ -801,6 +827,81 @@ class AttendanceService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    private function canBulkEditAttendanceFor($actor, User $target): bool
+    {
+        if (!$actor) {
+            return false;
+        }
+
+        $actorRole = $this->normalizeRole($actor->role ?? '');
+        $targetRole = $this->normalizeRole($target->role ?? '');
+
+        // Superadmin can adjust attendance for diagnostics but cannot approve.
+        if ($actorRole === 'superadmin') {
+            return true;
+        }
+
+        // Do not manage attendance for Admin/Superadmin via this workflow.
+        if (in_array($targetRole, ['admin', 'superadmin'], true)) {
+            return false;
+        }
+
+        // Supervisors: only Managers/Admins can record their attendance.
+        if ($targetRole === 'supervisor') {
+            return in_array($actorRole, ['manager', 'admin'], true);
+        }
+
+        // Managers and HR: only Admin can record their attendance.
+        if (in_array($targetRole, ['manager', 'hr'], true)) {
+            return $actorRole === 'admin';
+        }
+
+        // Regular workers and other staff.
+        if ($actorRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $actor->id)->pluck('worker_id');
+
+            return $crewWorkerIds->contains($target->id);
+        }
+
+        return in_array($actorRole, ['manager', 'hr', 'admin'], true);
+    }
+
+    private function normalizeRole(?string $role): string
+    {
+        $role = strtolower(trim((string) $role));
+
+        if ($role === 'project manager') {
+            return 'manager';
+        }
+
+        return $role;
+    }
+
+    private function logAwolStatusChange(Attendance $attendance, string $action, ?string $previousStatus, ?string $newStatus): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
+        $date = $attendance->date
+            ? $attendance->date->toDateString()
+            : ($attendance->time_in ? $attendance->time_in->toDateString() : null);
+
+        ApprovalLog::create([
+            'resource_type' => 'attendance',
+            'resource_id' => $attendance->id,
+            'actor_id' => $user->id,
+            'actor_role' => $user->role ?? null,
+            'action' => $action,
+            'meta' => [
+                'date' => $date,
+                'previous_status' => $previousStatus,
+                'new_status' => $newStatus,
+            ],
+        ]);
     }
 
     /**

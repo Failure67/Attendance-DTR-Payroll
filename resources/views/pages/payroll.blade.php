@@ -45,6 +45,7 @@
                 $currentFilters = $filters ?? [];
                 $exportQuery = array_filter([
                     'employee_id' => $currentFilters['employee_id'] ?? null,
+                    'employee_role' => $currentFilters['employee_role'] ?? null,
                     'status' => $currentFilters['status'] ?? null,
                     'period_start' => $currentFilters['period_start'] ?? null,
                     'period_end' => $currentFilters['period_end'] ?? null,
@@ -126,6 +127,15 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-6 col-lg">
+                    <label for="employee_role" class="input-label mb-1">Role</label>
+                    <select name="employee_role" id="employee_role" class="select w-100">
+                        <option value="">All roles</option>
+                        @foreach (($roleOptions ?? []) as $role)
+                            <option value="{{ $role }}" @if(($filters['employee_role'] ?? '') === $role) selected @endif>{{ $role }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg">
                     <label for="period_start" class="input-label mb-1">Period start</label>
                     <input type="date" name="period_start" id="period_start" class="date-field" value="{{ $filters['period_start'] ?? '' }}">
                 </div>
@@ -163,6 +173,12 @@
 
                 $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) use ($isArchivedView, $canHrApproveAndRelease, $canAdminApprove, $canCancelPayroll, $currentRole) {
                     $employeeName = $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : 'Unknown employee';
+
+                    $employmentType = $payroll->user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                    $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+                    $employmentTypeClass = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME
+                        ? 'badge bg-secondary ms-1'
+                        : 'badge bg-success ms-1';
 
                     $minWage = '₱ ' . number_format($payroll->min_wage ?? 0, 2);
 
@@ -287,8 +303,11 @@
                         }
                     }
 
+                    $employeeCell = '<span class="payroll-employee" data-payroll-id="' . $payroll->id . '">' . e($employeeName) . '</span>'
+                        . ' <span class="' . $employmentTypeClass . '">' . e($employmentTypeLabel) . '</span>';
+
                     return [
-                        '<span class="payroll-employee" data-payroll-id="' . $payroll->id . '">' . e($employeeName) . '</span>',
+                        $employeeCell,
                         e($payroll->wage_type ?? 'N/A'),
                         e($minWage),
                         e($unitsWorked),

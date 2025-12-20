@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Payroll\RunProcessPayrollRequest;
 use App\Http\Requests\Payroll\StorePayrollRequest;
 use App\Http\Requests\Payroll\UpdatePayrollRequest;
+use App\Models\CrewAssignment;
+use App\Models\LeaveEntry;
+use App\Models\OvertimeEntry;
 use App\Models\Payroll;
 use App\Models\User;
 use App\Services\Payroll\PayrollService;
@@ -20,13 +23,41 @@ class PayrollController extends Controller
 
     public function viewPayroll(Request $request)
     {
-        $employees = User::whereNull('deleted_at')
-            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
+        $currentUser = auth()->user();
+        $currentRoleKey = strtolower($currentUser->role ?? '');
+        $crewWorkerIds = null;
+
+        if ($currentRoleKey === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+        }
+
+        $employeeRole = $request->input('employee_role');
+
+        $employeeQuery = User::whereNull('deleted_at')
+            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
+
+        if ($currentRoleKey === 'supervisor') {
+            if ($crewWorkerIds && $crewWorkerIds->count()) {
+                $employeeQuery->whereIn('id', $crewWorkerIds);
+            } else {
+                $employeeQuery->whereRaw('1 = 0');
+            }
+        }
+
+        if (!empty($employeeRole)) {
+            $employeeQuery->where('role', $employeeRole);
+        }
+
+        $employees = $employeeQuery
+            ->orderBy('full_name')
+            ->orderBy('username')
             ->get();
 
         $employeeOptions = $employees->mapWithKeys(function ($user) {
             return [$user->id => $user->full_name ?? $user->username];
         })->toArray();
+
+        $roleOptions = $employees->pluck('role')->filter()->unique()->sort()->values()->toArray();
 
         $showArchived = $request->boolean('archived');
 
@@ -42,6 +73,14 @@ class PayrollController extends Controller
         $periodStart = $request->input('period_start');
         $periodEnd = $request->input('period_end');
 
+        if ($currentRoleKey === 'supervisor') {
+            if ($crewWorkerIds && $crewWorkerIds->count()) {
+                $query->whereIn('user_id', $crewWorkerIds);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         if (!empty($employeeId)) {
             $query->where('user_id', $employeeId);
         }
@@ -58,15 +97,23 @@ class PayrollController extends Controller
             $query->whereDate('period_end', '<=', Carbon::parse($periodEnd)->toDateString());
         }
 
+        if (!empty($employeeRole)) {
+            $query->whereHas('user', function ($q) use ($employeeRole) {
+                $q->where('role', $employeeRole);
+            });
+        }
+
         $payrolls = $query->paginate(10)->appends($request->query());
 
         return view('pages.payroll', [
             'title' => 'Payroll',
             'pageClass' => 'payroll',
             'employeeOptions' => $employeeOptions,
+            'roleOptions' => $roleOptions,
             'payrolls' => $payrolls,
             'filters' => [
                 'employee_id' => $employeeId,
+                'employee_role' => $employeeRole,
                 'status' => $status,
                 'period_start' => $periodStart,
                 'period_end' => $periodEnd,
@@ -77,14 +124,31 @@ class PayrollController extends Controller
 
     public function exportPayroll(Request $request)
     {
+        $currentUser = auth()->user();
+        $currentRoleKey = strtolower($currentUser->role ?? '');
+        $crewWorkerIds = null;
+
+        if ($currentRoleKey === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+        }
+
         $query = Payroll::with('user')
             ->orderByDesc('period_end')
             ->orderByDesc('created_at');
 
         $employeeId = $request->input('employee_id');
+        $employeeRole = $request->input('employee_role');
         $status = $request->input('status');
         $periodStart = $request->input('period_start');
         $periodEnd = $request->input('period_end');
+
+        if ($currentRoleKey === 'supervisor') {
+            if ($crewWorkerIds && $crewWorkerIds->count()) {
+                $query->whereIn('user_id', $crewWorkerIds);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
 
         if (!empty($employeeId)) {
             $query->where('user_id', $employeeId);
@@ -100,6 +164,12 @@ class PayrollController extends Controller
 
         if (!empty($periodEnd)) {
             $query->whereDate('period_end', '<=', Carbon::parse($periodEnd)->toDateString());
+        }
+
+        if (!empty($employeeRole)) {
+            $query->whereHas('user', function ($q) use ($employeeRole) {
+                $q->where('role', $employeeRole);
+            });
         }
 
         $payrolls = $query->limit(1000)->get();
@@ -116,6 +186,7 @@ class PayrollController extends Controller
 
             fputcsv($handle, [
                 'Employee',
+                'Employment type',
                 'Period start',
                 'Period end',
                 'Wage type',
@@ -133,6 +204,15 @@ class PayrollController extends Controller
 
             foreach ($payrolls as $payroll) {
                 $employeeName = $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : 'Unknown employee';
+
+                $employmentType = $payroll->user ? ($payroll->user->employment_type ?? User::EMPLOYMENT_TYPE_REGULAR) : null;
+                if ($employmentType === User::EMPLOYMENT_TYPE_PART_TIME) {
+                    $employmentTypeLabel = 'Part-time';
+                } elseif ($employmentType) {
+                    $employmentTypeLabel = 'Regular';
+                } else {
+                    $employmentTypeLabel = 'Unknown';
+                }
 
                 $start = $payroll->period_start ? $payroll->period_start->format('Y-m-d') : '';
                 $end = $payroll->period_end ? $payroll->period_end->format('Y-m-d') : '';
@@ -156,6 +236,7 @@ class PayrollController extends Controller
 
                 fputcsv($handle, [
                     $employeeName,
+                    $employmentTypeLabel,
                     $startForExport,
                     $endForExport,
                     $payroll->wage_type ?? '',
@@ -180,14 +261,31 @@ class PayrollController extends Controller
 
     public function exportPayrollPdf(Request $request)
     {
+        $currentUser = auth()->user();
+        $currentRoleKey = strtolower($currentUser->role ?? '');
+        $crewWorkerIds = null;
+
+        if ($currentRoleKey === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+        }
+
         $query = Payroll::with('user')
             ->orderByDesc('period_end')
             ->orderByDesc('created_at');
 
         $employeeId = $request->input('employee_id');
+        $employeeRole = $request->input('employee_role');
         $status = $request->input('status');
         $periodStart = $request->input('period_start');
         $periodEnd = $request->input('period_end');
+
+        if ($currentRoleKey === 'supervisor') {
+            if ($crewWorkerIds && $crewWorkerIds->count()) {
+                $query->whereIn('user_id', $crewWorkerIds);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
 
         if (!empty($employeeId)) {
             $query->where('user_id', $employeeId);
@@ -203,6 +301,12 @@ class PayrollController extends Controller
 
         if (!empty($periodEnd)) {
             $query->whereDate('period_end', '<=', Carbon::parse($periodEnd)->toDateString());
+        }
+
+        if (!empty($employeeRole)) {
+            $query->whereHas('user', function ($q) use ($employeeRole) {
+                $q->where('role', $employeeRole);
+            });
         }
 
         $payrolls = $query->limit(1000)->get();
@@ -598,10 +702,20 @@ class PayrollController extends Controller
             }
         }
 
+        $employmentType = $payroll->user ? ($payroll->user->employment_type ?? User::EMPLOYMENT_TYPE_REGULAR) : null;
+        $employmentTypeLabel = null;
+        if ($employmentType === User::EMPLOYMENT_TYPE_PART_TIME) {
+            $employmentTypeLabel = 'Part-time';
+        } elseif ($employmentType) {
+            $employmentTypeLabel = 'Regular';
+        }
+
         return response()->json([
             'id' => $payroll->id,
             'user_id' => $payroll->user_id,
             'employee_name' => $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : null,
+            'employment_type' => $employmentType,
+            'employment_type_label' => $employmentTypeLabel,
             'wage_type' => $payroll->wage_type,
             'min_wage' => (float) ($payroll->min_wage ?? 0),
             'hours_worked' => (float) ($payroll->hours_worked ?? 0),
@@ -669,6 +783,57 @@ class PayrollController extends Controller
     {
         $validated = $request->validated();
 
+        $rows = $validated['rows'] ?? [];
+
+        $includedUserIds = collect($rows)
+            ->filter(function ($row) {
+                return !empty($row['include']);
+            })
+            ->map(function ($row) {
+                return (int) $row['user_id'];
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (!empty($includedUserIds)) {
+            $periodStart = Carbon::parse($validated['period_start'])->startOfDay();
+            $periodEnd = Carbon::parse($validated['period_end'])->endOfDay();
+
+            $hasPendingLeave = LeaveEntry::whereIn('user_id', $includedUserIds)
+                ->where('status', 'pending')
+                ->whereDate('date_start', '<=', $periodEnd->toDateString())
+                ->whereDate('date_end', '>=', $periodStart->toDateString())
+                ->exists();
+
+            $hasPendingOvertime = OvertimeEntry::whereIn('user_id', $includedUserIds)
+                ->where('status', 'pending')
+                ->whereDate('date', '>=', $periodStart->toDateString())
+                ->whereDate('date', '<=', $periodEnd->toDateString())
+                ->exists();
+
+            if ($hasPendingLeave || $hasPendingOvertime) {
+                $parts = [];
+
+                if ($hasPendingLeave) {
+                    $parts[] = 'pending leave requests';
+                }
+
+                if ($hasPendingOvertime) {
+                    $parts[] = 'pending overtime approvals';
+                }
+
+                $reason = implode(' and ', $parts);
+
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'error' => 'Cannot process payroll: there are ' . $reason . ' within the selected period for one or more employees. Please resolve these before running payroll.',
+                    ]);
+            }
+        }
+
         $this->payrollService->processFromAttendance($validated);
 
         return redirect()->route('payroll')->with('success', 'Payrolls processed from attendance successfully.');
@@ -700,6 +865,26 @@ class PayrollController extends Controller
         ]);
 
         $payroll = Payroll::findOrFail($id);
+
+        if ($validated['status'] === 'Released') {
+            [$hasPending, $hasPendingLeave, $hasPendingOvertime] = $this->payrollService->hasPendingApprovalsForPayroll($payroll);
+
+            if ($hasPending) {
+                $parts = [];
+
+                if ($hasPendingLeave) {
+                    $parts[] = 'pending leave requests';
+                }
+
+                if ($hasPendingOvertime) {
+                    $parts[] = 'pending overtime approvals';
+                }
+
+                $reason = implode(' and ', $parts);
+
+                return redirect()->back()->with('error', 'Cannot mark this payroll as released because there are ' . $reason . ' within the payroll period for this employee. Please resolve them first.');
+            }
+        }
 
         $this->payrollService->updatePayrollStatus($payroll, $validated['status']);
 
@@ -741,6 +926,24 @@ class PayrollController extends Controller
 
         if (!$payroll->admin_approved_at) {
             return redirect()->back()->with('error', 'Admin must approve the payroll before HR can release it.');
+        }
+
+        [$hasPending, $hasPendingLeave, $hasPendingOvertime] = $this->payrollService->hasPendingApprovalsForPayroll($payroll);
+
+        if ($hasPending) {
+            $parts = [];
+
+            if ($hasPendingLeave) {
+                $parts[] = 'pending leave requests';
+            }
+
+            if ($hasPendingOvertime) {
+                $parts[] = 'pending overtime approvals';
+            }
+
+            $reason = implode(' and ', $parts);
+
+            return redirect()->back()->with('error', 'Cannot approve and release this payroll because there are ' . $reason . ' within the payroll period for this employee. Please resolve them first.');
         }
 
         if ($payroll->hr_approved_at) {

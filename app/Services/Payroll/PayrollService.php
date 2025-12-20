@@ -9,6 +9,7 @@ use App\Models\ContributionBracket;
 use App\Models\LeaveEntry;
 use App\Models\OvertimeEntry;
 use App\Models\Payroll;
+use App\Models\User;
 use App\Repositories\PayrollRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -232,14 +233,22 @@ class PayrollService
                 $maxCaByBalance = $outstandingCa;
                 $maxCaByNet = max(0, $grossPay - $totalContrib - $incomeTax);
 
-                // Enforce company policy: at least ₱500 CA deduction per payroll
-                // when there is an outstanding balance, subject to available net pay.
+                // Enforce company policy: at least the configured minimum CA
+                // deduction per payroll while there is an outstanding balance,
+                // subject to available net pay. This reflects the documented
+                // "minimum 500 per pay" rule but allows configuration.
+                $caConfig = (array) config('payroll.ca', []);
+                $minCaDeduction = isset($caConfig['min_deduction'])
+                    ? (float) $caConfig['min_deduction']
+                    : 500.0;
+
                 $enforcedRequestedCa = $requestedCaDeduction;
 
-                if ($outstandingCa > 0 && $maxCaByNet > 0) {
-                    // Required minimum is ₱500, but cannot exceed outstanding balance
-                    // or the maximum CA we can deduct without making net pay negative.
-                    $requiredCa = min(500.0, $outstandingCa, $maxCaByNet);
+                if ($outstandingCa > 0 && $maxCaByNet > 0 && $minCaDeduction > 0) {
+                    // Required minimum is the configured amount, but cannot exceed
+                    // outstanding balance or the maximum we can deduct without
+                    // driving net pay negative.
+                    $requiredCa = min($minCaDeduction, $outstandingCa, $maxCaByNet);
 
                     if ($requiredCa > 0 && $enforcedRequestedCa < $requiredCa) {
                         $enforcedRequestedCa = $requiredCa;
@@ -374,6 +383,40 @@ class PayrollService
                 }
             }
         });
+    }
+
+    /**
+     * Check whether a payroll's period still has pending leave or overtime
+     * approvals for its employee.
+     *
+     * Returns [hasAnyPending, hasPendingLeave, hasPendingOvertime].
+     */
+    public function hasPendingApprovalsForPayroll(Payroll $payroll): array
+    {
+        $userId = (int) $payroll->user_id;
+
+        if (!$userId || !$payroll->period_start || !$payroll->period_end) {
+            return [false, false, false];
+        }
+
+        $periodStart = Carbon::parse($payroll->period_start)->startOfDay();
+        $periodEnd = Carbon::parse($payroll->period_end)->endOfDay();
+
+        $hasPendingLeave = LeaveEntry::where('user_id', $userId)
+            ->where('status', 'pending')
+            ->whereDate('date_start', '<=', $periodEnd->toDateString())
+            ->whereDate('date_end', '>=', $periodStart->toDateString())
+            ->exists();
+
+        $hasPendingOvertime = OvertimeEntry::where('user_id', $userId)
+            ->where('status', 'pending')
+            ->whereDate('date', '>=', $periodStart->toDateString())
+            ->whereDate('date', '<=', $periodEnd->toDateString())
+            ->exists();
+
+        $hasAny = $hasPendingLeave || $hasPendingOvertime;
+
+        return [$hasAny, $hasPendingLeave, $hasPendingOvertime];
     }
 
     /**
@@ -795,6 +838,9 @@ class PayrollService
         Carbon $periodStart,
         Carbon $periodEnd,
     ): array {
+        $user = User::find($userId);
+        $forceUnpaid = $user && $user->isPartTime();
+
         $entries = LeaveEntry::where('user_id', $userId)
             ->where('status', 'approved')
             ->whereNull('payroll_id')
@@ -813,6 +859,15 @@ class PayrollService
             }
 
             $isPaid = (bool) $entry->is_paid;
+
+            // Company policy: paid leave applies only to regular employees by
+            // default. Part-time employees' leave is treated as unpaid unless
+            // explicitly handled as an exception. Enforce that here so payroll
+            // calculations stay consistent even if a leave entry was marked
+            // paid by mistake for a part-time worker.
+            if ($forceUnpaid && $isPaid) {
+                $isPaid = false;
+            }
 
             if ($isPaid) {
                 $paidLeaveDays += $durationDays;

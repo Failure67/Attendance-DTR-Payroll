@@ -14,7 +14,10 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashAdvanceRequestController;
 use App\Http\Controllers\LeaveRequestController;
+use App\Http\Controllers\LeaveCreditController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\EmploymentTypeChangeController;
+use App\Http\Controllers\RemittanceController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -64,6 +67,11 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
         Route::get('/analytics/export-pdf', [AnalyticsController::class, 'exportPdf'])->name('analytics.export-pdf');
 
+        Route::get('/leave-credits', [LeaveCreditController::class, 'index'])->name('leave-credits');
+        Route::post('/leave-credits/adjust', [LeaveCreditController::class, 'adjust'])->name('leave-credits.adjust');
+        Route::post('/leave-credits/accrue', [LeaveCreditController::class, 'accrue'])->name('leave-credits.accrue');
+        Route::post('/leave-credits/employment-start-date', [LeaveCreditController::class, 'updateEmploymentStartDate'])->name('leave-credits.employment-start-date');
+
         Route::get('/attendance', [AttendanceController::class, 'viewAttendance'])->name('attendance');
         Route::post('/attendance', [AttendanceController::class, 'storeAttendance'])->name('attendance.store');
         Route::put('/attendance/{id}', [AttendanceController::class, 'updateAttendance'])->name('attendance.update');
@@ -90,8 +98,8 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         });
     });
 
-    // Payroll routes (Manager excluded)
-    Route::middleware(['role:Superadmin,Admin,HR,Accounting,Project Manager'])->group(function () {
+    // Payroll routes (now including Manager and Supervisor for visibility, with actions still guarded by policies/roles)
+    Route::middleware(['role:Superadmin,Admin,HR,Accounting,Project Manager,Manager,Supervisor'])->group(function () {
         Route::get('/payroll', [PayrollController::class, 'viewPayroll'])->name('payroll');
         Route::post('/payroll/create', [PayrollController::class, 'storePayroll'])->name('payroll.store');
         Route::get('/payroll/export', [PayrollController::class, 'exportPayroll'])->name('payroll.export');
@@ -106,6 +114,12 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/payroll/{id}/restore', [PayrollController::class, 'restorePayroll'])->name('payroll.restore');
         Route::delete('/payroll/{id}', [PayrollController::class, 'deletePayroll'])->name('payroll.delete');
         Route::delete('/payroll', [PayrollController::class, 'deleteMultiplePayroll'])->name('payroll.delete.multiple');
+
+        Route::get('/remittances', [RemittanceController::class, 'index'])->name('remittances');
+        Route::post('/remittances/generate', [RemittanceController::class, 'generate'])->name('remittances.generate');
+        Route::get('/remittances/{batch}', [RemittanceController::class, 'show'])->name('remittances.show');
+        Route::put('/remittances/{batch}', [RemittanceController::class, 'update'])->name('remittances.update');
+        Route::get('/remittances/{batch}/export', [RemittanceController::class, 'export'])->name('remittances.export');
     });
 
     // Cash advance ledger and requests (Supervisor now included)
@@ -161,6 +175,22 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
 
         // Approval logs (Admin & Superadmin only)
         Route::get('/approval-logs', [\App\Http\Controllers\ApprovalLogController::class, 'index'])->name('approval-logs');
+
+        // Employment type change requests (Admin & HR & Manager access via dedicated routes below)
+    });
+
+    Route::middleware(['role:Admin,HR,Manager'])->group(function () {
+        Route::get('/employment-type-requests', [EmploymentTypeChangeController::class, 'index'])->name('employment-type-requests.index');
+        Route::post('/employment-type-requests', [EmploymentTypeChangeController::class, 'store'])->name('employment-type-requests.store');
+    });
+
+    Route::middleware(['role:Admin,Manager'])->group(function () {
+        Route::post('/employment-type-requests/{id}/approve', [EmploymentTypeChangeController::class, 'managerApprove'])->name('employment-type-requests.approve');
+        Route::post('/employment-type-requests/{id}/reject', [EmploymentTypeChangeController::class, 'managerReject'])->name('employment-type-requests.reject');
+    });
+
+    Route::middleware(['role:Admin'])->group(function () {
+        Route::post('/employment-type-requests/{id}/override', [EmploymentTypeChangeController::class, 'adminOverride'])->name('employment-type-requests.override');
     });
 
     Route::middleware(['role:Superadmin,Admin'])->group(function () {
@@ -184,6 +214,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/worker/payroll-history/{id}/download', [WorkerController::class, 'downloadPayslip'])->name('worker.payslip.download');
         Route::get('/worker/attendance', [WorkerController::class, 'attendance'])->name('worker.attendance');
         Route::get('/worker/announcements', [WorkerController::class, 'announcementsIndex'])->name('worker.announcements');
+        Route::get('/worker/leave-credits', [LeaveCreditController::class, 'workerIndex'])->name('worker.leave-credits');
         Route::get('/worker/cash-advance-requests', [CashAdvanceRequestController::class, 'workerIndex'])->name('worker.cash-advance-requests');
         Route::post('/worker/cash-advance-requests', [CashAdvanceRequestController::class, 'store'])->name('worker.cash-advance-requests.store');
         Route::post('/worker/cash-advance-requests/{id}/cancel', [CashAdvanceRequestController::class, 'cancel'])->name('worker.cash-advance-requests.cancel');

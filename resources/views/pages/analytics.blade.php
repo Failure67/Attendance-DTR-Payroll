@@ -69,9 +69,32 @@
                     'records' => 0,
                     'worked_days' => 0,
                     'absent_days' => 0,
+                    'awol_days' => 0,
                     'leave_days' => 0,
                     'employee_count' => 0,
                     'anomaly_count' => 0,
+                    'employment_type' => [
+                        'regular' => [
+                            'awol_days' => 0,
+                        ],
+                        'part_time' => [
+                            'awol_days' => 0,
+                        ],
+                    ],
+                    'leave_usage' => [
+                        'paid_days' => 0,
+                        'unpaid_days' => 0,
+                        'employment_type' => [
+                            'regular' => [
+                                'paid_days' => 0,
+                                'unpaid_days' => 0,
+                            ],
+                            'part_time' => [
+                                'paid_days' => 0,
+                                'unpaid_days' => 0,
+                            ],
+                        ],
+                    ],
                     'period_label' => ($filters['period_start'] ?? '') && ($filters['period_end'] ?? '')
                         ? (($filters['period_start'] ?? '') . ' to ' . ($filters['period_end'] ?? ''))
                         : 'selected period',
@@ -84,6 +107,18 @@
                 $attendanceAnomalyCount = (int) ($attendanceSummary['anomaly_count'] ?? 0);
                 $nbsp = html_entity_decode('&nbsp;', ENT_QUOTES, 'UTF-8');
                 $attendanceEmployeesAnomaliesText = $attendanceEmployeesCount . ' employees, ' . $attendanceAnomalyCount . $nbsp . 'anomalies';
+
+                $attEmpTypeSummary = $attendanceSummary['employment_type'] ?? [
+                    'regular' => ['awol_days' => 0],
+                    'part_time' => ['awol_days' => 0],
+                ];
+
+                $attRegAwol = (int) ($attEmpTypeSummary['regular']['awol_days'] ?? 0);
+                $attPtAwol = (int) ($attEmpTypeSummary['part_time']['awol_days'] ?? 0);
+
+                $leaveUsage = $attendanceSummary['leave_usage'] ?? $attendanceSummaryDefaults['leave_usage'];
+                $leavePaidDays = (float) ($leaveUsage['paid_days'] ?? 0);
+                $leaveUnpaidDays = (float) ($leaveUsage['unpaid_days'] ?? 0);
             @endphp
 
             <div class="container {{ $pageClass }} cards mt-3">
@@ -122,11 +157,11 @@
                 ])
 
                 @include('components.dashboard-count', [
-                    'countClass' => 'attendance-meta',
-                    'countLabel' => 'Employees / anomalies',
+                    'countClass' => 'attendance-awol-days',
+                    'countLabel' => 'AWOL days',
                     'countSublabel' => 'For ' . $attendancePeriodText,
-                    'countIcon' => '<i class="fa-solid fa-people-group"></i>',
-                    'countValue' => $attendanceEmployeesAnomaliesText,
+                    'countIcon' => '<i class="fa-solid fa-user-xmark"></i>',
+                    'countValue' => number_format($attendanceSummary['awol_days'] ?? 0),
                 ])
 
             </div>
@@ -194,12 +229,14 @@
                     'tableCol' => [
                         'employee-name',
                         'absent-days',
+                        'awol-days',
                         'late-days',
                         'leave-days',
                     ],
                     'tableLabel' => [
                         'Name of employee',
                         'Absent days',
+                        'AWOL days',
                         'Late days',
                         'Leave days',
                     ],
@@ -224,6 +261,20 @@
                         'released' => ['count' => 0, 'net' => 0],
                         'cancelled' => ['count' => 0, 'net' => 0],
                     ],
+                    'cash_advance' => [
+                        'total_outstanding' => 0,
+                        'employee_count_with_balance' => 0,
+                        'employment_type' => [
+                            'regular' => [
+                                'headcount' => 0,
+                                'total_outstanding' => 0,
+                            ],
+                            'part_time' => [
+                                'headcount' => 0,
+                                'total_outstanding' => 0,
+                            ],
+                        ],
+                    ],
                     'period_label' => ($filters['period_start'] ?? '') && ($filters['period_end'] ?? '')
                         ? (($filters['period_start'] ?? '') . ' to ' . ($filters['period_end'] ?? ''))
                         : 'selected period',
@@ -231,6 +282,26 @@
                 $payrollSummary = array_merge($payrollSummaryDefaults, $payrollAnalytics['summary'] ?? []);
                 $payrollPeriodText = $payrollSummary['period_label'] ?? 'selected period';
                 $statusBreakdown = $payrollSummary['status_breakdown'] ?? $payrollSummaryDefaults['status_breakdown'];
+
+                $empTypeSummary = $payrollSummary['employment_type'] ?? [
+                    'regular' => ['headcount' => 0, 'total_net' => 0],
+                    'part_time' => ['headcount' => 0, 'total_net' => 0],
+                ];
+
+                $regHead = (int) ($empTypeSummary['regular']['headcount'] ?? 0);
+                $regNet = (float) ($empTypeSummary['regular']['total_net'] ?? 0);
+                $ptHead = (int) ($empTypeSummary['part_time']['headcount'] ?? 0);
+                $ptNet = (float) ($empTypeSummary['part_time']['total_net'] ?? 0);
+
+                $caExposure = $payrollSummary['cash_advance'] ?? $payrollSummaryDefaults['cash_advance'];
+                $caEmpTypeExposure = $caExposure['employment_type'] ?? [
+                    'regular' => ['headcount' => 0, 'total_outstanding' => 0],
+                    'part_time' => ['headcount' => 0, 'total_outstanding' => 0],
+                ];
+
+                $caTotalOutstanding = (float) ($caExposure['total_outstanding'] ?? 0);
+                $caRegOutstanding = (float) ($caEmpTypeExposure['regular']['total_outstanding'] ?? 0);
+                $caPtOutstanding = (float) ($caEmpTypeExposure['part_time']['total_outstanding'] ?? 0);
             @endphp
 
             <div class="container {{ $pageClass }} mt-4">
@@ -268,20 +339,13 @@
                     'countValue' => number_format($payrollSummary['employee_count']),
                 ])
 
-                @php
-                    $pendingInfo = $statusBreakdown['pending'] ?? ['count' => 0, 'net' => 0];
-                    $releasedInfo = $statusBreakdown['released'] ?? ['count' => 0, 'net' => 0];
-                    $cancelledInfo = $statusBreakdown['cancelled'] ?? ['count' => 0, 'net' => 0];
-                    $avgNetPerEmp = $payrollSummary['avg_net_per_employee'] ?? 0;
-                    $avgNetPerPayroll = $payrollSummary['avg_net_per_payroll'] ?? 0;
-                @endphp
-
                 @include('components.dashboard-count', [
-                    'countClass' => 'payroll-status-breakdown',
-                    'countLabel' => 'Status and averages',
-                    'countSublabel' => 'Pending ' . ($pendingInfo['count'] ?? 0) . ', Released ' . ($releasedInfo['count'] ?? 0) . ', Cancelled ' . ($cancelledInfo['count'] ?? 0),
-                    'countIcon' => '<i class="fa-solid fa-scale-balanced"></i>',
-                    'countValue' => '₱ ' . number_format($avgNetPerEmp, 2) . ' / emp' . "\n" . '₱ ' . number_format($avgNetPerPayroll, 2) . ' / payroll',
+                    'countClass' => 'payroll-cash-advance-exposure',
+                    'countLabel' => 'Cash advance exposure',
+                    'countSublabel' => 'Outstanding CA balances for ' . $payrollPeriodText,
+                    'countIcon' => '<i class="fa-solid fa-sack-dollar"></i>',
+                    'countValue' => 'Total ₱ ' . number_format($caTotalOutstanding, 2) . "\n"
+                        . 'Reg ₱ ' . number_format($caRegOutstanding, 2) . ' / PT ₱ ' . number_format($caPtOutstanding, 2),
                 ])
 
             </div>
@@ -373,6 +437,167 @@
 
             </div>
         @endif
+
+        @php
+            $approvalsSummaryDefaults = [
+                'period_label' => ($filters['period_start'] ?? '') && ($filters['period_end'] ?? '')
+                    ? (($filters['period_start'] ?? '') . ' to ' . ($filters['period_end'] ?? ''))
+                    : 'selected period',
+                'leave' => [
+                    'total' => 0,
+                    'waiting_supervisor' => 0,
+                    'waiting_manager' => 0,
+                    'waiting_hr' => 0,
+                ],
+                'overtime' => [
+                    'total' => 0,
+                    'total_hours' => 0,
+                ],
+                'cash_advance' => [
+                    'total' => 0,
+                    'pending' => 0,
+                    'supervisor_approved' => 0,
+                    'manager_approved' => 0,
+                    'hr_approved' => 0,
+                    'total_amount' => 0,
+                ],
+                'payroll' => [
+                    'total' => 0,
+                    'waiting_admin' => 0,
+                    'waiting_hr' => 0,
+                    'pending_net_total' => 0,
+                ],
+            ];
+
+            $approvalsSummary = array_merge($approvalsSummaryDefaults, $approvalsAnalytics['summary'] ?? []);
+            $approvalsPeriodText = $approvalsSummary['period_label'] ?? 'selected period';
+
+            $leaveSummary = $approvalsSummary['leave'] ?? $approvalsSummaryDefaults['leave'];
+            $otSummary = $approvalsSummary['overtime'] ?? $approvalsSummaryDefaults['overtime'];
+            $caSummary = $approvalsSummary['cash_advance'] ?? $approvalsSummaryDefaults['cash_advance'];
+            $prSummary = $approvalsSummary['payroll'] ?? $approvalsSummaryDefaults['payroll'];
+        @endphp
+
+        <div class="container {{ $pageClass }} mt-4">
+            <div class="analytics-section-header">
+                <div>
+                    <div class="analytics-section-title">Approvals &amp; risks</div>
+                    <div class="analytics-section-subtitle">Pending approvals and exposure for {{ $approvalsPeriodText }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container {{ $pageClass }} summary mb-3 mt-2">
+
+            @include('components.dashboard-count', [
+                'countClass' => 'approvals-leave',
+                'countLabel' => 'Pending leave requests',
+                'countSublabel' => 'Sup ' . ($leaveSummary['waiting_supervisor'] ?? 0)
+                    . ', Mgr ' . ($leaveSummary['waiting_manager'] ?? 0)
+                    . ', HR ' . ($leaveSummary['waiting_hr'] ?? 0),
+                'countIcon' => '<i class="fa-solid fa-plane-departure"></i>',
+                'countValue' => (int) ($leaveSummary['total'] ?? 0),
+            ])
+
+            @include('components.dashboard-count', [
+                'countClass' => 'approvals-overtime',
+                'countLabel' => 'Pending overtime',
+                'countSublabel' => 'Requests in queue for ' . $approvalsPeriodText,
+                'countIcon' => '<i class="fa-solid fa-business-time"></i>',
+                'countValue' => ($otSummary['total'] ?? 0) . ' req / ' . number_format((float) ($otSummary['total_hours'] ?? 0), 2) . ' hrs',
+            ])
+
+            @include('components.dashboard-count', [
+                'countClass' => 'approvals-cash-advance',
+                'countLabel' => 'Pending cash advances',
+                'countSublabel' => 'Pending ' . ($caSummary['pending'] ?? 0)
+                    . ', Sup ' . ($caSummary['supervisor_approved'] ?? 0)
+                    . ', Mgr ' . ($caSummary['manager_approved'] ?? 0)
+                    . ', HR ' . ($caSummary['hr_approved'] ?? 0),
+                'countIcon' => '<i class="fa-solid fa-file-invoice-dollar"></i>',
+                'countValue' => (int) ($caSummary['total'] ?? 0) . ' req / ₱ ' . number_format((float) ($caSummary['total_amount'] ?? 0), 2),
+            ])
+
+            @include('components.dashboard-count', [
+                'countClass' => 'approvals-payroll',
+                'countLabel' => 'Pending payroll records',
+                'countSublabel' => 'Admin ' . ($prSummary['waiting_admin'] ?? 0)
+                    . ', HR ' . ($prSummary['waiting_hr'] ?? 0),
+                'countIcon' => '<i class="fa-solid fa-scale-balanced"></i>',
+                'countValue' => (int) ($prSummary['total'] ?? 0) . ' rec / ₱ ' . number_format((float) ($prSummary['pending_net_total'] ?? 0), 2),
+            ])
+
+        </div>
+
+        @php
+            $approvalsOldestTable = $approvalsAnalytics['oldestTable'] ?? [];
+            $approvalsByEmployeeTable = $approvalsAnalytics['byEmployeeTable'] ?? [];
+
+            if (empty($approvalsOldestTable)) {
+                $approvalsOldestTable = [
+                    ['No data found', '—', '—', '—', '—'],
+                ];
+            }
+
+            if (empty($approvalsByEmployeeTable)) {
+                $approvalsByEmployeeTable = [
+                    ['No data found', '—', '—', '—', '—', '—'],
+                ];
+            }
+
+            $roleKey = $roleKey ?? '';
+            $byEmployeeLabel = strtolower($roleKey) === 'supervisor'
+                ? 'Pending approvals by your crew'
+                : 'Pending approvals by employee';
+        @endphp
+
+        <div class="container {{ $pageClass }} cards mt-3 mb-3">
+
+            @include('components.dashboard-card', [
+                'cardClass' => 'approvals-oldest',
+                'label' => 'Oldest pending approvals',
+                'viewAll' => route('leave-requests'),
+                'tableCol' => [
+                    'approval-type',
+                    'employee-name',
+                    'requested-on',
+                    'age-days',
+                    'stage',
+                ],
+                'tableLabel' => [
+                    'Type',
+                    'Employee',
+                    'Requested on',
+                    'Age',
+                    'Stage',
+                ],
+                'tableData' => $approvalsOldestTable,
+            ])
+
+            @include('components.dashboard-card', [
+                'cardClass' => 'approvals-by-employee',
+                'label' => $byEmployeeLabel,
+                'viewAll' => route('analytics'),
+                'tableCol' => [
+                    'employee-name',
+                    'pending-leave',
+                    'pending-overtime',
+                    'pending-cash-advance',
+                    'pending-payroll',
+                    'pending-amount',
+                ],
+                'tableLabel' => [
+                    'Employee',
+                    'Leave',
+                    'Overtime',
+                    'Cash advances',
+                    'Payroll',
+                    'Total pending',
+                ],
+                'tableData' => $approvalsByEmployeeTable,
+            ])
+
+        </div>
 
     </div>
 

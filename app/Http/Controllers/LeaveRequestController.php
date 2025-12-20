@@ -8,8 +8,10 @@ use App\Models\CrewAssignment;
 use App\Models\LeaveEntry;
 use App\Models\Payroll;
 use App\Models\User;
+use App\Services\Leave\LeaveCreditService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LeaveRequestController extends Controller
 {
@@ -123,7 +125,8 @@ class LeaveRequestController extends Controller
         }
 
         $tableData = $requests->map(function (LeaveEntry $entry) use ($logsByEntry) {
-            $employeeName = $entry->user ? ($entry->user->full_name ?? $entry->user->username) : 'Unknown employee';
+            $user = $entry->user;
+            $employeeName = $user ? ($user->full_name ?? $user->username) : 'Unknown employee';
             $dateRange = $entry->date_start && $entry->date_end
                 ? $entry->date_start->format('Y-m-d') . ' to ' . $entry->date_end->format('Y-m-d')
                 : 'N/A';
@@ -169,8 +172,12 @@ class LeaveRequestController extends Controller
                 $statusHtml = '<span class="badge rounded-pill ' . $statusClass . '">' . e($statusLabel) . '</span>';
             }
 
-            $employeeCell = '<span class="leave-request-row-trigger"'
+            $employmentType = $user ? ($user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR) : null;
+            $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+
+            $employeeCellInner = '<span class="leave-request-row-trigger"'
                 . ' data-leave-employee="' . e($employeeName) . '"'
+                . ' data-leave-employment-type="' . e($employmentTypeLabel) . '"'
                 . ' data-leave-period="' . e($dateRange) . '"'
                 . ' data-leave-type="' . e($typeLabel) . '"'
                 . ' data-leave-paid="' . e($paidLabel) . '"'
@@ -179,6 +186,11 @@ class LeaveRequestController extends Controller
                 . ' data-leave-reason="' . e($reasonText) . '"'
                 . ' data-leave-approval="' . e($statusTooltip) . '">'
                 . e($employeeName) . '</span>';
+
+            $employeeCell = '<div class="d-flex align-items-center justify-content-between">'
+                . $employeeCellInner
+                . '<span class="badge bg-light text-dark ms-2" style="font-size:0.7rem;">' . e($employmentTypeLabel) . '</span>'
+                . '</div>';
 
             $actions = $this->buildActionsHtml($entry);
 
@@ -229,6 +241,46 @@ class LeaveRequestController extends Controller
             ->orderByDesc('date_start')
             ->orderByDesc('created_at')
             ->paginate(10);
+
+        $yearStart = Carbon::now()->startOfYear();
+        $yearEnd = Carbon::now()->endOfYear();
+
+        $usageQuery = LeaveEntry::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('date_start', '>=', $yearStart->toDateString())
+            ->whereDate('date_end', '<=', $yearEnd->toDateString());
+
+        $entriesForYear = $usageQuery->get();
+
+        $paidDays = 0.0;
+        $unpaidDays = 0.0;
+
+        $forceUnpaid = $user->isPartTime();
+
+        foreach ($entriesForYear as $entry) {
+            $days = (float) ($entry->duration_days ?? 0);
+            if ($days <= 0) {
+                continue;
+            }
+
+            $isPaid = (bool) $entry->is_paid;
+            if ($forceUnpaid && $isPaid) {
+                $isPaid = false;
+            }
+
+            if ($isPaid) {
+                $paidDays += $days;
+            } else {
+                $unpaidDays += $days;
+            }
+        }
+
+        $leaveUsage = [
+            'year_label' => $yearStart->format('Y'),
+            'paid_days' => $paidDays,
+            'unpaid_days' => $unpaidDays,
+            'is_part_time' => $user->isPartTime(),
+        ];
 
         $approvalLogs = ApprovalLog::with('actor')
             ->where('resource_type', 'leave_entry')
@@ -312,6 +364,7 @@ class LeaveRequestController extends Controller
             'user' => $user,
             'requests' => $requests,
             'requestTableData' => $tableData,
+            'leaveUsage' => $leaveUsage,
         ]);
     }
 
@@ -330,6 +383,15 @@ class LeaveRequestController extends Controller
             'duration_days' => 'required|numeric|min:0.125',
             'reason' => 'required|string|max:255',
         ]);
+
+        $isPaid = (bool) $validated['is_paid'];
+
+        // Employment-type rule: by default, only regular employees receive
+        // paid leave. Part-time employees' leave is treated as unpaid unless
+        // explicitly handled as an administrative exception.
+        if ($user->isPartTime() && $isPaid) {
+            $isPaid = false;
+        }
 
         $dateStart = Carbon::parse($validated['date_start'])->startOfDay();
         $dateEnd = Carbon::parse($validated['date_end'])->startOfDay();
@@ -357,7 +419,7 @@ class LeaveRequestController extends Controller
             'date_end' => $dateEnd->toDateString(),
             'duration_days' => (float) $validated['duration_days'],
             'type' => $validated['type'],
-            'is_paid' => (bool) $validated['is_paid'],
+            'is_paid' => $isPaid,
             'status' => 'pending',
             'requested_by_id' => $user->id,
             'reason' => $validated['reason'],
@@ -521,20 +583,60 @@ class LeaveRequestController extends Controller
             }
         }
 
-        $previousStatus = $entry->status;
+        $employee = $entry->user ?: User::find($entry->user_id);
+        if (!$employee) {
+            return redirect()->back()->with('error', 'Unable to locate employee for this leave request.');
+        }
 
-        $entry->status = 'approved';
-        $entry->approved_by_id = $user->id;
-        $entry->approved_at = now();
-        $entry->hr_approved_at = $entry->approved_at;
-        $entry->save();
+        try {
+            DB::transaction(function () use ($entry, $employee, $user) {
+                $leaveCreditTxnId = $entry->leave_credit_transaction_id;
+                if ($leaveCreditTxnId === null) {
+                    $leaveStartDate = $entry->date_start ? $entry->date_start->copy()->startOfDay() : now()->startOfDay();
+                    $days = (float) ($entry->duration_days ?? 0);
+                    $isPaid = (bool) ($entry->is_paid ?? false);
+                    $type = (string) ($entry->type ?? '');
 
-        $this->logApproval('leave_entry', $entry->id, 'approved', [
-            'from_status' => $previousStatus,
-            'to_status' => $entry->status,
-        ]);
+                    $service = app(LeaveCreditService::class);
+                    $txn = $service->debitForLeaveApproval(
+                        $employee,
+                        (int) $user->id,
+                        (int) $entry->id,
+                        $type,
+                        $isPaid,
+                        $days,
+                        $leaveStartDate
+                    );
 
-        $this->applyAttendanceOnApproval($entry);
+                    if ($txn) {
+                        $leaveCreditTxnId = $txn->id;
+                    }
+                }
+
+                $previousStatus = $entry->status;
+
+                $entry->status = 'approved';
+                $entry->approved_by_id = $user->id;
+                $entry->approved_at = now();
+                $entry->hr_approved_at = $entry->approved_at;
+
+                if ($leaveCreditTxnId !== null) {
+                    $entry->leave_credit_transaction_id = $leaveCreditTxnId;
+                }
+
+                $entry->save();
+
+                $this->logApproval('leave_entry', $entry->id, 'approved', [
+                    'from_status' => $previousStatus,
+                    'to_status' => $entry->status,
+                    'leave_credit_transaction_id' => $leaveCreditTxnId,
+                ]);
+
+                $this->applyAttendanceOnApproval($entry);
+            });
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Leave request approved.');
     }

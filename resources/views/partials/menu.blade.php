@@ -28,6 +28,7 @@
         $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'manager'], true);
         $canSeeCashAdvance = $canSeePayrollAndCa || $currentRole === 'supervisor';
         $canSeeLeaveRequests = in_array($currentRole, ['admin', 'superadmin', 'hr', 'manager', 'supervisor'], true);
+        $canSeeLeaveCredits = $canSeeLeaveRequests;
         $canSeeActivityLogs = in_array($currentRole, ['admin', 'superadmin'], true);
         $canSeeApprovalLogs = $canSeeActivityLogs;
         $canSeeUsers = in_array($currentRole, ['admin', 'superadmin'], true);
@@ -106,6 +107,22 @@
         </a>
         @endif
 
+        @if ($canSeePayrollAndCa)
+        <a href="{{ route('remittances') }}">
+            <span class="menu-item {{ Route::is('remittances*') ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </span>
+
+                <span class="menu-label">
+                    Remittances
+                </span>
+
+            </span>
+        </a>
+        @endif
+
         @if ($canSeeLeaveRequests)
         <a href="{{ route('leave-requests') }}">
             <span class="menu-item {{ Route::currentRouteName() == 'leave-requests' ? 'selected' : '' }}">
@@ -116,6 +133,22 @@
 
                 <span class="menu-label">
                     Leave requests
+                </span>
+
+            </span>
+        </a>
+        @endif
+
+        @if ($canSeeLeaveCredits)
+        <a href="{{ route('leave-credits') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'leave-credits' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-wallet"></i>
+                </span>
+
+                <span class="menu-label">
+                    Leave credits
                 </span>
 
             </span>

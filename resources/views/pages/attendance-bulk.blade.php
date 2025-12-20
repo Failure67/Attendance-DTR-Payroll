@@ -79,6 +79,7 @@
                             <option value="Present">Present</option>
                             <option value="Late">Late</option>
                             <option value="Absent">Absent</option>
+                            <option value="AWOL">AWOL</option>
                             <option value="On leave">On leave</option>
                         </select>
                     </div>
@@ -131,6 +132,7 @@
                                 . '<option value="Present"' . ($statusValue === 'Present' ? ' selected' : '') . '>Present</option>'
                                 . '<option value="Late"' . ($statusValue === 'Late' ? ' selected' : '') . '>Late</option>'
                                 . '<option value="Absent"' . ($statusValue === 'Absent' ? ' selected' : '') . '>Absent</option>'
+                                . '<option value="AWOL"' . ($statusValue === 'AWOL' ? ' selected' : '') . '>AWOL</option>'
                                 . '<option value="On leave"' . ($statusValue === 'On leave' ? ' selected' : '') . '>On leave</option>'
                                 . '</select>';
 

@@ -61,6 +61,10 @@
                     Leave Requests
                 </a>
 
+                <a href="{{ route('worker.leave-credits') }}" class="selector-item">
+                    Leave Credits
+                </a>
+
             </div>
 
         </div>
@@ -68,7 +72,36 @@
         <div class="container employee">
 
             <div class="content payroll-breakdown mb-3">
-                <div class="title">New leave request</div>
+                @php
+                    $usage = $leaveUsage ?? null;
+                    $yearLabel = $usage['year_label'] ?? now()->format('Y');
+                    $paidDays = (float) ($usage['paid_days'] ?? 0);
+                    $unpaidDays = (float) ($usage['unpaid_days'] ?? 0);
+                    $isPartTime = (bool) ($usage['is_part_time'] ?? false);
+                @endphp
+
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div class="title mb-0">New leave request</div>
+
+                    <div class="d-flex flex-wrap gap-2 align-items-stretch">
+                        <div class="badge bg-primary-subtle text-primary px-3 py-2">
+                            <div class="small text-muted">Paid leave used ({{ $yearLabel }})</div>
+                            <div class="fw-semibold">{{ number_format($paidDays, 3) }} days</div>
+                        </div>
+
+                        <div class="badge bg-secondary-subtle text-secondary px-3 py-2">
+                            <div class="small text-muted">Unpaid leave used ({{ $yearLabel }})</div>
+                            <div class="fw-semibold">{{ number_format($unpaidDays, 3) }} days</div>
+                        </div>
+
+                        @if($isPartTime)
+                            <div class="badge bg-warning-subtle text-warning px-3 py-2">
+                                <div class="small text-muted">Employment type policy</div>
+                                <div class="fw-semibold">Part-time leave is treated as unpaid by default.</div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
 
                 <form method="POST" action="{{ route('worker.leave-requests.store') }}" class="row g-3 mt-2">
                     @csrf

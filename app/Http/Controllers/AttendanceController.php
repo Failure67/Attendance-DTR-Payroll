@@ -51,7 +51,7 @@ class AttendanceController extends Controller
             'records.*.user_id' => 'required|exists:users,id',
             'records.*.time_in' => 'nullable|date_format:H:i',
             'records.*.time_out' => 'nullable|date_format:H:i',
-            'records.*.status' => 'nullable|in:Present,Absent,Late,On leave',
+            'records.*.status' => 'nullable|in:Present,Absent,Late,On leave,AWOL',
             'records.*.attendance_id' => 'nullable|integer',
             'records.*.include' => 'nullable|in:0,1',
         ]);
@@ -116,10 +116,17 @@ class AttendanceController extends Controller
             'date' => 'required|date',
             'time_in' => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i|after:time_in',
-            'status' => 'nullable|in:Present,Absent,Late,On leave',
+            'status' => 'nullable|in:Present,Absent,Late,On leave,AWOL',
         ]);
 
         $date = Carbon::parse($validated['date'])->startOfDay();
+
+        $currentUser = auth()->user();
+        $targetUser = User::findOrFail($validated['user_id']);
+
+        if (!$currentUser || !$this->canEditAttendanceFor($currentUser, $targetUser)) {
+            abort(403);
+        }
 
         $calculated = $this->attendanceService->calculateAttendanceMetrics(
             $date,
@@ -173,6 +180,14 @@ class AttendanceController extends Controller
             'leave_approved' => $leaveApproved,
         ]);
 
+        if ($attendance->status === 'AWOL') {
+            $this->logApproval('attendance', $attendance->id, 'status_awol_set', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : $date->toDateString(),
+                'previous_status' => null,
+                'new_status' => 'AWOL',
+            ]);
+        }
+
         if ($overtimeApproved) {
             $multiplier = (float) config('payroll.overtime_multiplier', 1.30);
             $currentUser = auth()->user();
@@ -213,15 +228,24 @@ class AttendanceController extends Controller
     {
         $attendance = Attendance::findOrFail($id);
 
+        $previousStatus = (string) $attendance->status;
+
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'date' => 'required|date',
             'time_in' => 'nullable|date_format:H:i',
             'time_out' => 'nullable|date_format:H:i|after:time_in',
-            'status' => 'nullable|in:Present,Absent,Late,On leave',
+            'status' => 'nullable|in:Present,Absent,Late,On leave,AWOL',
         ]);
 
         $date = Carbon::parse($validated['date'])->startOfDay();
+
+        $currentUser = auth()->user();
+        $targetUser = User::findOrFail($validated['user_id']);
+
+        if (!$currentUser || !$this->canEditAttendanceFor($currentUser, $targetUser)) {
+            abort(403);
+        }
 
         $calculated = $this->attendanceService->calculateAttendanceMetrics(
             $date,
@@ -293,6 +317,22 @@ class AttendanceController extends Controller
 
         $attendance->refresh();
 
+        $newStatusAfterUpdate = (string) $attendance->status;
+
+        if ($previousStatus !== 'AWOL' && $newStatusAfterUpdate === 'AWOL') {
+            $this->logApproval('attendance', $attendance->id, 'status_awol_set', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                'previous_status' => $previousStatus,
+                'new_status' => $newStatusAfterUpdate,
+            ]);
+        } elseif ($previousStatus === 'AWOL' && $newStatusAfterUpdate !== 'AWOL') {
+            $this->logApproval('attendance', $attendance->id, 'status_awol_cleared', [
+                'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                'previous_status' => $previousStatus,
+                'new_status' => $newStatusAfterUpdate,
+            ]);
+        }
+
         if (!$previousOvertimeApproved && $attendance->overtime_approved) {
             $this->logApproval('attendance', $attendance->id, 'overtime_approved', [
                 'date' => $attendance->date ? $attendance->date->toDateString() : null,
@@ -348,6 +388,52 @@ class AttendanceController extends Controller
 
         return redirect()->route('attendance', $redirectParams)
             ->with('success', 'Attendance record updated successfully.');
+    }
+
+    protected function canEditAttendanceFor(User $actor, User $target): bool
+    {
+        $actorRole = $this->normalizeRole($actor->role ?? '');
+        $targetRole = $this->normalizeRole($target->role ?? '');
+
+        // Superadmin can adjust attendance for diagnostics but cannot approve.
+        if ($actorRole === 'superadmin') {
+            return true;
+        }
+
+        // Do not manage attendance for Admin/Superadmin via this workflow.
+        if (in_array($targetRole, ['admin', 'superadmin'], true)) {
+            return false;
+        }
+
+        // Supervisors: only Managers/Admins can record their attendance.
+        if ($targetRole === 'supervisor') {
+            return in_array($actorRole, ['manager', 'admin'], true);
+        }
+
+        // Managers and HR: only Admin can record their attendance.
+        if (in_array($targetRole, ['manager', 'hr'], true)) {
+            return $actorRole === 'admin';
+        }
+
+        // Regular workers and other staff.
+        if ($actorRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $actor->id)->pluck('worker_id');
+
+            return $crewWorkerIds->contains($target->id);
+        }
+
+        return in_array($actorRole, ['manager', 'hr', 'admin'], true);
+    }
+
+    protected function normalizeRole(?string $role): string
+    {
+        $role = strtolower(trim((string) $role));
+
+        if ($role === 'project manager') {
+            return 'manager';
+        }
+
+        return $role;
     }
 
     public function deleteAttendance(Request $request, $id)
@@ -642,7 +728,7 @@ class AttendanceController extends Controller
     public function exportAttendanceSummary(Request $request)
     {
         $summaryRows = $this->attendanceService->getExportSummaryRows($request->query());
-
+        
         $filename = 'attendance_summary_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
@@ -659,6 +745,7 @@ class AttendanceController extends Controller
                 'Days present',
                 'Days late',
                 'Days absent',
+                'Days AWOL',
                 'Days on leave',
                 'Total hours',
                 'Overtime hours',

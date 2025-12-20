@@ -13,7 +13,7 @@
             <tr>
                 @foreach ($tableLabel as $index => $label)
                     @php
-                        $columnKey = $tableCol[$index];
+                        $columnKey = $tableCol[$index] ?? ('col-' . $index);
                         $isSortable = array_key_exists($columnKey, $sortableColumns);
                         $sortKey = $isSortable ? $sortableColumns[$columnKey] : null;
                         $isActiveSort = $isSortable && $currentSortBy === $sortKey;
@@ -44,12 +44,19 @@
         <tbody>
             @foreach ($tableData as $row)
                 <tr>
-                    @foreach ($row as $index => $data)
-                        <td class="table-data {{ $tableClass }} {{ $tableCol[$index] }}">
-                            @if (in_array($tableCol[$index], $rawColumns))
-                                {!! $data !!}
+                    @foreach ($tableCol as $index => $columnKey)
+                        @php
+                            $cell = $row[$index] ?? null;
+                            if ($cell === null && is_array($row) && array_key_exists($columnKey, $row)) {
+                                $cell = $row[$columnKey];
+                            }
+                            $cell = $cell ?? '';
+                        @endphp
+                        <td class="table-data {{ $tableClass }} {{ $columnKey }}">
+                            @if (in_array($columnKey, $rawColumns))
+                                {!! $cell !!}
                             @else
-                                {{ $data }}
+                                {{ $cell }}
                             @endif
                         </td>
                     @endforeach

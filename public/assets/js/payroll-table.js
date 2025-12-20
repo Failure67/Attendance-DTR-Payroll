@@ -348,7 +348,12 @@ $(document).ready(function() {
                 ? `${data.period_start} to ${data.period_end}`
                 : (data.created_at ? (data.created_at.split(' ')[0] || data.created_at) : 'N/A');
 
-            $modal.find('#payroll-details-employee').text(data.employee_name || 'N/A');
+            const employmentTypeLabel = data.employment_type_label || '';
+            const employeeDisplay = employmentTypeLabel
+                ? `${data.employee_name || 'N/A'} · ${employmentTypeLabel}`
+                : (data.employee_name || 'N/A');
+
+            $modal.find('#payroll-details-employee').text(employeeDisplay);
             $modal.find('#payroll-details-period').text(period);
             $modal.find('#payroll-details-created-at').text(data.created_at || 'N/A');
 

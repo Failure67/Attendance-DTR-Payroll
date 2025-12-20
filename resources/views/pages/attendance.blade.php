@@ -199,6 +199,7 @@
                         <option value="Present" @if(($filters['status'] ?? '') === 'Present') selected @endif>Present</option>
                         <option value="Late" @if(($filters['status'] ?? '') === 'Late') selected @endif>Late</option>
                         <option value="Absent" @if(($filters['status'] ?? '') === 'Absent') selected @endif>Absent</option>
+                        <option value="AWOL" @if(($filters['status'] ?? '') === 'AWOL') selected @endif>AWOL</option>
                         <option value="On leave" @if(($filters['status'] ?? '') === 'On leave') selected @endif>On leave</option>
                     </select>
                 </div>
@@ -397,6 +398,7 @@
                                     'Present' => 'Present',
                                     'Late' => 'Late',
                                     'Absent' => 'Absent',
+                                    'AWOL' => 'AWOL',
                                     'On leave' => 'On leave',
                                 ],
                                 'isShort' => false,
