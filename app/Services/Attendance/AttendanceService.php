@@ -2,12 +2,15 @@
 
 namespace App\Services\Attendance;
 
+use App\Models\ApprovalLog;
 use App\Models\Attendance;
 use App\Models\CrewAssignment;
+use App\Models\LeaveEntry;
 use App\Models\User;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class AttendanceService
 {
@@ -131,7 +134,9 @@ class AttendanceService
 
         $employeeSummaryTableData = $this->buildAttendanceEmployeeSummary($summaryAttendances);
 
-        $attendanceTableData = $attendances->map(function ($attendance) use ($showArchived) {
+        $hasLeaveLinkedRows = false;
+
+        $attendanceTableData = $attendances->map(function ($attendance) use ($showArchived, &$hasLeaveLinkedRows) {
             $employeeName = $attendance->user ? ($attendance->user->full_name ?? $attendance->user->username) : 'Unknown employee';
 
             $date = $attendance->date
@@ -160,6 +165,7 @@ class AttendanceService
                 'Present' => 'bg-success-subtle text-success',
                 'Late' => 'bg-warning-subtle text-warning',
                 'Absent' => 'bg-danger-subtle text-danger',
+                'AWOL' => 'bg-danger-subtle text-danger',
                 'On leave' => 'bg-secondary-subtle text-secondary',
                 default => 'bg-light text-dark',
             };
@@ -183,7 +189,27 @@ class AttendanceService
                 }
             }
 
-            $statusHtml = $statusBadge . (count($flagBadges) ? ' ' . implode(' ', $flagBadges) : '');
+            $statusHtml = $statusBadge;
+
+            if ($status === 'On leave' && $attendance->leave_approved) {
+                $linkedLeave = LeaveEntry::where('user_id', $attendance->user_id)
+                    ->where('status', 'approved')
+                    ->whereDate('date_start', '<=', $date)
+                    ->whereDate('date_end', '>=', $date)
+                    ->first();
+
+                if ($linkedLeave) {
+                    $hasLeaveLinkedRows = true;
+
+                    $tooltip = 'From leave request covering ' . $linkedLeave->date_start->toDateString() . ' to ' . $linkedLeave->date_end->toDateString();
+
+                    $flagBadges[] = '<span class="badge rounded-pill bg-info-subtle text-info ms-1 leave-linked-badge" title="' . e($tooltip) . '">From leave request</span>';
+                }
+            }
+
+            if (count($flagBadges)) {
+                $statusHtml .= ' ' . implode(' ', $flagBadges);
+            }
 
             $employeeCell = '<span class="attendance-employee" data-attendance-id="' . $attendance->id . '" data-user-id="' . $attendance->user_id . '" data-overtime-approved="' . ($attendance->overtime_approved ? '1' : '0') . '" data-leave-approved="' . ($attendance->leave_approved ? '1' : '0') . '">' . e($employeeName) . '</span>';
 
@@ -200,14 +226,14 @@ class AttendanceService
             if ($showArchived) {
                 $csrf = csrf_token();
 
-                $restoreForm = "<form method=\"POST\" action=\"" . route('attendance.restore', ['attendance' => $attendance->id]) . "\" style=\"display:inline-block;margin-right:4px;\" onsubmit=\"return confirm('Recover this attendance record?');\">"
+                $restoreForm = "<form method=\"POST\" action=\"" . route('attendance.restore', ['attendance' => $attendance->id]) . "\" style=\"display:inline-block;margin-right:4px;\" data-confirm=\"Recover this attendance record?\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<button type="submit" class="btn btn-outline-success btn-sm" title="Recover">'
                     . '<i class="fa-solid fa-rotate-left"></i>' .
                     '</button>' .
                     '</form>';
 
-                $deleteForm = "<form method=\"POST\" action=\"" . route('attendance.delete', ['id' => $attendance->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Permanently delete this attendance record? This cannot be undone.');\">"
+                $deleteForm = "<form method=\"POST\" action=\"" . route('attendance.delete', ['id' => $attendance->id]) . "\" style=\"display:inline-block;\" data-confirm=\"Permanently delete this attendance record? This cannot be undone.\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<input type="hidden" name="_method" value="DELETE">'
                     . '<input type="hidden" name="archived" value="1">'
@@ -231,7 +257,8 @@ class AttendanceService
         $totalOvertime = (float) $summaryAttendances->sum('overtime_hours');
         $recordCount = $summaryAttendances->count();
         $workedDays = $summaryAttendances->whereIn('status', ['Present', 'Late'])->count();
-        $absentDays = $summaryAttendances->where('status', 'Absent')->count();
+        $awolDays = $summaryAttendances->where('status', 'AWOL')->count();
+        $absentDays = $summaryAttendances->whereIn('status', ['Absent', 'AWOL'])->count();
         $leaveDays = $summaryAttendances->where('status', 'On leave')->count();
         $attendanceRate = $recordCount > 0 ? round(($workedDays / $recordCount) * 100) : 0;
 
@@ -253,6 +280,7 @@ class AttendanceService
             'records' => $recordCount,
             'worked_days' => $workedDays,
             'absent_days' => $absentDays,
+            'awol_days' => $awolDays,
             'leave_days' => $leaveDays,
             'period_start' => $periodStart,
             'period_end' => $periodEnd,
@@ -268,6 +296,7 @@ class AttendanceService
             'showArchived' => $showArchived,
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
+            'hasLeaveLinkedRows' => $hasLeaveLinkedRows,
             'filters' => [
                 'employee_id' => $employeeId,
                 'status' => $status,
@@ -319,7 +348,15 @@ class AttendanceService
             ->get()
             ->keyBy('user_id');
 
+        $approvedLeavesByUser = LeaveEntry::whereIn('user_id', $employees->pluck('id'))
+            ->where('status', 'approved')
+            ->whereDate('date_start', '<=', $date->toDateString())
+            ->whereDate('date_end', '>=', $date->toDateString())
+            ->get()
+            ->groupBy('user_id');
+
         $dailyTableData = [];
+        $hasLeaveLinkedRowsDaily = false;
 
         foreach ($employees as $employee) {
             $attendance = $attendanceByUser->get($employee->id);
@@ -340,11 +377,26 @@ class AttendanceService
                 $overtimeHours = number_format(0, 2);
             }
 
+            $statusHtml = e($status);
+
+            if ($attendance && $status === 'On leave' && $attendance->leave_approved) {
+                $linkedLeaves = $approvedLeavesByUser->get($employee->id);
+
+                if ($linkedLeaves && $linkedLeaves->count()) {
+                    $hasLeaveLinkedRowsDaily = true;
+
+                    $linkedLeave = $linkedLeaves->first();
+                    $tooltip = 'From leave request covering ' . $linkedLeave->date_start->toDateString() . ' to ' . $linkedLeave->date_end->toDateString();
+
+                    $statusHtml .= ' <span class="badge rounded-pill bg-info-subtle text-info leave-linked-badge" title="' . e($tooltip) . '">From leave request</span>';
+                }
+            }
+
             $dailyTableData[] = [
                 e($employeeName),
                 e($timeInText),
                 e($timeOutText),
-                e($status),
+                $statusHtml,
                 $totalHours,
                 $overtimeHours,
             ];
@@ -365,6 +417,7 @@ class AttendanceService
             'dailyDate' => $date->toDateString(),
             'dailyTableData' => $dailyTableData,
             'employeeOptions' => $employeeOptions,
+            'hasLeaveLinkedRowsDaily' => $hasLeaveLinkedRowsDaily,
             'filters' => [
                 'employee_id' => $filterEmployeeId,
                 'date' => $date->toDateString(),
@@ -379,7 +432,7 @@ class AttendanceService
     {
         $currentRole = strtolower($currentUser->role ?? '');
 
-        $dateInput = $filters['date'] ?? null;
+        $dateInput = $filters['date'] ?? ($filters['period_start'] ?? null);
         $date = $dateInput ? Carbon::parse($dateInput)->startOfDay() : now()->startOfDay();
 
         $employeeQuery = User::whereNull('deleted_at')
@@ -413,29 +466,65 @@ class AttendanceService
             ->get()
             ->keyBy('user_id');
 
+        $approvedLeavesByUser = LeaveEntry::whereIn('user_id', $employees->pluck('id'))
+            ->where('status', 'approved')
+            ->whereDate('date_start', '<=', $date->toDateString())
+            ->whereDate('date_end', '>=', $date->toDateString())
+            ->get()
+            ->groupBy('user_id');
+
         $defaultTimeIn = config('attendance.default_shift_start', '08:00');
         $defaultTimeOut = config('attendance.default_shift_end', '17:00');
 
-        $rows = $employees->map(function ($employee) use ($attendanceByUser, $defaultTimeIn, $defaultTimeOut) {
+        $hasLeaveLinkedRows = false;
+
+        $rows = $employees->map(function ($employee) use ($attendanceByUser, $defaultTimeIn, $defaultTimeOut, $approvedLeavesByUser, $date, &$hasLeaveLinkedRows) {
             $attendance = $attendanceByUser->get($employee->id);
+
+            $timeIn = $attendance && $attendance->time_in ? $attendance->time_in->format('H:i') : $defaultTimeIn;
+            $timeOut = $attendance && $attendance->time_out ? $attendance->time_out->format('H:i') : $defaultTimeOut;
+            $status = $attendance ? ($attendance->status ?? null) : null;
+
+            $isLeaveLinked = false;
+            $leaveTooltip = null;
+
+            if ($attendance && $status === 'On leave' && $attendance->leave_approved) {
+                $linkedLeaves = $approvedLeavesByUser->get($employee->id);
+
+                if ($linkedLeaves && $linkedLeaves->count()) {
+                    $hasLeaveLinkedRows = true;
+
+                    $linkedLeave = $linkedLeaves->first();
+                    $isLeaveLinked = true;
+                    $leaveTooltip = 'From leave request covering ' . $linkedLeave->date_start->toDateString() . ' to ' . $linkedLeave->date_end->toDateString();
+                }
+            }
 
             return [
                 'user_id' => $employee->id,
                 'attendance_id' => $attendance ? $attendance->id : null,
                 'name' => $employee->full_name ?? $employee->username,
-                'time_in' => $attendance && $attendance->time_in ? $attendance->time_in->format('H:i') : $defaultTimeIn,
-                'time_out' => $attendance && $attendance->time_out ? $attendance->time_out->format('H:i') : $defaultTimeOut,
-                'status' => $attendance ? ($attendance->status ?? null) : null,
+                'time_in' => $timeIn,
+                'time_out' => $timeOut,
+                'status' => $status,
+                'is_leave_linked' => $isLeaveLinked,
+                'leave_tooltip' => $leaveTooltip,
             ];
         })->values();
+
+        $periodStart = $filters['period_start'] ?? $date->toDateString();
+        $periodEnd = $filters['period_end'] ?? null;
 
         return [
             'bulkDate' => $date->toDateString(),
             'rows' => $rows,
             'employeeOptions' => $employeeOptions,
+            'hasLeaveLinkedRows' => $hasLeaveLinkedRows,
             'filters' => [
                 'employee_id' => $filterEmployeeId,
                 'date' => $date->toDateString(),
+                'period_start' => $periodStart,
+                'period_end' => $periodEnd,
             ],
         ];
     }
@@ -586,6 +675,7 @@ class AttendanceService
             $presentDays = $records->where('status', 'Present')->count();
             $lateDays = $records->where('status', 'Late')->count();
             $absentDays = $records->where('status', 'Absent')->count();
+            $awolDays = $records->where('status', 'AWOL')->count();
             $leaveDays = $records->where('status', 'On leave')->count();
 
             $totalHours = (float) $records->sum('total_hours');
@@ -597,6 +687,7 @@ class AttendanceService
                 $presentDays,
                 $lateDays,
                 $absentDays,
+                $awolDays,
                 $leaveDays,
                 number_format($totalHours, 2),
                 number_format($overtimeHours, 2),
@@ -648,6 +739,15 @@ class AttendanceService
                     continue;
                 }
 
+                $targetUser = User::find($userId);
+                if (!$targetUser) {
+                    continue;
+                }
+
+                if (!$this->canBulkEditAttendanceFor($currentUser, $targetUser)) {
+                    continue;
+                }
+
                 $timeInStr = $record['time_in'] ?? null;
                 $timeOutStr = $record['time_out'] ?? null;
                 $statusInput = $record['status'] ?? null;
@@ -674,6 +774,20 @@ class AttendanceService
                         ->first();
                 }
 
+                if ($attendance && $attendance->status === 'On leave' && $attendance->leave_approved) {
+                    $linkedLeave = LeaveEntry::where('user_id', $userId)
+                        ->where('status', 'approved')
+                        ->whereDate('date_start', '<=', $date->toDateString())
+                        ->whereDate('date_end', '>=', $date->toDateString())
+                        ->first();
+
+                    if ($linkedLeave) {
+                        continue;
+                    }
+                }
+
+                $previousStatus = $attendance ? (string) $attendance->status : null;
+
                 if ($attendance) {
                     $attendance->update([
                         'date' => $date->format('Y-m-d'),
@@ -684,7 +798,7 @@ class AttendanceService
                         'status' => $calculated['status'],
                     ]);
                 } else {
-                    Attendance::create([
+                    $attendance = Attendance::create([
                         'user_id' => $userId,
                         'date' => $date->format('Y-m-d'),
                         'time_in' => $calculated['time_in'],
@@ -696,6 +810,14 @@ class AttendanceService
                         'leave_approved' => false,
                     ]);
                 }
+
+                $newStatus = $calculated['status'];
+
+                if ($previousStatus !== 'AWOL' && $newStatus === 'AWOL') {
+                    $this->logAwolStatusChange($attendance, 'status_awol_set', $previousStatus, $newStatus);
+                } elseif ($previousStatus === 'AWOL' && $newStatus !== 'AWOL') {
+                    $this->logAwolStatusChange($attendance, 'status_awol_cleared', $previousStatus, $newStatus);
+                }
             }
 
             DB::commit();
@@ -705,6 +827,81 @@ class AttendanceService
             DB::rollBack();
             throw $e;
         }
+    }
+
+    private function canBulkEditAttendanceFor($actor, User $target): bool
+    {
+        if (!$actor) {
+            return false;
+        }
+
+        $actorRole = $this->normalizeRole($actor->role ?? '');
+        $targetRole = $this->normalizeRole($target->role ?? '');
+
+        // Superadmin can adjust attendance for diagnostics but cannot approve.
+        if ($actorRole === 'superadmin') {
+            return true;
+        }
+
+        // Do not manage attendance for Admin/Superadmin via this workflow.
+        if (in_array($targetRole, ['admin', 'superadmin'], true)) {
+            return false;
+        }
+
+        // Supervisors: only Managers/Admins can record their attendance.
+        if ($targetRole === 'supervisor') {
+            return in_array($actorRole, ['manager', 'admin'], true);
+        }
+
+        // Managers and HR: only Admin can record their attendance.
+        if (in_array($targetRole, ['manager', 'hr'], true)) {
+            return $actorRole === 'admin';
+        }
+
+        // Regular workers and other staff.
+        if ($actorRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $actor->id)->pluck('worker_id');
+
+            return $crewWorkerIds->contains($target->id);
+        }
+
+        return in_array($actorRole, ['manager', 'hr', 'admin'], true);
+    }
+
+    private function normalizeRole(?string $role): string
+    {
+        $role = strtolower(trim((string) $role));
+
+        if ($role === 'project manager') {
+            return 'manager';
+        }
+
+        return $role;
+    }
+
+    private function logAwolStatusChange(Attendance $attendance, string $action, ?string $previousStatus, ?string $newStatus): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
+        $date = $attendance->date
+            ? $attendance->date->toDateString()
+            : ($attendance->time_in ? $attendance->time_in->toDateString() : null);
+
+        ApprovalLog::create([
+            'resource_type' => 'attendance',
+            'resource_id' => $attendance->id,
+            'actor_id' => $user->id,
+            'actor_role' => $user->role ?? null,
+            'action' => $action,
+            'meta' => [
+                'date' => $date,
+                'previous_status' => $previousStatus,
+                'new_status' => $newStatus,
+            ],
+        ]);
     }
 
     /**
@@ -719,14 +916,18 @@ class AttendanceService
             ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
 
         $currentRole = strtolower($currentUser->role ?? '');
-
+        
         if ($currentRole === 'supervisor') {
-            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
-            if ($crewWorkerIds->isNotEmpty()) {
-                $employeeQuery->whereIn('id', $crewWorkerIds);
-            } else {
-                $employeeQuery->whereRaw('1 = 0');
-            }
+            $assignedWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+        } else {
+            $assignedWorkerIds = CrewAssignment::pluck('worker_id');
+        }
+
+        if ($assignedWorkerIds->isNotEmpty()) {
+            $employeeQuery->whereIn('id', $assignedWorkerIds);
+        } else {
+            // No workers are currently assigned to any supervisor; nothing to generate.
+            $employeeQuery->whereRaw('1 = 0');
         }
 
         if (!empty($validated['employee_id'])) {

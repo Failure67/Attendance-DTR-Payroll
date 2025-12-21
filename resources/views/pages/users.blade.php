@@ -10,6 +10,7 @@
             const archivedSection = document.getElementById('archived-users');
             const searchInput = document.getElementById('users-search');
             const roleFilter = document.getElementById('role-filter');
+            const employmentTypeFilter = document.getElementById('employment-type-filter');
             const archiveToggleBtn = document.getElementById('archive-toggle-users');
             const archiveToggleLabel = archiveToggleBtn ? archiveToggleBtn.querySelector('.button-label') : null;
             const archiveToggleIcon = archiveToggleBtn ? archiveToggleBtn.querySelector('.button-icon i') : null;
@@ -42,6 +43,7 @@
             function applyFilters() {
                 const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
                 const role = roleFilter ? roleFilter.value.trim().toLowerCase() : '';
+                const empType = employmentTypeFilter ? employmentTypeFilter.value.trim().toLowerCase() : '';
 
                 [activeSection, archivedSection].forEach(section => {
                     if (!section) return;
@@ -70,8 +72,9 @@
 
                         const matchesSearch = !query || text.includes(query);
                         const matchesRole = !role || (roleText && (roleText === role || roleText.includes(role)));
+                        const matchesEmpType = !empType || text.includes(empType);
 
-                        row.style.display = (matchesSearch && matchesRole) ? '' : 'none';
+                        row.style.display = (matchesSearch && matchesRole && matchesEmpType) ? '' : 'none';
                     });
                 });
             }
@@ -106,6 +109,10 @@
 
             if (roleFilter) {
                 roleFilter.addEventListener('change', applyFilters);
+            }
+
+            if (employmentTypeFilter) {
+                employmentTypeFilter.addEventListener('change', applyFilters);
             }
 
             // Action buttons (edit/archive/restore/delete)
@@ -145,11 +152,25 @@
                         const fullNameInput = form.querySelector('[name="full_name"]');
                         const emailInput = form.querySelector('[name="email"]');
                         const roleSelect = form.querySelector('[name="role"]');
+                        const employmentTypeSelect = form.querySelector('[name="employment_type"]');
+                        const employmentStartDateInput = form.querySelector('[name="employment_start_date"]');
                         const passwordInput = form.querySelector('[name="password"]');
+                        const birthdateInput = form.querySelector('[name="birthdate"]');
+                        const genderSelect = form.querySelector('[name="gender"]');
+                        const sssInput = form.querySelector('[name="sss_number"]');
+                        const philhealthInput = form.querySelector('[name="philhealth_number"]');
+                        const pagibigInput = form.querySelector('[name="pagibig_number"]');
 
                         const name = btn.getAttribute('data-name') || '';
                         const email = btn.getAttribute('data-email') || '';
                         const role = btn.getAttribute('data-role') || '';
+                        const employmentType = btn.getAttribute('data-employment-type') || '';
+                        const employmentStartDate = btn.getAttribute('data-employment-start-date') || '';
+                        const birthdate = btn.getAttribute('data-birthdate') || '';
+                        const gender = btn.getAttribute('data-gender') || '';
+                        const sssNumber = btn.getAttribute('data-sss-number') || '';
+                        const philhealthNumber = btn.getAttribute('data-philhealth-number') || '';
+                        const pagibigNumber = btn.getAttribute('data-pagibig-number') || '';
 
                         if (fullNameInput) {
                             fullNameInput.value = name;
@@ -175,19 +196,57 @@
                             roleSelect.dispatchEvent(new Event('change', { bubbles: true }));
                         }
 
+                        if (employmentTypeSelect) {
+                            employmentTypeSelect.value = employmentType || '';
+                            employmentTypeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        if (employmentStartDateInput) {
+                            employmentStartDateInput.value = employmentStartDate || '';
+                            employmentStartDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        if (birthdateInput) {
+                            birthdateInput.value = birthdate || '';
+                            birthdateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        if (genderSelect) {
+                            genderSelect.value = gender || '';
+                            genderSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        if (sssInput) {
+                            sssInput.value = sssNumber || '';
+                            sssInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+
+                        if (philhealthInput) {
+                            philhealthInput.value = philhealthNumber || '';
+                            philhealthInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+
+                        if (pagibigInput) {
+                            pagibigInput.value = pagibigNumber || '';
+                            pagibigInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+
                         if (passwordInput) {
                             // Leave password blank for edits; filled value means change password
                             passwordInput.value = '';
                             passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
 
-                        const editModal = new bootstrap.Modal(modalEl);
-                        editModal.show();
+                        // Show modal
+                        const bsModal = new bootstrap.Modal(modalEl);
+                        bsModal.show();
                         break;
                     }
 
-                    case 'archive':
-                        if (confirm('Are you sure you want to archive this user?')) {
+                    case 'archive': {
+                        const message = 'Are you sure you want to archive this user?';
+
+                        const proceedArchive = function () {
                             fetch(`/users/${id}/archive`, {
                                 method: 'POST',
                                 headers: {
@@ -208,11 +267,26 @@
                                     console.error('Error:', error);
                                     alert('An error occurred while archiving the user');
                                 });
-                        }
-                        break;
+                        };
 
-                    case 'restore':
-                        if (confirm('Restore this user?')) {
+                        if (typeof window.appConfirm === 'function') {
+                            window.appConfirm(message).then(function (ok) {
+                                if (!ok) {
+                                    return;
+                                }
+                                proceedArchive();
+                            });
+                        } else if (window.confirm(message)) {
+                            proceedArchive();
+                        }
+
+                        break;
+                    }
+
+                    case 'restore': {
+                        const message = 'Restore this user?';
+
+                        const proceedRestore = function () {
                             fetch(`/users/${id}/restore`, {
                                 method: 'POST',
                                 headers: {
@@ -233,8 +307,21 @@
                                     console.error('Error:', error);
                                     alert('An error occurred while restoring the user');
                                 });
+                        };
+
+                        if (typeof window.appConfirm === 'function') {
+                            window.appConfirm(message).then(function (ok) {
+                                if (!ok) {
+                                    return;
+                                }
+                                proceedRestore();
+                            });
+                        } else if (window.confirm(message)) {
+                            proceedRestore();
                         }
+
                         break;
+                    }
 
                     case 'delete':
                         const deleteForm = document.getElementById('deleteUserForm');
@@ -277,6 +364,12 @@
 
             // default view
             setView(false);
+
+            // Hard-override cursor on users tables so rows never look clickable.
+            document.querySelectorAll('.table-container.users-table tbody tr, .table-container.archived-users-table tbody tr')
+                .forEach(function (row) {
+                    row.style.cursor = 'default';
+                });
 
             // Ensure the New button opens the modal in create mode
             const addUserBtn = document.getElementById('users-add-users');
@@ -335,8 +428,15 @@
                         <option value="Admin">Admin</option>
                     @endif
                     <option value="HR">HR</option>
+                    <option value="Manager">Manager</option>
                     <option value="Supervisor">Supervisor</option>
                     <option value="Worker">Worker</option>
+                </select>
+
+                <select id="employment-type-filter" class="tab-select">
+                    <option value="">All types</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Part-time">Part-time</option>
                 </select>
             </div>
 
@@ -389,6 +489,8 @@
                     ],
                     'tableData' => $users->map(function ($user) {
                         $displayName = $user->full_name ?? $user->username;
+                        $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                        $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
                         $registeredAt = now()->parse($user->created_at)->format('M d, Y');
 
                         return [
@@ -397,7 +499,10 @@
                                 . '<div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;font-size:12px;font-weight:600;">'
                                     . substr($displayName, 0, 2)
                                 . '</div>'
-                                . '<span class="fw-semibold">' . e($displayName) . '</span>'
+                                . '<div class="d-flex flex-column">'
+                                    . '<span class="fw-semibold">' . e($displayName) . '</span>'
+                                    . '<span class="badge bg-light text-dark mt-1" style="font-size: 0.7rem;">' . e($employmentTypeLabel) . '</span>'
+                                . '</div>'
                             . '</div>',
                             // Email
                             e($user->email),
@@ -415,12 +520,19 @@
                             $registeredAt,
                             // Actions with data attributes for JS
                             '<div class="users-actions d-flex align-items-center gap-1">'
-                                . '<button type="button" class="btn btn-outline-warning btn-sm btn-icon action-btn edit"'
+                                . '<button type="button" class="btn btn-outline-warning btn-sm btn-icon action-btn edit" title="Edit user" aria-label="Edit user"'
                                     . ' data-id="' . $user->id . '"'
                                     . ' data-name="' . e($displayName) . '"'
                                     . ' data-email="' . e($user->email) . '"'
                                     . ' data-role="' . e($user->role) . '"'
-                                    . ' data-registered="' . e($registeredAt) . '">'
+                                    . ' data-employment-type="' . e($user->employment_type ?? 'regular') . '"'
+                                    . ' data-employment-start-date="' . e($user->employment_start_date ? now()->parse($user->employment_start_date)->format('Y-m-d') : '') . '"'
+                                    . ' data-birthdate="' . e($user->userCredential?->birthdate ? now()->parse($user->userCredential->birthdate)->format('Y-m-d') : '') . '"'
+                                    . ' data-gender="' . e($user->userCredential?->gender ?? '') . '"'
+                                    . ' data-sss-number="' . e($user->userCredential?->sss_number ?? '') . '"'
+                                    . ' data-philhealth-number="' . e($user->userCredential?->philhealth_number ?? '') . '"'
+                                    . ' data-pagibig-number="' . e($user->userCredential?->pagibig_number ?? '') . '"'
+                                    . ' data-registered="' . e($registeredAt) . '">' 
                                     . '<i class="fa-solid fa-pen"></i>'
                                 . '</button>'
                                 . '<button type="button" class="btn btn-outline-secondary btn-sm btn-icon action-btn archive" data-id="' . $user->id . '" title="Archive user">'
@@ -459,12 +571,17 @@
                         'Actions',
                     ],
                     'tableData' => $archivedUsers->map(function ($user) {
+                        $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                        $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
                         return [
                             '<div class="d-flex align-items-center">'
                                 . '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;font-size:12px;font-weight:600;">'
                                     . substr($user->full_name ?? $user->username, 0, 2)
                                 . '</div>'
-                                . '<span class="text-muted">' . e($user->full_name ?? $user->username) . '</span>'
+                                . '<div class="d-flex flex-column">'
+                                    . '<span class="text-muted">' . e($user->full_name ?? $user->username) . '</span>'
+                                    . '<span class="badge bg-light text-dark mt-1" style="font-size: 0.7rem;">' . e($employmentTypeLabel) . '</span>'
+                                . '</div>'
                             . '</div>',
                             '<span class="text-muted">' . e($user->email) . '</span>',
                             // Role with data-role attribute
@@ -549,11 +666,88 @@
                 'selectData' => [
                     'Admin' => 'Admin',
                     'HR' => 'HR',
+                    'Manager' => 'Manager',
                     'Supervisor' => 'Supervisor',
                     'Worker' => 'Worker',
                 ],
                 'isShort' => false,
             ])->render() . '
+
+            ' . view('components.date', [
+                'dateSrc' => 'users',
+                'dateVar' => 'birthdate',
+                'dateName' => 'birthdate',
+                'dateLabel' => 'Birthdate',
+                'isRequired' => true,
+            ])->render() . '
+
+            ' . view('components.select', [
+                'selectType' => 'normal',
+                'selectSrc' => 'users',
+                'selectVar' => 'gender',
+                'selectName' => 'gender',
+                'selectLabel' => 'Gender',
+                'selectData' => [
+                    'Male' => 'Male',
+                    'Female' => 'Female',
+                ],
+                'isShort' => false,
+            ])->render() . '
+
+            {{-- government IDs --}}
+            ' . view('components.input-field', [
+                'inputType' => 'text',
+                'inputSrc' => 'users',
+                'inputVar' => 'sss-number',
+                'inputName' => 'sss_number',
+                'inputLabel' => 'SSS number',
+                'inputPlaceholder' => 'Enter SSS number (optional)',
+                'inputInDecrement' => false,
+            ])->render() . '
+
+            ' . view('components.input-field', [
+                'inputType' => 'text',
+                'inputSrc' => 'users',
+                'inputVar' => 'philhealth-number',
+                'inputName' => 'philhealth_number',
+                'inputLabel' => 'PhilHealth number',
+                'inputPlaceholder' => 'Enter PhilHealth number (optional)',
+                'inputInDecrement' => false,
+            ])->render() . '
+
+            ' . view('components.input-field', [
+                'inputType' => 'text',
+                'inputSrc' => 'users',
+                'inputVar' => 'pagibig-number',
+                'inputName' => 'pagibig_number',
+                'inputLabel' => 'Pag-IBIG number',
+                'inputPlaceholder' => 'Enter Pag-IBIG number (optional)',
+                'inputInDecrement' => false,
+            ])->render() . '
+            ' . ((isset($currentRoleKey) && $currentRoleKey === 'admin')
+                ? view('components.select', [
+                    'selectType' => 'normal',
+                    'selectSrc' => 'users',
+                    'selectVar' => 'employment-type',
+                    'selectName' => 'employment_type',
+                    'selectLabel' => 'Employment type',
+                    'selectData' => [
+                        'regular' => 'Regular',
+                        'part_time' => 'Part-time',
+                    ],
+                    'isShort' => false,
+                ])->render()
+                : '') . '
+
+            ' . ((isset($currentRoleKey) && $currentRoleKey === 'admin')
+                ? view('components.date', [
+                    'dateSrc' => 'users',
+                    'dateVar' => 'employment-start-date',
+                    'dateName' => 'employment_start_date',
+                    'dateLabel' => 'Employment start date',
+                    'isRequired' => false,
+                ])->render()
+                : '') . '
 
             {{-- password --}}
             ' . view('components.input-field', [
@@ -576,6 +770,13 @@
                     ['label' => 'Full name', 'value' => 'N/A'],
                     ['label' => 'Email', 'value' => 'N/A'],
                     ['label' => 'Role', 'value' => 'N/A'],
+                    ['label' => 'Birthdate', 'value' => 'N/A'],
+                    ['label' => 'Gender', 'value' => 'N/A'],
+                    ['label' => 'SSS number', 'value' => 'N/A'],
+                    ['label' => 'PhilHealth number', 'value' => 'N/A'],
+                    ['label' => 'Pag-IBIG number', 'value' => 'N/A'],
+                    ['label' => 'Employment type', 'value' => 'N/A'],
+                    ['label' => 'Employment start date', 'value' => 'N/A'],
                     ['label' => 'Password', 'value' => 'N/A (hidden)'],
                 ],
             ])->render() . '

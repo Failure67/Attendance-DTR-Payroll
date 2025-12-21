@@ -91,13 +91,15 @@
         $deductions = number_format((float) ($payroll->total_deductions ?? 0), 2);
         $net = number_format((float) ($payroll->net_pay ?? 0), 2);
         $employeeName = $user->full_name ?? $user->username;
+        $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+        $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
     @endphp
 
     <div class="payslip-wrapper">
         <div class="header">
             <div>
                 <div class="company-name">RMCS Payslip</div>
-                <div>Employee: {{ $employeeName }}</div>
+                <div>Employee: {{ $employeeName }} ({{ $employmentTypeLabel }})</div>
                 <div>ID: EMP-{{ str_pad($user->id, 4, '0', STR_PAD_LEFT) }}</div>
             </div>
             <div style="text-align: right; font-size: 11px; color: #6b7280;">

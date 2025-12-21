@@ -184,6 +184,12 @@
     font-size: 12px;
 }
 
+.table-container.cash-advance-requests-table .cash-advance-actions-single .btn {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
 .table-container.cash-advance-requests-table .cash-advance-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -194,6 +200,26 @@
 .table-container.cash-advance-requests-table .cash-advance-actions-left,
 .table-container.cash-advance-requests-table .cash-advance-actions-right {
     justify-content: center;
+}
+
+/* Single-slot actions container for cash advance requests (used when only one side has buttons) */
+.table-container.cash-advance-requests-table .cash-advance-actions-single {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Cash advance requests (admin/supervisor) filter row: match other pages' control height */
+.container.cash-advance-requests.filter .row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.container.cash-advance-requests.filter .form-select,
+.container.cash-advance-requests.filter .btn {
+    height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 /* Attendance table styling */

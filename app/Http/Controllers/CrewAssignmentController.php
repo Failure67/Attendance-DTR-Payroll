@@ -48,11 +48,11 @@ class CrewAssignmentController extends Controller
                 ->where('supervisor_id', $selectedSupervisorId)
                 ->get();
 
-            $assignedWorkerIds = $crewAssignments->pluck('worker_id');
+            $allAssignedWorkerIds = CrewAssignment::pluck('worker_id');
 
             $availableWorkers = User::whereNull('deleted_at')
                 ->where('role', 'Worker')
-                ->whereNotIn('id', $assignedWorkerIds)
+                ->whereNotIn('id', $allAssignedWorkerIds)
                 ->orderBy('full_name')
                 ->orderBy('username')
                 ->get();
@@ -64,7 +64,7 @@ class CrewAssignmentController extends Controller
                 $workerCell = e($name);
 
                 $csrf = csrf_token();
-                $deleteForm = "<form method=\"POST\" action=\"" . route('crew.assignments.delete', ['id' => $assignment->id]) . "\" style=\"display:inline-block;\" onsubmit=\"return confirm('Remove this worker from the crew?');\">"
+                $deleteForm = "<form method=\"POST\" action=\"" . route('crew.assignments.delete', ['id' => $assignment->id]) . "\" style=\"display:inline-block;\" data-confirm=\"Remove this worker from the crew?\">"
                     . '<input type="hidden" name="_token" value="' . $csrf . '">' .
                     '<input type="hidden" name="_method" value="DELETE">'
                     . '<button type="submit" class="btn btn-outline-danger btn-sm" title="Remove from crew">'
@@ -109,8 +109,16 @@ class CrewAssignmentController extends Controller
             abort(403, 'You are not allowed to modify another supervisor\'s crew.');
         }
 
+        $alreadyAssignedWorkerIds = CrewAssignment::whereIn('worker_id', $validated['worker_ids'])
+            ->pluck('worker_id')
+            ->all();
+
         foreach ($validated['worker_ids'] as $workerId) {
-            CrewAssignment::firstOrCreate([
+            if (in_array($workerId, $alreadyAssignedWorkerIds, true)) {
+                continue;
+            }
+
+            CrewAssignment::create([
                 'supervisor_id' => $supervisorId,
                 'worker_id' => $workerId,
             ]);

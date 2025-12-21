@@ -195,6 +195,11 @@
 
                         <div class="name-container">
                             {{ $user->full_name ?? $user->username }}
+                            @php
+                                $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                                $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+                            @endphp
+                            <span class="badge bg-light text-dark ms-2" style="font-size: 0.75rem;">{{ $employmentTypeLabel }}</span>
                         </div>
 
                         <div class="id-number">

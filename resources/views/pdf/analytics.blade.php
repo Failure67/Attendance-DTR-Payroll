@@ -72,9 +72,32 @@
                 'records' => 0,
                 'worked_days' => 0,
                 'absent_days' => 0,
+                'awol_days' => 0,
                 'leave_days' => 0,
                 'employee_count' => 0,
                 'anomaly_count' => 0,
+                'employment_type' => [
+                    'regular' => [
+                        'awol_days' => 0,
+                    ],
+                    'part_time' => [
+                        'awol_days' => 0,
+                    ],
+                ],
+                'leave_usage' => [
+                    'paid_days' => 0,
+                    'unpaid_days' => 0,
+                    'employment_type' => [
+                        'regular' => [
+                            'paid_days' => 0,
+                            'unpaid_days' => 0,
+                        ],
+                        'part_time' => [
+                            'paid_days' => 0,
+                            'unpaid_days' => 0,
+                        ],
+                    ],
+                ],
                 'period_label' => ($filters['period_start'] ?? '') && ($filters['period_end'] ?? '')
                     ? (($filters['period_start'] ?? '') . ' to ' . ($filters['period_end'] ?? ''))
                     : 'selected period',
@@ -89,6 +112,18 @@
 
             $topOvertimeTable = $attendanceAnalytics['topOvertimeTable'] ?? [];
             $topAbsenceTable = $attendanceAnalytics['topAbsenceTable'] ?? [];
+
+            $attEmpTypeSummary = $attendanceSummary['employment_type'] ?? [
+                'regular' => ['awol_days' => 0],
+                'part_time' => ['awol_days' => 0],
+            ];
+
+            $attRegAwol = (int) ($attEmpTypeSummary['regular']['awol_days'] ?? 0);
+            $attPtAwol = (int) ($attEmpTypeSummary['part_time']['awol_days'] ?? 0);
+
+            $leaveUsage = $attendanceSummary['leave_usage'] ?? $attendanceSummaryDefaults['leave_usage'];
+            $leavePaidDays = (float) ($leaveUsage['paid_days'] ?? 0);
+            $leaveUnpaidDays = (float) ($leaveUsage['unpaid_days'] ?? 0);
         @endphp
 
         <div class="section-separator"></div>
@@ -105,7 +140,11 @@
                 <tr><td>Total hours</td><td class="text-right">{{ number_format($attendanceSummary['total_hours'], 2) }}</td></tr>
                 <tr><td>Overtime hours</td><td class="text-right">{{ number_format($attendanceSummary['total_overtime'], 2) }}</td></tr>
                 <tr><td>Attendance rate</td><td class="text-right">{{ $attendanceSummary['attendance_rate'] }}% ({{ $attendanceSummary['records'] }} records)</td></tr>
-                <tr><td>Worked / Absent / Leave days</td><td class="text-right">{{ $attendanceSummary['worked_days'] }} / {{ $attendanceSummary['absent_days'] }} / {{ $attendanceSummary['leave_days'] }}</td></tr>
+                <tr><td>Worked / Absent (incl AWOL) / Leave days</td><td class="text-right">{{ $attendanceSummary['worked_days'] }} / {{ $attendanceSummary['absent_days'] }} / {{ $attendanceSummary['leave_days'] }}</td></tr>
+                <tr><td>AWOL days</td><td class="text-right">{{ $attendanceSummary['awol_days'] }}</td></tr>
+                <tr><td>Regular / Part-time AWOL days</td><td class="text-right">{{ $attRegAwol }} / {{ $attPtAwol }}</td></tr>
+                <tr><td>Paid leave days (approx)</td><td class="text-right">{{ number_format($leavePaidDays, 3) }}</td></tr>
+                <tr><td>Unpaid leave days (approx)</td><td class="text-right">{{ number_format($leaveUnpaidDays, 3) }}</td></tr>
                 <tr><td>Employees covered</td><td class="text-right">{{ $attendanceSummary['employee_count'] }}</td></tr>
                 <tr><td>Anomalies detected</td><td class="text-right">{{ $attendanceSummary['anomaly_count'] }}</td></tr>
             </tbody>
@@ -224,6 +263,20 @@
                     'released' => ['count' => 0, 'net' => 0],
                     'cancelled' => ['count' => 0, 'net' => 0],
                 ],
+                'cash_advance' => [
+                    'total_outstanding' => 0,
+                    'employee_count_with_balance' => 0,
+                    'employment_type' => [
+                        'regular' => [
+                            'headcount' => 0,
+                            'total_outstanding' => 0,
+                        ],
+                        'part_time' => [
+                            'headcount' => 0,
+                            'total_outstanding' => 0,
+                        ],
+                    ],
+                ],
                 'period_label' => ($filters['period_start'] ?? '') && ($filters['period_end'] ?? '')
                     ? (($filters['period_start'] ?? '') . ' to ' . ($filters['period_end'] ?? ''))
                     : 'selected period',
@@ -231,6 +284,27 @@
             $payrollSummary = array_merge($payrollSummaryDefaults, $payrollAnalytics['summary'] ?? []);
             $payrollPeriodText = $payrollSummary['period_label'] ?? 'selected period';
             $statusBreakdown = $payrollSummary['status_breakdown'] ?? $payrollSummaryDefaults['status_breakdown'];
+
+            $empTypeSummary = $payrollSummary['employment_type'] ?? [
+                'regular' => ['headcount' => 0, 'total_net' => 0],
+                'part_time' => ['headcount' => 0, 'total_net' => 0],
+            ];
+
+            $regHead = (int) ($empTypeSummary['regular']['headcount'] ?? 0);
+            $regNet = (float) ($empTypeSummary['regular']['total_net'] ?? 0);
+            $ptHead = (int) ($empTypeSummary['part_time']['headcount'] ?? 0);
+            $ptNet = (float) ($empTypeSummary['part_time']['total_net'] ?? 0);
+
+            $caExposure = $payrollSummary['cash_advance'] ?? $payrollSummaryDefaults['cash_advance'];
+            $caEmpTypeExposure = $caExposure['employment_type'] ?? [
+                'regular' => ['headcount' => 0, 'total_outstanding' => 0],
+                'part_time' => ['headcount' => 0, 'total_outstanding' => 0],
+            ];
+
+            $caTotalOutstanding = (float) ($caExposure['total_outstanding'] ?? 0);
+            $caRegOutstanding = (float) ($caEmpTypeExposure['regular']['total_outstanding'] ?? 0);
+            $caPtOutstanding = (float) ($caEmpTypeExposure['part_time']['total_outstanding'] ?? 0);
+            $caHeadWithBalance = (int) ($caExposure['employee_count_with_balance'] ?? 0);
 
             $chart = $payrollAnalytics['chart'] ?? ['labels' => [], 'gross' => [], 'net' => []];
             $pLabels = $chart['labels'] ?? [];
@@ -256,6 +330,11 @@
                 <tr><td>Total deductions</td><td class="text-right">₱ {{ number_format($payrollSummary['total_deductions'], 2) }}</td></tr>
                 <tr><td>Total net pay</td><td class="text-right">₱ {{ number_format($payrollSummary['total_net'], 2) }}</td></tr>
                 <tr><td>Employees paid</td><td class="text-right">{{ $payrollSummary['employee_count'] }}</td></tr>
+                <tr><td>Regular employees / net</td><td class="text-right">{{ $regHead }} / ₱ {{ number_format($regNet, 2) }}</td></tr>
+                <tr><td>Part-time employees / net</td><td class="text-right">{{ $ptHead }} / ₱ {{ number_format($ptNet, 2) }}</td></tr>
+                <tr><td>Cash advance outstanding (total)</td><td class="text-right">₱ {{ number_format($caTotalOutstanding, 2) }}</td></tr>
+                <tr><td>CA outstanding (Reg / PT)</td><td class="text-right">₱ {{ number_format($caRegOutstanding, 2) }} / ₱ {{ number_format($caPtOutstanding, 2) }}</td></tr>
+                <tr><td>Employees with CA balance</td><td class="text-right">{{ $caHeadWithBalance }}</td></tr>
                 <tr><td>Payroll records</td><td class="text-right">{{ $payrollSummary['payroll_count'] }}</td></tr>
                 <tr><td>Average net per employee</td><td class="text-right">₱ {{ number_format($payrollSummary['avg_net_per_employee'], 2) }}</td></tr>
                 <tr><td>Average net per payroll</td><td class="text-right">₱ {{ number_format($payrollSummary['avg_net_per_payroll'], 2) }}</td></tr>
@@ -357,6 +436,161 @@
                     </tr>
                 @empty
                     <tr><td colspan="4" class="text-center">No data available.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    @endif
+
+    {{-- Pending approvals & risks section --}}
+    @if(!empty($approvalsAnalytics))
+        @php
+            $approvalsSummaryDefaults = [
+                'period_label' => ($filters['period_start'] ?? '') && ($filters['period_end'] ?? '')
+                    ? (($filters['period_start'] ?? '') . ' to ' . ($filters['period_end'] ?? ''))
+                    : 'selected period',
+                'leave' => [
+                    'total' => 0,
+                    'waiting_supervisor' => 0,
+                    'waiting_manager' => 0,
+                    'waiting_hr' => 0,
+                ],
+                'overtime' => [
+                    'total' => 0,
+                    'total_hours' => 0,
+                ],
+                'cash_advance' => [
+                    'total' => 0,
+                    'pending' => 0,
+                    'supervisor_approved' => 0,
+                    'manager_approved' => 0,
+                    'hr_approved' => 0,
+                    'total_amount' => 0,
+                ],
+                'payroll' => [
+                    'total' => 0,
+                    'waiting_admin' => 0,
+                    'waiting_hr' => 0,
+                    'pending_net_total' => 0,
+                ],
+            ];
+
+            $approvalsSummary = array_merge($approvalsSummaryDefaults, $approvalsAnalytics['summary'] ?? []);
+            $approvalsPeriodText = $approvalsSummary['period_label'] ?? 'selected period';
+
+            $leaveSummary = $approvalsSummary['leave'] ?? $approvalsSummaryDefaults['leave'];
+            $otSummary = $approvalsSummary['overtime'] ?? $approvalsSummaryDefaults['overtime'];
+            $caSummary = $approvalsSummary['cash_advance'] ?? $approvalsSummaryDefaults['cash_advance'];
+            $prSummary = $approvalsSummary['payroll'] ?? $approvalsSummaryDefaults['payroll'];
+
+            $approvalsOldestTable = $approvalsAnalytics['oldestTable'] ?? [];
+            $approvalsByEmployeeTable = $approvalsAnalytics['byEmployeeTable'] ?? [];
+
+            $roleKey = strtolower($roleKey ?? '');
+            $byEmployeeLabel = $roleKey === 'supervisor'
+                ? 'Pending approvals by your crew'
+                : 'Pending approvals by employee';
+        @endphp
+
+        <div class="section-separator"></div>
+        <h2>Pending approvals &amp; risks ({{ $approvalsPeriodText }})</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Area</th>
+                    <th class="text-right">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Leave requests</td>
+                    <td class="text-right">
+                        {{ $leaveSummary['total'] ?? 0 }} pending
+                        (Sup {{ $leaveSummary['waiting_supervisor'] ?? 0 }},
+                        Mgr {{ $leaveSummary['waiting_manager'] ?? 0 }},
+                        HR {{ $leaveSummary['waiting_hr'] ?? 0 }})
+                    </td>
+                </tr>
+                <tr>
+                    <td>Overtime entries</td>
+                    <td class="text-right">
+                        {{ $otSummary['total'] ?? 0 }} pending /
+                        {{ number_format($otSummary['total_hours'] ?? 0, 2) }} hours
+                    </td>
+                </tr>
+                <tr>
+                    <td>Cash advance requests</td>
+                    <td class="text-right">
+                        {{ $caSummary['total'] ?? 0 }} pending
+                        (Pending {{ $caSummary['pending'] ?? 0 }},
+                        Sup {{ $caSummary['supervisor_approved'] ?? 0 }},
+                        Mgr {{ $caSummary['manager_approved'] ?? 0 }},
+                        HR {{ $caSummary['hr_approved'] ?? 0 }})
+                        / ₱ {{ number_format($caSummary['total_amount'] ?? 0, 2) }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Payroll records</td>
+                    <td class="text-right">
+                        {{ $prSummary['total'] ?? 0 }} pending
+                        (Admin {{ $prSummary['waiting_admin'] ?? 0 }},
+                        HR {{ $prSummary['waiting_hr'] ?? 0 }})
+                        / ₱ {{ number_format($prSummary['pending_net_total'] ?? 0, 2) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Oldest pending approvals</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Employee</th>
+                    <th class="text-center">Requested on</th>
+                    <th class="text-right">Age</th>
+                    <th>Stage</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($approvalsOldestTable as $row)
+                    <tr>
+                        <td>{{ $row[0] ?? '' }}</td>
+                        <td>{{ $row[1] ?? '' }}</td>
+                        <td class="text-center">{{ $row[2] ?? '' }}</td>
+                        <td class="text-right">{{ $row[3] ?? '' }}</td>
+                        <td>{{ $row[4] ?? '' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="text-center">No pending approvals found.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <h3>{{ $byEmployeeLabel }}</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th class="text-right">Leave</th>
+                    <th class="text-right">Overtime</th>
+                    <th class="text-right">Cash advances</th>
+                    <th class="text-right">Payroll</th>
+                    <th class="text-right">Total pending (₱)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($approvalsByEmployeeTable as $row)
+                    <tr>
+                        <td>{{ $row[0] ?? '' }}</td>
+                        <td class="text-right">{{ $row[1] ?? '' }}</td>
+                        <td class="text-right">{{ $row[2] ?? '' }}</td>
+                        <td class="text-right">{{ $row[3] ?? '' }}</td>
+                        <td class="text-right">{{ $row[4] ?? '' }}</td>
+                        <td class="text-right">{{ $row[5] ?? '' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="text-center">No pending approvals found.</td></tr>
                 @endforelse
             </tbody>
         </table>

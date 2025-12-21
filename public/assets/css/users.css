@@ -27,8 +27,11 @@
     display: none !important;
 }
 
-.users-table tbody tr {
-    cursor: pointer;
+/* Users table rows are not row-clickable; keep default arrow cursor so
+   only real interactive elements (buttons, links) show a hand cursor. */
+.table-container.users-table table tbody tr,
+.table-container.archived-users-table table tbody tr {
+    cursor: default;
 }
 
 /* Disabled delete button */

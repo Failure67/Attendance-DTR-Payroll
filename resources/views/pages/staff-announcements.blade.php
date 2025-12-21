@@ -76,6 +76,18 @@
 
             const $ = window.jQuery;
 
+            // Ensure staff announcement rows always look clickable
+            document.querySelectorAll('.staff-announcements-table tbody tr').forEach(function (row) {
+                row.style.cursor = 'pointer';
+            });
+
+            // Ensure the staff announcement modal close button always shows an X
+            const staffCloseBtn = document.querySelector('#staffAnnouncementModal .modal-header .btn-close');
+            if (staffCloseBtn && !staffCloseBtn.textContent.trim()) {
+                staffCloseBtn.textContent = '×';
+                staffCloseBtn.style.opacity = '1';
+            }
+
             $(document).on('click', '.staff-announcements-table tbody tr', function () {
                 const $preview = $(this).find('.announcement-preview').first();
                 if (!$preview.length) return;

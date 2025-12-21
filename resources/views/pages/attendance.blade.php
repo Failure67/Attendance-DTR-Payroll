@@ -16,6 +16,24 @@
             </div>
         </div>
 
+        @if (session('success') || $errors->has('error'))
+            <div class="container {{ $pageClass }} mb-3">
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+
+                @if ($errors->has('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ $errors->first('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} summary mb-3">
 
             @php
@@ -140,6 +158,9 @@
                         <li>
                             <button type="button" class="dropdown-item" id="attendance-more-export-pdf">Export detailed PDF</button>
                         </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="attendance-more-export-dtr">Export DTR (paper-style PDF)</button>
+                        </li>
                     </ul>
                 </div>
 
@@ -178,6 +199,7 @@
                         <option value="Present" @if(($filters['status'] ?? '') === 'Present') selected @endif>Present</option>
                         <option value="Late" @if(($filters['status'] ?? '') === 'Late') selected @endif>Late</option>
                         <option value="Absent" @if(($filters['status'] ?? '') === 'Absent') selected @endif>Absent</option>
+                        <option value="AWOL" @if(($filters['status'] ?? '') === 'AWOL') selected @endif>AWOL</option>
                         <option value="On leave" @if(($filters['status'] ?? '') === 'On leave') selected @endif>On leave</option>
                     </select>
                 </div>
@@ -255,6 +277,12 @@
                         'currentSortBy' => $sortBy ?? null,
                         'currentSortDir' => $sortDir ?? 'asc',
                     ])
+
+                    @if (!empty($hasLeaveLinkedRows))
+                        <div class="mt-2 small text-muted">
+                            Days covered by approved leave can only be changed via the Leave Requests page.
+                        </div>
+                    @endif
 
                 </div>
 
@@ -370,6 +398,7 @@
                                     'Present' => 'Present',
                                     'Late' => 'Late',
                                     'Absent' => 'Absent',
+                                    'AWOL' => 'AWOL',
                                     'On leave' => 'On leave',
                                 ],
                                 'isShort' => false,

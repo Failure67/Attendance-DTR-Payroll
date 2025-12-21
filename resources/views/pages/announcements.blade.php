@@ -146,6 +146,18 @@
 
             const $ = window.jQuery;
 
+            // Ensure admin/staff announcements rows always look clickable
+            document.querySelectorAll('.announcements-table tbody tr').forEach(function (row) {
+                row.style.cursor = 'pointer';
+            });
+
+            // Ensure the admin announcement modal close button always shows an X
+            const adminCloseBtn = document.querySelector('#adminAnnouncementModal .modal-header .btn-close');
+            if (adminCloseBtn && !adminCloseBtn.textContent.trim()) {
+                adminCloseBtn.textContent = '×';
+                adminCloseBtn.style.opacity = '1';
+            }
+
             $(document).on('click', '.announcements-table tbody tr', function (e) {
                 // Ignore clicks on buttons/links inside the row (e.g. Edit, Delete)
                 if ($(e.target).closest('a, button, input, textarea, select, label, form').length) {

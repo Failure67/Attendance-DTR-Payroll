@@ -456,7 +456,20 @@ $('#delete-attendance').on('click', function() {
     const $generateDefaultsForm = $('#attendance-generate-defaults-form');
     if ($moreGenerateDefaults.length && $generateDefaultsForm.length) {
         $moreGenerateDefaults.on('click', function () {
-            $generateDefaultsForm.submit();
+            const message = 'Generate default attendance for the selected period? This may create or update multiple records.';
+
+            if (typeof window.appConfirm === 'function') {
+                window.appConfirm(message).then(function (ok) {
+                    if (!ok) {
+                        return;
+                    }
+                    $generateDefaultsForm.submit();
+                });
+            } else {
+                if (window.confirm(message)) {
+                    $generateDefaultsForm.submit();
+                }
+            }
         });
     }
 
@@ -509,6 +522,27 @@ $('#delete-attendance').on('click', function() {
                 }
             });
 
+            window.location.href = exportUrl.toString();
+        });
+    }
+
+    const $moreExportDtr = $('#attendance-more-export-dtr');
+    if ($moreExportDtr.length) {
+        $moreExportDtr.on('click', function () {
+            const currentUrl = new URL(window.location.href);
+            const params = currentUrl.searchParams;
+            const employeeId = params.get('employee_id');
+            if (!employeeId) {
+                alert('Please select an employee in the filters before exporting a DTR report.');
+                return;
+            }
+            let exportUrl = new URL(window.location.origin + '/attendance/dtr-pdf');
+            ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir', 'search'].forEach(function (key) {
+                const value = params.get(key);
+                if (value !== null && value !== '') {
+                    exportUrl.searchParams.set(key, value);
+                }
+            });
             window.location.href = exportUrl.toString();
         });
     }

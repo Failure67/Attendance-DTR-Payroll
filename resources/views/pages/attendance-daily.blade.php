@@ -68,8 +68,14 @@
                     'Overtime',
                 ],
                 'tableData' => $dailyTableData,
-                'rawColumns' => [],
+                'rawColumns' => ['status'],
             ])
+
+            @if (!empty($hasLeaveLinkedRowsDaily))
+                <div class="mt-2 small text-muted">
+                    Days covered by approved leave can only be changed via the Leave Requests page.
+                </div>
+            @endif
 
         </div>
 
