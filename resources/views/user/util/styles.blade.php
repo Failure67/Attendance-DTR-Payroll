@@ -8,3 +8,6 @@
 
 {{-- electron --}}
 <link rel="stylesheet" href="{{ asset('assets/css/electron/titlebar.css') }}">
+
+{{-- new --}}
+<link rel="stylesheet" href="{{ asset('assets/css/new.css') }}">

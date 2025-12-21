@@ -7,6 +7,7 @@ use App\Http\Controllers\CrewAssignmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\DebugController;
+use App\Http\Controllers\NewController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkerController;
@@ -31,6 +32,9 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
+
+// new
+Route::get('/new', [NewController::class, 'index'])->name('new');
 
 // auth routes
 Route::middleware('guest')->group(function () {

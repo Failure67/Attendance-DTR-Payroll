@@ -145,7 +145,7 @@
         @endphp
         
         @if ($isDebug === true)
-            <a href="debug" style="color: white; text-decoration: none;">
+            <a href="{{ route('new') }}" style="color: white; text-decoration: none;">
                 Debug
             </a>
         @endif
