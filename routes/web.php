@@ -84,6 +84,9 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/attendance/summary-export', [AttendanceController::class, 'exportAttendanceSummary'])->name('attendance.summary-export');
         Route::get('/attendance/daily', [AttendanceController::class, 'viewAttendanceDaily'])->name('attendance.daily');
 
+        Route::post('/overtime-entries/{id}/supervisor-approve', [AttendanceController::class, 'supervisorApproveOvertime'])->name('overtime-entries.supervisor-approve');
+        Route::post('/overtime-entries/{id}/manager-approve', [AttendanceController::class, 'managerApproveOvertime'])->name('overtime-entries.manager-approve');
+
         Route::post('/attendance/import', [AttendanceController::class, 'importAttendance'])->name('attendance.import');
 
         Route::get('/attendance/bulk', [AttendanceController::class, 'viewAttendanceBulk'])->name('attendance.bulk');
@@ -117,6 +120,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
 
         Route::get('/remittances', [RemittanceController::class, 'index'])->name('remittances');
         Route::post('/remittances/generate', [RemittanceController::class, 'generate'])->name('remittances.generate');
+        Route::get('/remittances/export-month', [RemittanceController::class, 'exportMonth'])->name('remittances.export-month');
         Route::get('/remittances/{batch}', [RemittanceController::class, 'show'])->name('remittances.show');
         Route::put('/remittances/{batch}', [RemittanceController::class, 'update'])->name('remittances.update');
         Route::get('/remittances/{batch}/export', [RemittanceController::class, 'export'])->name('remittances.export');

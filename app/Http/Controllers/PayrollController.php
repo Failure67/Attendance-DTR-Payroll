@@ -808,7 +808,7 @@ class PayrollController extends Controller
                 ->exists();
 
             $hasPendingOvertime = OvertimeEntry::whereIn('user_id', $includedUserIds)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'pending_supervisor', 'pending_manager'])
                 ->whereDate('date', '>=', $periodStart->toDateString())
                 ->whereDate('date', '<=', $periodEnd->toDateString())
                 ->exists();

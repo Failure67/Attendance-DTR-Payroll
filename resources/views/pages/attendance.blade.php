@@ -4,7 +4,17 @@
 
     @include('partials.menu')
 
-    <div class="wrapper {{ $pageClass }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}">
+    @php
+        $attendanceRole = strtolower(trim(auth()->user()->role ?? ''));
+        if ($attendanceRole === 'project manager') {
+            $attendanceRole = 'manager';
+        }
+        $canWriteAttendance = in_array($attendanceRole, ['supervisor', 'manager', 'hr', 'admin'], true);
+        $isAttendanceReadOnly = !$canWriteAttendance;
+        $isAttendanceSuperadmin = $attendanceRole === 'superadmin';
+    @endphp
+
+    <div class="wrapper {{ $pageClass }}{{ $isAttendanceReadOnly ? ' attendance-readonly' : '' }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}" data-readonly="{{ $isAttendanceReadOnly ? '1' : '0' }}" data-role="{{ $attendanceRole }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -31,6 +41,14 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 @endif
+            </div>
+        @endif
+
+        @if ($isAttendanceSuperadmin)
+            <div class="container {{ $pageClass }} mb-3">
+                <div class="alert alert-info mb-0" role="alert">
+                    <strong>Read-only:</strong> Superadmin accounts can view attendance but cannot create, edit, delete, import, or generate defaults.
+                </div>
             </div>
         @endif
 
@@ -97,21 +115,23 @@
 
             <div class="crud-buttons">
 
-                @include('components.button', [
-                    'buttonType' => 'main',
-                    'buttonVar' => 'add',
-                    'buttonSrc' => 'attendance',
-                    'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
-                    'buttonLabel' => 'New',
-                ])
+                @if ($canWriteAttendance)
+                    @include('components.button', [
+                        'buttonType' => 'main',
+                        'buttonVar' => 'add',
+                        'buttonSrc' => 'attendance',
+                        'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
+                        'buttonLabel' => 'New',
+                    ])
 
-                @include('components.button', [
-                    'buttonType' => 'secondary',
-                    'buttonVar' => 'edit',
-                    'buttonSrc' => 'attendance',
-                    'buttonIcon' => '<i class="fa-solid fa-pen"></i>',
-                    'buttonLabel' => 'Edit',
-                ])
+                    @include('components.button', [
+                        'buttonType' => 'secondary',
+                        'buttonVar' => 'edit',
+                        'buttonSrc' => 'attendance',
+                        'buttonIcon' => '<i class="fa-solid fa-pen"></i>',
+                        'buttonLabel' => 'Edit',
+                    ])
+                @endif
 
                 @include('components.button', [
                     'buttonType' => 'danger',
@@ -131,23 +151,29 @@
                         'btnAttribute' => 'data-bs-toggle="dropdown" aria-expanded="false"',
                     ])
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <button type="button" class="dropdown-item" id="attendance-more-generate-defaults">Generate defaults</button>
-                        </li>
+                        @if ($canWriteAttendance)
+                            <li>
+                                <button type="button" class="dropdown-item" id="attendance-more-generate-defaults">Generate defaults</button>
+                            </li>
+                        @endif
                         <li>
                             <button type="button" class="dropdown-item" id="summary-attendance">
                                 <span class="button-label">Summary view</span>
                             </button>
                         </li>
-                        <li>
-                            <a href="{{ route('attendance.bulk') }}" class="dropdown-item">Bulk sheet</a>
-                        </li>
+                        @if ($canWriteAttendance)
+                            <li>
+                                <a href="{{ route('attendance.bulk') }}" class="dropdown-item">Bulk sheet</a>
+                            </li>
+                        @endif
                         <li>
                             <a href="{{ route('attendance.daily', ['date' => $filters['period_end'] ?? ($filters['period_start'] ?? now()->toDateString()), 'employee_id' => $filters['employee_id'] ?? null]) }}" class="dropdown-item">Daily sheet</a>
                         </li>
-                        <li>
-                            <button type="button" class="dropdown-item" id="attendance-more-import">Import CSV</button>
-                        </li>
+                        @if ($canWriteAttendance)
+                            <li>
+                                <button type="button" class="dropdown-item" id="attendance-more-import">Import CSV</button>
+                            </li>
+                        @endif
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <button type="button" class="dropdown-item" id="export-attendance">Export detailed CSV</button>
@@ -209,25 +235,27 @@
             </form>
         </div>
 
-        <form id="attendance-generate-defaults-form" method="POST" action="{{ route('attendance.generate-defaults') }}" style="display: none;">
-            @csrf
-            <input type="hidden" name="period_start" value="{{ $filters['period_start'] ?? '' }}">
-            <input type="hidden" name="period_end" value="{{ $filters['period_end'] ?? '' }}">
-            <input type="hidden" name="employee_id" value="{{ $filters['employee_id'] ?? '' }}">
-        </form>
-
-        <div class="container {{ $pageClass }} mb-3" style="display: none;">
-            <form id="attendance-import-form" method="POST" action="{{ route('attendance.import') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+        @if ($canWriteAttendance)
+            <form id="attendance-generate-defaults-form" method="POST" action="{{ route('attendance.generate-defaults') }}" style="display: none;">
                 @csrf
-                <div class="col-12 col-md-8">
-                    <label for="attendance_import_file" class="form-label mb-1">Import attendance from CSV</label>
-                    <input type="file" name="file" id="attendance_import_file" class="form-control" accept=".csv,text/csv" required>
-                </div>
-                <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end">
-                    <button type="submit" class="btn btn-secondary w-100 w-md-auto">Import CSV</button>
-                </div>
+                <input type="hidden" name="period_start" value="{{ $filters['period_start'] ?? '' }}">
+                <input type="hidden" name="period_end" value="{{ $filters['period_end'] ?? '' }}">
+                <input type="hidden" name="employee_id" value="{{ $filters['employee_id'] ?? '' }}">
             </form>
-        </div>
+
+            <div class="container {{ $pageClass }} mb-3" style="display: none;">
+                <form id="attendance-import-form" method="POST" action="{{ route('attendance.import') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+                    @csrf
+                    <div class="col-12 col-md-8">
+                        <label for="attendance_import_file" class="form-label mb-1">Import attendance from CSV</label>
+                        <input type="file" name="file" id="attendance_import_file" class="form-control" accept=".csv,text/csv" required>
+                    </div>
+                    <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end">
+                        <button type="submit" class="btn btn-secondary w-100 w-md-auto">Import CSV</button>
+                    </div>
+                </form>
+            </div>
+        @endif
 
         <div class="container {{ $pageClass }} table-component">
 
@@ -235,6 +263,7 @@
                 $isArchivedView = $showArchived ?? false;
                 $attendanceTableCols = [
                     'employee-name',
+                    'employment-type',
                     'date',
                     'time-in',
                     'time-out',
@@ -244,6 +273,7 @@
                 ];
                 $attendanceTableLabels = [
                     'Name of employee',
+                    'Employment type',
                     'Date',
                     'Time-in',
                     'Time-out',
@@ -252,7 +282,7 @@
                     'Status',
                 ];
 
-                if ($isArchivedView) {
+                if ($isArchivedView && $canWriteAttendance) {
                     $attendanceTableCols[] = 'actions';
                     $attendanceTableLabels[] = 'Actions';
                 }
@@ -268,8 +298,8 @@
                         'tableLabel' => $attendanceTableLabels,
                         'tableData' => $attendanceTableData ?? [],
                         'rawColumns' => $isArchivedView
-                            ? ['employee-name', 'time-in', 'time-out', 'status', 'actions']
-                            : ['employee-name', 'time-in', 'time-out', 'status'],
+                            ? ['employee-name', 'employment-type', 'time-in', 'time-out', 'status', 'actions']
+                            : ['employee-name', 'employment-type', 'time-in', 'time-out', 'status'],
                         'sortableColumns' => [
                             'employee-name' => 'name',
                             'date' => 'date',
@@ -409,7 +439,7 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" value="1" id="attendance-overtime-approved" name="overtime_approved">
                                 <label class="form-check-label" for="attendance-overtime-approved">
-                                    Overtime approved
+                                    Overtime requested
                                 </label>
                             </div>
                             <div class="form-check mt-1">
@@ -424,6 +454,8 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-outline-success d-none" id="attendance-ot-supervisor-approve">Supervisor approve OT</button>
+                        <button type="button" class="btn btn-outline-success d-none" id="attendance-ot-manager-approve">Manager approve OT</button>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </div>
                 </form>

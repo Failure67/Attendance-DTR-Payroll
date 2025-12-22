@@ -145,13 +145,7 @@ header {
     flex-direction: column;
     gap: 20px;
     position: relative;
-    transform: translateY(0);
-    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
-}
-
-.wrapper.employee:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+    transition: none;
 }
 
 .wrapper.employee .name-container {
@@ -199,6 +193,8 @@ header {
 .container.employee.header {
     display: flex;
     justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
 }
 
 .content.selector {
@@ -210,6 +206,52 @@ header {
     padding: 4.5px 5px;
     font-weight: 600;
     color: white;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.content.selector .selector-dropdown {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+}
+
+.content.selector .selector-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background-color: #426079;
+    border-radius: 14px;
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 1000;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
+    min-width: 240px;
+}
+
+.content.selector .selector-dropdown.open .selector-dropdown-menu {
+    display: flex;
+}
+
+.content.selector .selector-dropdown-menu .selector-dropdown-item {
+    padding: 8px 14px;
+    border-radius: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    color: white;
+    display: block;
+}
+
+.content.selector .selector-dropdown-menu .selector-dropdown-item.selected {
+    background-color: white;
+    color: #0D2C42;
+}
+
+.content.selector .selector-dropdown-menu .selector-dropdown-item:hover:not(.selected) {
+    background-color: #2f3f4d;
 }
 
 .content.selector .selector-item {
@@ -266,13 +308,7 @@ header {
     border-bottom: 4px solid #0D2C42;
     box-shadow: var(--card-shadow);
     position: relative;
-    transform: translateY(0);
-    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
-}
-
-.user-count-container:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+    transition: none;
 }
 
 .user-count-container .user-count-wrapper {
@@ -324,13 +360,7 @@ header {
     gap: 15px;
     min-height: 360px;
     position: relative;
-    transform: translateY(0);
-    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
-}
-
-.content.payroll-breakdown:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+    transition: none;
 }
 
 .content.payroll-history, .content.attendance {

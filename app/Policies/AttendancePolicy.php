@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Attendance;
 use App\Models\CrewAssignment;
 use App\Models\User;
+use App\Services\Attendance\AttendanceService;
 
 class AttendancePolicy
 {
@@ -35,6 +36,12 @@ class AttendancePolicy
         if (!$target) {
             // Fallback: legacy behaviour (still no self-approval and no Superadmin)
             return true;
+        }
+
+        $attendanceService = app(AttendanceService::class);
+
+        if (!$attendanceService->isEmployeeInAttendanceScope($user, $target->id, true)) {
+            return false;
         }
 
         $targetRole = $this->normalizeRole($target->role ?? '');

@@ -108,6 +108,21 @@
                                 <button type="submit" class="button main filter">Generate</button>
                             </div>
                         </form>
+
+                        <hr class="my-3">
+
+                        <div class="fw-semibold mb-2">Bulk export (all agencies)</div>
+
+                        <form method="GET" action="{{ route('remittances.export-month') }}" class="row g-3 align-items-end remittances-generate-row">
+                            <div class="col-12 col-md-6 col-lg">
+                                <label for="remittances_export_month" class="input-label mb-1">Month</label>
+                                <input type="month" name="month" id="remittances_export_month" class="date-field" required>
+                            </div>
+
+                            <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
+                                <button type="submit" class="button secondary filter">Export monthly CSV</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

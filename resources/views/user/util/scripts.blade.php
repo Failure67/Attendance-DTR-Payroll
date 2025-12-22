@@ -47,6 +47,63 @@
 
 <script>
 	(function () {
+		function closeAllDropdowns(except) {
+			document.querySelectorAll('.content.selector .selector-dropdown.open').forEach(function (dd) {
+				if (except && dd === except) {
+					return;
+				}
+				dd.classList.remove('open');
+				const toggle = dd.querySelector(':scope > .selector-item');
+				if (toggle) {
+					toggle.setAttribute('aria-expanded', 'false');
+				}
+			});
+		}
+
+		function initWorkerRequestsDropdown() {
+			document.addEventListener('click', function (e) {
+				const target = e.target;
+				if (!(target instanceof Element)) {
+					return;
+				}
+
+				const toggle = target.closest('.content.selector .selector-dropdown > .selector-item');
+				if (toggle) {
+					e.preventDefault();
+					e.stopPropagation();
+					const dropdown = toggle.parentElement;
+					if (!dropdown) {
+						return;
+					}
+					const willOpen = !dropdown.classList.contains('open');
+					closeAllDropdowns(dropdown);
+					dropdown.classList.toggle('open', willOpen);
+					toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+					return;
+				}
+
+				if (!target.closest('.content.selector .selector-dropdown')) {
+					closeAllDropdowns();
+				}
+			}, true);
+
+			document.addEventListener('keydown', function (e) {
+				if (e.key === 'Escape') {
+					closeAllDropdowns();
+				}
+			});
+		}
+
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initWorkerRequestsDropdown);
+		} else {
+			initWorkerRequestsDropdown();
+		}
+	})();
+</script>
+
+<script>
+	(function () {
 		let confirmModal = null;
 		let confirmMessageEl = null;
 		let confirmOkBtn = null;

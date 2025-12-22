@@ -36,7 +36,9 @@ class WorkerController extends Controller
         $monthlyAttendance = (clone $attendanceBase)->get();
 
         $totalHours = (float) $monthlyAttendance->sum('total_hours');
-        $totalOvertime = (float) $monthlyAttendance->sum('overtime_hours');
+        $totalOvertime = (float) $monthlyAttendance
+            ->where('overtime_approved', true)
+            ->sum('overtime_hours');
 
         $presentDays = $monthlyAttendance->whereIn('status', ['Present', 'Late'])->count();
         $awolDays = $monthlyAttendance->where('status', 'AWOL')->count();
@@ -226,7 +228,9 @@ class WorkerController extends Controller
                 ->get();
 
             $totalHours = (float) $attendances->sum('total_hours');
-            $totalOvertime = (float) $attendances->sum('overtime_hours');
+            $totalOvertime = (float) $attendances
+                ->where('overtime_approved', true)
+                ->sum('overtime_hours');
 
             $presentDays = 0;
             $absentDays = 0;
@@ -291,7 +295,9 @@ class WorkerController extends Controller
                 ->get();
 
             $totalHours = (float) $attendances->sum('total_hours');
-            $totalOvertime = (float) $attendances->sum('overtime_hours');
+            $totalOvertime = (float) $attendances
+                ->where('overtime_approved', true)
+                ->sum('overtime_hours');
 
             $presentDays = 0;
             $absentDays = 0;

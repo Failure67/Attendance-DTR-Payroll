@@ -4,7 +4,17 @@
 
     @include('partials.menu')
 
-    <div class="wrapper {{ $pageClass }}">
+    @php
+        $attendanceRole = strtolower(trim(auth()->user()->role ?? ''));
+        if ($attendanceRole === 'project manager') {
+            $attendanceRole = 'manager';
+        }
+        $canWriteAttendance = in_array($attendanceRole, ['supervisor', 'manager', 'hr', 'admin'], true);
+        $isAttendanceReadOnly = !$canWriteAttendance;
+        $isAttendanceSuperadmin = $attendanceRole === 'superadmin';
+    @endphp
+
+    <div class="wrapper {{ $pageClass }}{{ $isAttendanceReadOnly ? ' attendance-readonly' : '' }}" data-readonly="{{ $isAttendanceReadOnly ? '1' : '0' }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -16,19 +26,27 @@
             </div>
         </div>
 
+        @if ($isAttendanceSuperadmin)
+            <div class="container {{ $pageClass }} mb-3">
+                <div class="alert alert-info mb-0" role="alert">
+                    <strong>Read-only:</strong> Superadmin accounts can view bulk attendance but cannot save changes.
+                </div>
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} mb-3">
-            <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-2 align-items-end">
+            <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-2 align-items-end attendance-filter-row">
                 <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_period_start" class="form-label mb-1">Period start</label>
-                    <input type="date" name="period_start" id="bulk_attendance_period_start" class="form-control" value="{{ $filters['period_start'] ?? $bulkDate }}">
+                    <input type="date" name="period_start" id="bulk_attendance_period_start" class="date-field" value="{{ $filters['period_start'] ?? $bulkDate }}">
                 </div>
                 <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_period_end" class="form-label mb-1">Period end</label>
-                    <input type="date" name="period_end" id="bulk_attendance_period_end" class="form-control" value="{{ $filters['period_end'] ?? '' }}">
+                    <input type="date" name="period_end" id="bulk_attendance_period_end" class="date-field" value="{{ $filters['period_end'] ?? '' }}">
                 </div>
                 <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_employee" class="form-label mb-1">Employee</label>
-                    <select name="employee_id" id="bulk_attendance_employee" class="form-control">
+                    <select name="employee_id" id="bulk_attendance_employee" class="select w-100">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>
@@ -63,18 +81,18 @@
 
                 @include('components.modal-error')
 
-                <div class="row g-2 mb-3 align-items-end">
+                <div class="row g-2 mb-3 align-items-end attendance-bulk-default-row">
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_time_in" class="form-label mb-1">Default time in</label>
-                        <input type="time" id="bulk_default_time_in" class="form-control" value="{{ config('attendance.default_shift_start', '08:00') }}">
+                        <input type="time" id="bulk_default_time_in" class="form-control" value="{{ config('attendance.default_shift_start', '08:00') }}" @if ($isAttendanceReadOnly) disabled @endif>
                     </div>
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_time_out" class="form-label mb-1">Default time out</label>
-                        <input type="time" id="bulk_default_time_out" class="form-control" value="{{ config('attendance.default_shift_end', '17:00') }}">
+                        <input type="time" id="bulk_default_time_out" class="form-control" value="{{ config('attendance.default_shift_end', '17:00') }}" @if ($isAttendanceReadOnly) disabled @endif>
                     </div>
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_status" class="form-label mb-1">Default status</label>
-                        <select id="bulk_default_status" class="form-control">
+                        <select id="bulk_default_status" class="form-control" @if ($isAttendanceReadOnly) disabled @endif>
                             <option value="">Auto (Present/Late/Absent)</option>
                             <option value="Present">Present</option>
                             <option value="Late">Late</option>
@@ -84,7 +102,7 @@
                         </select>
                     </div>
                     <div class="col-12 col-md-4 col-lg-auto ms-lg-auto d-flex align-items-end justify-content-end">
-                        <button type="button" id="bulk-apply-to-all" class="button secondary filter">Apply to all rows</button>
+                        <button type="button" id="bulk-apply-to-all" class="button secondary filter" @if ($isAttendanceReadOnly) disabled @endif>Apply to all rows</button>
                     </div>
                 </div>
 
@@ -117,9 +135,11 @@
                             $timeOutClasses = 'form-control form-control-sm' . ($isLeaveLinked ? ' leave-linked-input' : '');
                             $statusClasses = 'form-select form-select-sm' . ($isLeaveLinked ? ' leave-linked-input' : '');
 
-                            $timeInExtra = $isLeaveLinked ? ' disabled data-leave-linked="1"' : '';
-                            $timeOutExtra = $isLeaveLinked ? ' disabled data-leave-linked="1"' : '';
-                            $statusExtra = $isLeaveLinked ? ' disabled data-leave-linked="1"' : '';
+                            $readOnlyExtra = $isAttendanceReadOnly ? ' disabled data-readonly="1"' : '';
+
+                            $timeInExtra = ($isLeaveLinked ? ' disabled data-leave-linked="1"' : '') . $readOnlyExtra;
+                            $timeOutExtra = ($isLeaveLinked ? ' disabled data-leave-linked="1"' : '') . $readOnlyExtra;
+                            $statusExtra = ($isLeaveLinked ? ' disabled data-leave-linked="1"' : '') . $readOnlyExtra;
 
                             $timeInInput = '<input type="time" name="records[' . $index . '][time_in]" class="' . $timeInClasses . '" value="' . e($row['time_in']) . '"' . $timeInExtra . '>';
 
@@ -140,7 +160,7 @@
                                 $actionButton = '<span class="text-muted small">From leave request</span>' .
                                     '<input type="hidden" name="records[' . $index . '][include]" value="0" data-leave-linked="1">';
                             } else {
-                                $actionButton = '<button type="button" class="btn btn-sm btn-outline-primary attendance-include-toggle" data-index="' . $index . '">Include</button>' .
+                                $actionButton = '<button type="button" class="btn btn-sm btn-outline-primary attendance-include-toggle" data-index="' . $index . '"' . ($isAttendanceReadOnly ? ' disabled' : '') . '>Include</button>' .
                                     '<input type="hidden" name="records[' . $index . '][include]" value="1">';
                             }
 
@@ -183,9 +203,11 @@
                     'rawColumns' => ['employee-name', 'time-in', 'time-out', 'status', 'include'],
                 ])
 
-                <div class="mt-3 d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary">Save attendance for {{ $bulkDate }}</button>
-                </div>
+                @if ($canWriteAttendance)
+                    <div class="mt-3 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">Save attendance for {{ $bulkDate }}</button>
+                    </div>
+                @endif
 
             </form>
         </div>

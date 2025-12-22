@@ -56,7 +56,7 @@ class PayrollService
 
             foreach ($rows as $attendance) {
                 $total = (float) $attendance->total_hours;
-                $ot = (float) $attendance->overtime_hours;
+                $ot = $attendance->overtime_approved ? (float) $attendance->overtime_hours : 0.0;
                 $regular = max(0, $total - $ot);
 
                 $regularHours += $regular;
@@ -409,7 +409,7 @@ class PayrollService
             ->exists();
 
         $hasPendingOvertime = OvertimeEntry::where('user_id', $userId)
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'pending_supervisor', 'pending_manager'])
             ->whereDate('date', '>=', $periodStart->toDateString())
             ->whereDate('date', '<=', $periodEnd->toDateString())
             ->exists();
