@@ -154,6 +154,12 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/leave-requests/{id}/reject', [LeaveRequestController::class, 'reject'])->name('leave-requests.reject');
     });
 
+    Route::middleware(['role:Admin,HR,Accounting,Project Manager,Manager,Supervisor'])->group(function () {
+        Route::get('/my-leave-requests', [LeaveRequestController::class, 'myIndex'])->name('my.leave-requests');
+        Route::post('/my-leave-requests', [LeaveRequestController::class, 'myStore'])->name('my.leave-requests.store');
+        Route::post('/my-leave-requests/{id}/cancel', [LeaveRequestController::class, 'cancel'])->name('my.leave-requests.cancel');
+    });
+
     Route::middleware(['role:Superadmin'])->group(function () {
         Route::get('/backup', [BackupController::class, 'index'])->name('backup');
         Route::post('/backup/create', [BackupController::class, 'createBackup'])->name('backup.create');

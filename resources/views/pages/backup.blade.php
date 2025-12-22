@@ -55,6 +55,9 @@
                 'countSublabel' => $lastBackup['status'] ?? '',
                 'countIcon' => '<i class="fa-solid fa-circle-check"></i>',
                 'countValue' => $lastBackup['label'] ?? '—',
+                'statDetails' => 'Shows the timestamp of the most recent local SQL backup file (most recent by file modified time).',
+                'statSource' => 'storage/app/backups/*.sql (filesystem mtime). Computed in BackupController::index() via listBackupFiles().',
+                'statLink' => route('backup'),
             ])
 
             @include('components.dashboard-count', [
@@ -63,6 +66,9 @@
                 'countSublabel' => $localBackupSubLabel,
                 'countIcon' => '<i class="fa-solid fa-hard-drive"></i>',
                 'countValue' => $localBackupLabel,
+                'statDetails' => 'Counts SQL backup files stored locally and shows the summed total size.',
+                'statSource' => 'storage/app/backups/*.sql (file count + filesize). Computed in BackupController::buildStorageSummary().',
+                'statLink' => route('backup'),
             ])
 
             @include('components.dashboard-count', [
@@ -71,6 +77,9 @@
                 'countSublabel' => $cloud['encryption'] ?? '',
                 'countIcon' => '<i class="fa-solid fa-cloud"></i>',
                 'countValue' => $cloud['status'] ?? 'Unknown',
+                'statDetails' => 'Reports whether the Supabase sync backup is enabled and properly configured.',
+                'statSource' => 'Environment variables: SUPABASE_SYNC_ENABLED, SUPABASE_URL, SUPABASE_SERVICE_KEY. Computed in BackupController::buildCloudSummary().',
+                'statLink' => route('backup'),
             ])
 
         </div>

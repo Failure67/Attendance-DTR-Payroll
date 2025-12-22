@@ -55,5 +55,36 @@
         </div>
     </div>
 
+    <div class="modal fade" id="statCardDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-stat-modal-title>Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="small text-muted">Current value</div>
+                        <div class="fw-semibold" data-stat-modal-value>—</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="small text-muted">How this was calculated</div>
+                        <div data-stat-modal-details>—</div>
+                    </div>
+
+                    <div class="mb-0">
+                        <div class="small text-muted">Data source</div>
+                        <div class="small" data-stat-modal-source>—</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" class="btn btn-outline-primary" target="_blank" rel="noopener" data-stat-modal-link style="display:none;">Open page</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

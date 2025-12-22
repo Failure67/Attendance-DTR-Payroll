@@ -230,6 +230,145 @@ class LeaveRequestController extends Controller
         ]);
     }
 
+    public function myIndex()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $requests = LeaveEntry::where('user_id', $user->id)
+            ->orderByDesc('date_start')
+            ->orderByDesc('created_at')
+            ->paginate(10);
+
+        $yearStart = Carbon::now()->startOfYear();
+        $yearEnd = Carbon::now()->endOfYear();
+
+        $usageQuery = LeaveEntry::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('date_start', '>=', $yearStart->toDateString())
+            ->whereDate('date_end', '<=', $yearEnd->toDateString());
+
+        $entriesForYear = $usageQuery->get();
+
+        $paidDays = 0.0;
+        $unpaidDays = 0.0;
+
+        $forceUnpaid = $user->isPartTime();
+
+        foreach ($entriesForYear as $entry) {
+            $days = (float) ($entry->duration_days ?? 0);
+            if ($days <= 0) {
+                continue;
+            }
+
+            $isPaid = (bool) $entry->is_paid;
+            if ($forceUnpaid && $isPaid) {
+                $isPaid = false;
+            }
+
+            if ($isPaid) {
+                $paidDays += $days;
+            } else {
+                $unpaidDays += $days;
+            }
+        }
+
+        $leaveUsage = [
+            'year_label' => $yearStart->format('Y'),
+            'paid_days' => $paidDays,
+            'unpaid_days' => $unpaidDays,
+            'is_part_time' => $user->isPartTime(),
+        ];
+
+        $approvalLogs = ApprovalLog::with('actor')
+            ->where('resource_type', 'leave_entry')
+            ->whereIn('resource_id', $requests->pluck('id'))
+            ->whereIn('action', ['supervisor_approved', 'manager_approved', 'approved'])
+            ->get();
+
+        $logsByEntry = [];
+        foreach ($approvalLogs as $log) {
+            $logsByEntry[$log->resource_id][$log->action] = $log;
+        }
+
+        $tableData = $requests->map(function (LeaveEntry $entry) use ($logsByEntry) {
+            $dateRange = $entry->date_start && $entry->date_end
+                ? $entry->date_start->format('Y-m-d') . ' to ' . $entry->date_end->format('Y-m-d')
+                : 'N/A';
+
+            $typeLabel = $entry->type ?? 'Leave';
+            $duration = (float) ($entry->duration_days ?? 0);
+            $paidLabel = $entry->is_paid ? 'Paid' : 'Unpaid';
+            [$statusLabel, $statusClass] = $this->getStatusLabelAndClass($entry);
+
+            $statusTooltip = '';
+
+            if (!empty($logsByEntry[$entry->id] ?? [])) {
+                $stages = $logsByEntry[$entry->id];
+                $tooltipParts = [];
+
+                if ($entry->supervisor_approved_at && isset($stages['supervisor_approved'])) {
+                    $log = $stages['supervisor_approved'];
+                    $actorName = $log->actor ? ($log->actor->full_name ?? $log->actor->username) : 'Unknown user';
+                    $tooltipParts[] = 'Supervisor: ' . $actorName . ' on ' . $entry->supervisor_approved_at->format('Y-m-d H:i');
+                }
+
+                if ($entry->manager_approved_at && isset($stages['manager_approved'])) {
+                    $log = $stages['manager_approved'];
+                    $actorName = $log->actor ? ($log->actor->full_name ?? $log->actor->username) : 'Unknown user';
+                    $tooltipParts[] = 'Manager: ' . $actorName . ' on ' . $entry->manager_approved_at->format('Y-m-d H:i');
+                }
+
+                if ($entry->hr_approved_at && isset($stages['approved'])) {
+                    $log = $stages['approved'];
+                    $actorName = $log->actor ? ($log->actor->full_name ?? $log->actor->username) : 'Unknown user';
+                    $tooltipParts[] = 'HR: ' . $actorName . ' on ' . $entry->hr_approved_at->format('Y-m-d H:i');
+                }
+
+                if (!empty($tooltipParts)) {
+                    $statusTooltip = implode(' | ', $tooltipParts);
+                }
+            }
+
+            if ($statusTooltip !== '') {
+                $statusCell = '<span class="badge rounded-pill ' . $statusClass . '" title="' . e($statusTooltip) . '">' . e($statusLabel) . '</span>';
+            } else {
+                $statusCell = '<span class="badge rounded-pill ' . $statusClass . '">' . e($statusLabel) . '</span>';
+            }
+
+            $actions = '';
+            if (in_array($entry->status ?? 'pending', ['pending'], true) && !$entry->supervisor_approved_at && !$entry->manager_approved_at && !$entry->hr_approved_at) {
+                $csrf = csrf_token();
+                $actions = '<form method="POST" action="' . route('my.leave-requests.cancel', ['id' => $entry->id]) . '" style="display:inline-block;" data-confirm="Cancel this leave request?">'
+                    . '<input type="hidden" name="_token" value="' . $csrf . '">' 
+                    . '<button type="submit" class="btn btn-outline-danger btn-sm">Cancel</button>'
+                    . '</form>';
+            } else {
+                $actions = '<span class="text-muted">—</span>';
+            }
+
+            return [
+                e($dateRange),
+                e($typeLabel),
+                $duration,
+                e($paidLabel),
+                $statusCell,
+                $actions,
+            ];
+        })->toArray();
+
+        return view('pages.my-leave-requests', [
+            'title' => 'My leave requests',
+            'pageClass' => 'my-leave-requests',
+            'user' => $user,
+            'requests' => $requests,
+            'requestTableData' => $tableData,
+            'leaveUsage' => $leaveUsage,
+        ]);
+    }
+
     public function workerIndex()
     {
         $user = auth()->user();
@@ -434,6 +573,68 @@ class LeaveRequestController extends Controller
         ]);
 
         return redirect()->route('worker.leave-requests')
+            ->with('success', 'Your leave request has been submitted for approval.');
+    }
+
+    public function myStore(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'type' => 'required|string|max:50',
+            'is_paid' => 'required|boolean',
+            'date_start' => 'required|date',
+            'date_end' => 'required|date|after_or_equal:date_start',
+            'duration_days' => 'required|numeric|min:0.125',
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $isPaid = (bool) $validated['is_paid'];
+        if ($user->isPartTime() && $isPaid) {
+            $isPaid = false;
+        }
+
+        $dateStart = Carbon::parse($validated['date_start'])->startOfDay();
+        $dateEnd = Carbon::parse($validated['date_end'])->startOfDay();
+
+        $hasOverlap = LeaveEntry::where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'approved'])
+            ->whereDate('date_start', '<=', $dateEnd->toDateString())
+            ->whereDate('date_end', '>=', $dateStart->toDateString())
+            ->exists();
+
+        if ($hasOverlap) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors([
+                    'date_start' => 'You already have a pending or approved leave request that overlaps with this period.',
+                ]);
+        }
+
+        $entry = LeaveEntry::create([
+            'user_id' => $user->id,
+            'date_start' => $dateStart->toDateString(),
+            'date_end' => $dateEnd->toDateString(),
+            'duration_days' => (float) $validated['duration_days'],
+            'type' => $validated['type'],
+            'is_paid' => $isPaid,
+            'status' => 'pending',
+            'requested_by_id' => $user->id,
+            'reason' => $validated['reason'],
+        ]);
+
+        $this->logApproval('leave_entry', $entry->id, 'requested', [
+            'type' => $entry->type,
+            'is_paid' => (bool) $entry->is_paid,
+            'date_start' => $entry->date_start ? $entry->date_start->toDateString() : null,
+            'date_end' => $entry->date_end ? $entry->date_end->toDateString() : null,
+            'duration_days' => (float) $entry->duration_days,
+        ]);
+
+        return redirect()->route('my.leave-requests')
             ->with('success', 'Your leave request has been submitted for approval.');
     }
 

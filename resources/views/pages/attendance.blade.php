@@ -69,6 +69,18 @@
                 ];
                 $summary = array_merge($summaryDefaults, $attendanceSummary ?? []);
                 $periodText = $summary['period_label'] ?? 'selected period';
+
+                $attendanceStatLinkQuery = array_filter([
+                    'employee_id' => $filters['employee_id'] ?? null,
+                    'status' => $filters['status'] ?? null,
+                    'period_start' => $filters['period_start'] ?? null,
+                    'period_end' => $filters['period_end'] ?? null,
+                    'search' => $filters['search'] ?? null,
+                    'archived' => ($showArchived ?? false) ? '1' : null,
+                ], function ($value) {
+                    return !is_null($value) && $value !== '';
+                });
+                $attendanceStatLink = route('attendance') . (count($attendanceStatLinkQuery) ? ('?' . http_build_query($attendanceStatLinkQuery)) : '');
             @endphp
 
             @include('components.dashboard-count', [
@@ -77,6 +89,9 @@
                 'countSublabel' => 'For ' . $periodText,
                 'countIcon' => '<i class="fa-solid fa-clock"></i>',
                 'countValue' => number_format($summary['total_hours'], 2),
+                'statDetails' => 'Sum of total_hours for attendance records in the selected period and filters (employee, status, search, archived).',
+                'statSource' => 'Attendances table: SUM(total_hours) over the filtered dataset. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
             @include('components.dashboard-count', [
@@ -85,6 +100,9 @@
                 'countSublabel' => 'For ' . $periodText,
                 'countIcon' => '<i class="fa-solid fa-business-time"></i>',
                 'countValue' => number_format($summary['total_overtime'], 2),
+                'statDetails' => 'Sum of overtime_hours where overtime_approved = true for the filtered attendance records in the selected period.',
+                'statSource' => 'Attendances table: SUM(overtime_hours) where overtime_approved = true. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
             @include('components.dashboard-count', [
@@ -93,6 +111,9 @@
                 'countSublabel' => 'For ' . $periodText . ' (' . ($summary['records'] ?? 0) . ' records)',
                 'countIcon' => '<i class="fa-solid fa-chart-column"></i>',
                 'countValue' => $summary['attendance_rate'] . '%',
+                'statDetails' => 'Attendance rate = (worked days / total records) × 100. Worked days are records with status Present or Late.',
+                'statSource' => 'Attendances table: status counts for Present/Late vs total records. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
             @include('components.dashboard-count', [
@@ -101,6 +122,9 @@
                 'countSublabel' => 'For ' . $periodText,
                 'countIcon' => '<i class="fa-solid fa-calendar-check"></i>',
                 'countValue' => $summary['worked_days'] . ' / ' . $summary['absent_days'] . ' / ' . $summary['leave_days'],
+                'statDetails' => 'Worked days = Present + Late. Absent days = Absent + AWOL. Leave days = On leave. Counts are for filtered records in the selected period.',
+                'statSource' => 'Attendances table: grouped counts by status over the filtered dataset. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
         </div>

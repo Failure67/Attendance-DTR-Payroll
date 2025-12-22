@@ -71,6 +71,12 @@ header {
     display: flex;
     justify-content: center;
     padding: 10px 20px;
+    position: relative;
+    z-index: 2000;
+}
+
+header .dropdown-menu {
+    z-index: 2100;
 }
 
 .header-container {
@@ -308,7 +314,17 @@ header {
     border-bottom: 4px solid #0D2C42;
     box-shadow: var(--card-shadow);
     position: relative;
-    transition: none;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.user-count-container:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+}
+
+.user-count-container {
+    cursor: pointer;
 }
 
 .user-count-container .user-count-wrapper {
@@ -360,7 +376,13 @@ header {
     gap: 15px;
     min-height: 360px;
     position: relative;
-    transition: none;
+    transform: translateY(0);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.content.payroll-breakdown:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
 }
 
 .content.payroll-history, .content.attendance {
