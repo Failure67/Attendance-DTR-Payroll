@@ -62,32 +62,34 @@
         </div>
 
         <div class="container leave-requests filter mb-3">
-            <form method="GET" action="{{ route('leave-requests') }}" class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <label for="employee_id" class="form-label">Employee</label>
-                    <select name="employee_id" id="employee_id" class="form-select select2">
+            <form method="GET" action="{{ route('leave-requests') }}" class="row g-3 align-items-end leave-requests-filter-row">
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="employee_id" class="input-label mb-1">Employee</label>
+                    <select name="employee_id" id="employee_id" class="select w-100 select2">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" {{ (string)($filters['employee_id'] ?? '') === (string)$id ? 'selected' : '' }}>{{ $name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label for="status" class="form-label">Status</label>
-                    <select name="status" id="status" class="form-select">
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="status" class="input-label mb-1">Status</label>
+                    <select name="status" id="status" class="select w-100">
                         <option value="">All statuses</option>
                         @foreach (($statusOptions ?? []) as $value => $label)
                             <option value="{{ $value }}" {{ ($filters['status'] ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label for="period_start" class="form-label">Period start</label>
-                    <input type="date" name="period_start" id="period_start" class="form-control" value="{{ $filters['period_start'] ?? '' }}">
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="period_start" class="input-label mb-1">Period start</label>
+                    <input type="date" name="period_start" id="period_start" class="date-field" value="{{ $filters['period_start'] ?? '' }}">
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary mt-auto">Apply filters</button>
-                    <a href="{{ route('leave-requests') }}" class="btn btn-outline-secondary mt-auto">Reset</a>
+                <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
+                    <button type="submit" class="button main filter">Filter</button>
+                </div>
+                <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
+                    <a href="{{ route('leave-requests') }}" class="button secondary filter">Reset</a>
                 </div>
             </form>
         </div>

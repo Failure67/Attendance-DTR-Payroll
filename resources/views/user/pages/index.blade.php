@@ -72,13 +72,30 @@
                     Attendance
                 </a>
 
-                <a href="{{ route('worker.cash-advance-requests') }}" class="selector-item">
-                    Cash Advance Requests
-                </a>
+                @php
+                    $requestsSelected = in_array(Route::currentRouteName(), [
+                        'worker.cash-advance-requests',
+                        'worker.leave-requests',
+                        'worker.leave-credits',
+                    ], true);
+                @endphp
 
-                <a href="{{ route('worker.leave-requests') }}" class="selector-item">
-                    Leave Requests
-                </a>
+                <div class="selector-dropdown">
+                    <a href="#" class="selector-item {{ $requestsSelected ? 'selected' : '' }}" onclick="return false;">
+                        Requests
+                    </a>
+                    <div class="selector-dropdown-menu">
+                        <a href="{{ route('worker.cash-advance-requests') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.cash-advance-requests' ? 'selected' : '' }}">
+                            Cash Advance Requests
+                        </a>
+                        <a href="{{ route('worker.leave-requests') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.leave-requests' ? 'selected' : '' }}">
+                            Leave Requests
+                        </a>
+                        <a href="{{ route('worker.leave-credits') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.leave-credits' ? 'selected' : '' }}">
+                            Leave Credits
+                        </a>
+                    </div>
+                </div>
 
             </div>
 
@@ -117,6 +134,8 @@
                     'countIcon' => '<i class="fa-solid fa-money-bills"></i>',
                     'countValue' => '₱ ' . ($latestNet ?? '0.00'),
                     'countHref' => route('worker.payroll-history'),
+                    'statDetails' => 'Latest Released payroll net pay. Net pay = gross pay - total deductions.',
+                    'statSource' => 'Payrolls table: latest Released payroll for your account (sorted by period_end).',
                 ])
                 
                 @include('user.components.count', [
@@ -126,6 +145,8 @@
                     'countIcon' => '<i class="fa-solid fa-clock"></i>',
                     'countValue' => number_format($monthHours ?? 0) . 'h',
                     'countHref' => route('worker.attendance'),
+                    'statDetails' => 'Sum of total_hours from your attendance records for the current month.',
+                    'statSource' => 'Attendance table: SUM(total_hours) between start/end of current month.',
                 ])
 
                 @include('user.components.count', [
@@ -135,6 +156,8 @@
                     'countIcon' => '<i class="fa-solid fa-bars-staggered"></i>',
                     'countValue' => number_format($monthOvertime ?? 0) . 'h',
                     'countHref' => route('worker.attendance'),
+                    'statDetails' => 'Sum of approved overtime_hours from your attendance records for the current month.',
+                    'statSource' => 'Attendance table: SUM(overtime_hours) where overtime_approved = true for current month.',
                 ])
 
                 @include('user.components.count', [
@@ -144,6 +167,8 @@
                     'countIcon' => '<i class="fa-solid fa-file-waveform"></i>',
                     'countValue' => '₱ ' . number_format($caBalance ?? 0, 2),
                     'countHref' => route('worker.cash-advance-requests'),
+                    'statDetails' => 'Outstanding cash advance balance = total advances - total repayments.',
+                    'statSource' => 'CashAdvances table: SUM(advance) - SUM(repayment) for your account.',
                 ])
 
                 @php
@@ -161,6 +186,8 @@
                     'countIcon' => '<i class="fa-solid fa-inbox"></i>',
                     'countValue' => 'Leave ' . $pendingLeaveCount . ' / CA ' . $pendingCaCount,
                     'countHref' => $pendingHref,
+                    'statDetails' => 'Counts your pending leave requests and cash advance requests currently in the approval workflow.',
+                    'statSource' => 'LeaveEntries table (status=pending) and CashAdvanceRequests table (status in Pending/Supervisor approved/Manager approved/HR approved).',
                 ])
 
             </div>

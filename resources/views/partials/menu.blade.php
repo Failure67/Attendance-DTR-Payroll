@@ -28,6 +28,7 @@
         $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'manager'], true);
         $canSeeCashAdvance = $canSeePayrollAndCa || $currentRole === 'supervisor';
         $canSeeLeaveRequests = in_array($currentRole, ['admin', 'superadmin', 'hr', 'manager', 'supervisor'], true);
+        $canRequestLeave = in_array($currentRole, ['admin', 'hr', 'accounting', 'project manager', 'manager', 'supervisor'], true);
         $canSeeLeaveCredits = $canSeeLeaveRequests;
         $canSeeActivityLogs = in_array($currentRole, ['admin', 'superadmin'], true);
         $canSeeApprovalLogs = $canSeeActivityLogs;
@@ -133,6 +134,22 @@
 
                 <span class="menu-label">
                     Leave requests
+                </span>
+
+            </span>
+        </a>
+        @endif
+
+        @if ($canRequestLeave)
+        <a href="{{ route('my.leave-requests') }}">
+            <span class="menu-item {{ Route::currentRouteName() == 'my.leave-requests' ? 'selected' : '' }}">
+
+                <span class="menu-icon">
+                    <i class="fa-solid fa-calendar-plus"></i>
+                </span>
+
+                <span class="menu-label">
+                    My leave requests
                 </span>
 
             </span>

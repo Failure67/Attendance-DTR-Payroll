@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="{{ asset('assets/css/attendance.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/payroll.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/remittances.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/leave.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/users.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/profile.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/css/settings.css') }}">

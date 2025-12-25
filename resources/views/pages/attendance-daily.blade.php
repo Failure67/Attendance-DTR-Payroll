@@ -4,7 +4,17 @@
 
     @include('partials.menu')
 
-    <div class="wrapper {{ $pageClass }}">
+    @php
+        $attendanceRole = strtolower(trim(auth()->user()->role ?? ''));
+        if ($attendanceRole === 'project manager') {
+            $attendanceRole = 'manager';
+        }
+        $canWriteAttendance = in_array($attendanceRole, ['supervisor', 'manager', 'hr', 'admin'], true);
+        $isAttendanceReadOnly = !$canWriteAttendance;
+        $isAttendanceSuperadmin = $attendanceRole === 'superadmin';
+    @endphp
+
+    <div class="wrapper {{ $pageClass }}{{ $isAttendanceReadOnly ? ' attendance-readonly' : '' }}" data-readonly="{{ $isAttendanceReadOnly ? '1' : '0' }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -16,15 +26,23 @@
             </div>
         </div>
 
+        @if ($isAttendanceSuperadmin)
+            <div class="container {{ $pageClass }} mb-3">
+                <div class="alert alert-info mb-0" role="alert">
+                    <strong>Read-only:</strong> Superadmin accounts can view daily attendance but cannot make changes.
+                </div>
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} mb-3">
-            <form method="GET" action="{{ route('attendance.daily') }}" class="row g-2 align-items-end">
+            <form method="GET" action="{{ route('attendance.daily') }}" class="row g-2 align-items-end attendance-filter-row">
                 <div class="col-12 col-md-4">
                     <label for="daily_attendance_date" class="form-label mb-1">Date</label>
-                    <input type="date" name="date" id="daily_attendance_date" class="form-control" value="{{ $filters['date'] ?? $dailyDate }}">
+                    <input type="date" name="date" id="daily_attendance_date" class="date-field" value="{{ $filters['date'] ?? $dailyDate }}">
                 </div>
                 <div class="col-12 col-md-4">
                     <label for="daily_attendance_employee" class="form-label mb-1">Employee</label>
-                    <select name="employee_id" id="daily_attendance_employee" class="form-control">
+                    <select name="employee_id" id="daily_attendance_employee" class="select w-100">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>

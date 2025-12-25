@@ -72,7 +72,7 @@
                             @csrf
                             @method('PUT')
 
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label">Status</label>
                                 <select name="status" class="form-select" required>
                                     @foreach(['draft' => 'Draft', 'posted' => 'Posted', 'paid' => 'Paid', 'submitted' => 'Submitted'] as $value => $label)
@@ -81,7 +81,7 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label class="form-label">Payment reference</label>
                                 <input type="text" name="payment_reference" class="form-control" value="{{ $batch->payment_reference ?? '' }}" placeholder="Reference no. (optional)">
                             </div>

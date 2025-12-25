@@ -2,11 +2,19 @@
 
     @php $href = $countHref ?? null; @endphp
 
+    @php
+        $statTitle = $statTitle ?? ($countLabel ?? '');
+        $statValue = $statValue ?? ($countValue ?? '');
+        $statDetails = $statDetails ?? '';
+        $statSource = $statSource ?? '';
+        $statLink = $statLink ?? ($href ?? '');
+    @endphp
+
     @if (!empty($href))
         <a href="{{ $href }}" class="user-count-link">
     @endif
 
-    <div class="user-count-container">
+    <div class="user-count-container" data-stat-card="1" data-stat-title="{{ $statTitle }}" data-stat-value="{{ $statValue }}" data-stat-details="{{ $statDetails }}" data-stat-source="{{ $statSource }}" data-stat-link="{{ $statLink }}">
 
         <div class="user-count-wrapper label">
 

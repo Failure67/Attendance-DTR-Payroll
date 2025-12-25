@@ -8,6 +8,15 @@
     opacity: 1;
 }
 
+header {
+    position: relative;
+    z-index: 2000;
+}
+
+header .dropdown-menu {
+    z-index: 2100;
+}
+
 /* Ensure proper spacing in tables */
 table th, table td {
     padding: 0.75rem;

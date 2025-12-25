@@ -16,6 +16,11 @@
                 return !is_null($value) && $value !== '';
             });
             $exportPdfUrl = route('analytics.export-pdf') . (count($exportQuery) ? ('?' . http_build_query($exportQuery)) : '');
+
+            $attendanceLinkUrl = route('attendance') . (count($exportQuery) ? ('?' . http_build_query($exportQuery)) : '');
+            $approvalsLeaveLinkUrl = route('leave-requests');
+            $approvalsCashAdvanceLinkUrl = route('cash-advance-requests');
+            $approvalsPayrollLinkUrl = route('payroll');
         @endphp
 
         <div class="page-header">
@@ -138,6 +143,9 @@
                     'countSublabel' => 'For ' . $attendancePeriodText,
                     'countIcon' => '<i class="fa-solid fa-clock"></i>',
                     'countValue' => number_format($attendanceSummary['total_hours'], 2),
+                    'statDetails' => 'Sum of total_hours from attendance records in the selected period (filtered by employee / crew scope when applicable).',
+                    'statSource' => 'Attendances table: records within the selected date range. Computed in AnalyticsController::buildAttendanceAnalytics().',
+                    'statLink' => $attendanceLinkUrl,
                 ])
 
                 @include('components.dashboard-count', [
@@ -146,6 +154,9 @@
                     'countSublabel' => 'For ' . $attendancePeriodText,
                     'countIcon' => '<i class="fa-solid fa-business-time"></i>',
                     'countValue' => number_format($attendanceSummary['total_overtime'], 2),
+                    'statDetails' => 'Sum of approved overtime hours within the selected period (overtime_hours where overtime_approved = true).',
+                    'statSource' => 'Attendances table: overtime_approved + overtime_hours. Computed in AnalyticsController::buildAttendanceAnalytics().',
+                    'statLink' => $attendanceLinkUrl,
                 ])
 
                 @include('components.dashboard-count', [
@@ -154,6 +165,9 @@
                     'countSublabel' => 'For ' . $attendancePeriodText . ' (' . ($attendanceSummary['records'] ?? 0) . ' records)',
                     'countIcon' => '<i class="fa-solid fa-chart-column"></i>',
                     'countValue' => $attendanceSummary['attendance_rate'] . '%',
+                    'statDetails' => 'Attendance rate = (worked days / total records) × 100. Worked days are records with status Present or Late.',
+                    'statSource' => 'Attendances table: status counts for Present/Late vs total records. Computed in AnalyticsController::buildAttendanceAnalytics().',
+                    'statLink' => $attendanceLinkUrl,
                 ])
 
                 @include('components.dashboard-count', [
@@ -162,6 +176,9 @@
                     'countSublabel' => 'For ' . $attendancePeriodText,
                     'countIcon' => '<i class="fa-solid fa-user-xmark"></i>',
                     'countValue' => number_format($attendanceSummary['awol_days'] ?? 0),
+                    'statDetails' => 'Count of attendance records tagged as AWOL within the selected period.',
+                    'statSource' => 'Attendances table: status = AWOL. Computed in AnalyticsController::buildAttendanceAnalytics().',
+                    'statLink' => $attendanceLinkUrl,
                 ])
 
             </div>
@@ -321,6 +338,9 @@
                     'countSublabel' => 'For ' . $payrollPeriodText,
                     'countIcon' => '<i class="fa-solid fa-money-bills"></i>',
                     'countValue' => '₱ ' . number_format($payrollSummary['total_gross'], 2),
+                    'statDetails' => 'Sum of gross_pay for payroll records with period_end within the selected period.',
+                    'statSource' => 'Payrolls table: SUM(gross_pay) filtered by period_end. Computed in AnalyticsController::buildPayrollAnalytics().',
+                    'statLink' => route('payroll'),
                 ])
 
                 @include('components.dashboard-count', [
@@ -329,6 +349,9 @@
                     'countSublabel' => 'For ' . $payrollPeriodText,
                     'countIcon' => '<i class="fa-solid fa-money-bill-trend-up"></i>',
                     'countValue' => '₱ ' . number_format($payrollSummary['total_net'], 2),
+                    'statDetails' => 'Sum of net_pay for payroll records with period_end within the selected period.',
+                    'statSource' => 'Payrolls table: SUM(net_pay) filtered by period_end. Computed in AnalyticsController::buildPayrollAnalytics().',
+                    'statLink' => route('payroll'),
                 ])
 
                 @include('components.dashboard-count', [
@@ -337,6 +360,9 @@
                     'countSublabel' => 'For ' . $payrollPeriodText,
                     'countIcon' => '<i class="fa-solid fa-users"></i>',
                     'countValue' => number_format($payrollSummary['employee_count']),
+                    'statDetails' => 'Count of unique employees (distinct user_id) with payroll records in the selected period.',
+                    'statSource' => 'Payrolls table: DISTINCT(user_id) filtered by period_end. Computed in AnalyticsController::buildPayrollAnalytics().',
+                    'statLink' => route('payroll'),
                 ])
 
                 @include('components.dashboard-count', [
@@ -346,6 +372,9 @@
                     'countIcon' => '<i class="fa-solid fa-sack-dollar"></i>',
                     'countValue' => 'Total ₱ ' . number_format($caTotalOutstanding, 2) . "\n"
                         . 'Reg ₱ ' . number_format($caRegOutstanding, 2) . ' / PT ₱ ' . number_format($caPtOutstanding, 2),
+                    'statDetails' => 'Outstanding CA = max(0, SUM(advances) - SUM(repayments)), aggregated across employees and split by employment type.',
+                    'statSource' => 'CashAdvances ledger table: grouped by user_id (advances vs repayments). Computed in AnalyticsController::buildPayrollAnalytics().',
+                    'statLink' => route('cash-advances'),
                 ])
 
             </div>
@@ -497,6 +526,9 @@
                     . ', HR ' . ($leaveSummary['waiting_hr'] ?? 0),
                 'countIcon' => '<i class="fa-solid fa-plane-departure"></i>',
                 'countValue' => (int) ($leaveSummary['total'] ?? 0),
+                'statDetails' => 'Count of pending leave entries overlapping the selected period. Stage counts depend on supervisor_approved_at / manager_approved_at / hr_approved_at timestamps.',
+                'statSource' => 'LeaveEntries table: status = pending, date range overlap. Computed in AnalyticsController::buildApprovalsAnalytics().',
+                'statLink' => $approvalsLeaveLinkUrl,
             ])
 
             @include('components.dashboard-count', [
@@ -505,6 +537,9 @@
                 'countSublabel' => 'Requests in queue for ' . $approvalsPeriodText,
                 'countIcon' => '<i class="fa-solid fa-business-time"></i>',
                 'countValue' => ($otSummary['total'] ?? 0) . ' req / ' . number_format((float) ($otSummary['total_hours'] ?? 0), 2) . ' hrs',
+                'statDetails' => 'Count and total hours of overtime requests in pending states within the selected period.',
+                'statSource' => 'OvertimeEntries table: status in pending/pending_supervisor/pending_manager, date within period. Computed in AnalyticsController::buildApprovalsAnalytics().',
+                'statLink' => $attendanceLinkUrl,
             ])
 
             @include('components.dashboard-count', [
@@ -516,6 +551,9 @@
                     . ', HR ' . ($caSummary['hr_approved'] ?? 0),
                 'countIcon' => '<i class="fa-solid fa-file-invoice-dollar"></i>',
                 'countValue' => (int) ($caSummary['total'] ?? 0) . ' req / ₱ ' . number_format((float) ($caSummary['total_amount'] ?? 0), 2),
+                'statDetails' => 'Count and total requested amount for cash advance requests in approval stages (Pending, Supervisor approved, Manager approved, HR approved) within the selected period.',
+                'statSource' => 'CashAdvanceRequests table: status in Pending/Supervisor approved/Manager approved/HR approved, created_at within period. Computed in AnalyticsController::buildApprovalsAnalytics().',
+                'statLink' => $approvalsCashAdvanceLinkUrl,
             ])
 
             @include('components.dashboard-count', [
@@ -525,6 +563,9 @@
                     . ', HR ' . ($prSummary['waiting_hr'] ?? 0),
                 'countIcon' => '<i class="fa-solid fa-scale-balanced"></i>',
                 'countValue' => (int) ($prSummary['total'] ?? 0) . ' rec / ₱ ' . number_format((float) ($prSummary['pending_net_total'] ?? 0), 2),
+                'statDetails' => 'Count of payroll records still Pending in the selected period, with stage counts based on admin_approved_at / hr_approved_at, and total pending net pay.',
+                'statSource' => 'Payrolls table: status = Pending, period_end within period. Computed in AnalyticsController::buildApprovalsAnalytics().',
+                'statLink' => $approvalsPayrollLinkUrl,
             ])
 
         </div>

@@ -4,6 +4,8 @@ $(document).ready(function () {
         return;
     }
 
+    const isReadOnly = $wrapper.data('readonly') === 1 || $wrapper.data('readonly') === '1';
+
     const $tableContainer = $wrapper.find('.table-container.attendance-bulk-table');
     const $table = $tableContainer.find('table').first();
 
@@ -18,6 +20,10 @@ $(document).ready(function () {
 
     $applyBtn.on('click', function (e) {
         e.preventDefault();
+
+        if (isReadOnly) {
+            return;
+        }
 
         const timeIn = ($defaultTimeIn.val() || '').trim();
         const timeOut = ($defaultTimeOut.val() || '').trim();
@@ -59,6 +65,9 @@ $(document).ready(function () {
 
     // Include/Skip toggle per row (similar to payroll process screen)
     $table.on('click', '.attendance-include-toggle', function () {
+        if (isReadOnly) {
+            return;
+        }
         const $btn = $(this);
         const index = $btn.data('index');
         const $hidden = $table.find('input[type="hidden"][name="records[' + index + '][include]"]');
@@ -86,6 +95,10 @@ $(document).ready(function () {
 
 	if ($bulkForm.length) {
 		$bulkForm.on('submit', function (e) {
+			if (isReadOnly) {
+				e.preventDefault();
+				return;
+			}
 			const form = this;
 			const dateVal = ($(form).find('input[name="date"]').val() || '').trim();
 			const message = dateVal

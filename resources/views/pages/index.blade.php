@@ -24,6 +24,8 @@
                 'countSublabel' => 'As of ' . date('F d, Y'),
                 'countIcon' => '<i class="fa-solid fa-users"></i>',
                 'countValue' => number_format($employeesCount ?? 0),
+                'statDetails' => 'Counts active non-admin users (not archived).',
+                'statSource' => 'Users table: where deleted_at is null and role is not Admin/Superadmin.',
             ])
 
             @include('components.dashboard-count', [
@@ -32,6 +34,8 @@
                 'countSublabel' => 'This month',
                 'countIcon' => '<i class="fa-solid fa-money-bills"></i>',
                 'countValue' => '₱ ' . number_format($payrollBudgetAmount ?? 0, 2),
+                'statDetails' => 'Sum of gross pay for all payrolls with period_end in the current month.',
+                'statSource' => 'Payrolls table: SUM(gross_pay) for current month (by period_end).',
             ])
 
             @include('components.dashboard-count', [
@@ -40,6 +44,8 @@
                 'countSublabel' => 'Pending (this month)',
                 'countIcon' => '<i class="fa-solid fa-money-bill-trend-up"></i>',
                 'countValue' => '₱ ' . number_format($payrollDueAmount ?? 0, 2),
+                'statDetails' => 'Sum of net pay for payrolls still in Pending status this month.',
+                'statSource' => 'Payrolls table: SUM(net_pay) where status = Pending for current month (by period_end).',
             ])
 
             @include('components.dashboard-count', [
@@ -48,6 +54,8 @@
                 'countSublabel' => 'Released (this month)',
                 'countIcon' => '<i class="fa-solid fa-money-bill-transfer"></i>',
                 'countValue' => '₱ ' . number_format($payrollPaidAmount ?? 0, 2),
+                'statDetails' => 'Sum of net pay for payrolls already Released this month.',
+                'statSource' => 'Payrolls table: SUM(net_pay) where status = Released for current month (by period_end).',
             ])
 
         </div>
