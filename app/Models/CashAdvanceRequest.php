@@ -14,6 +14,7 @@ class CashAdvanceRequest extends Model
         'amount',
         'reason',
         'status',
+        'supervisor_approved_at',
         'hr_approved_at',
         'manager_approved_at',
         'released_at',
@@ -23,6 +24,7 @@ class CashAdvanceRequest extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'supervisor_approved_at' => 'datetime',
         'hr_approved_at' => 'datetime',
         'manager_approved_at' => 'datetime',
         'released_at' => 'datetime',

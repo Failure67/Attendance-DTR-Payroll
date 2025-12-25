@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\CashAdvance;
+use App\Models\CashAdvanceRequest;
+use App\Models\LeaveEntry;
 use App\Models\Payroll;
 use App\Models\Announcement;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -34,7 +36,14 @@ class WorkerController extends Controller
         $monthlyAttendance = (clone $attendanceBase)->get();
 
         $totalHours = (float) $monthlyAttendance->sum('total_hours');
-        $totalOvertime = (float) $monthlyAttendance->sum('overtime_hours');
+        $totalOvertime = (float) $monthlyAttendance
+            ->where('overtime_approved', true)
+            ->sum('overtime_hours');
+
+        $presentDays = $monthlyAttendance->whereIn('status', ['Present', 'Late'])->count();
+        $awolDays = $monthlyAttendance->where('status', 'AWOL')->count();
+        $leaveDays = $monthlyAttendance->where('status', 'On leave')->count();
+        $absentDays = $monthlyAttendance->whereIn('status', ['Absent', 'AWOL'])->count();
 
         $totalAdvances = (float) CashAdvance::where('user_id', $user->id)
             ->where('type', 'advance')
@@ -45,6 +54,51 @@ class WorkerController extends Controller
             ->sum('amount');
 
         $caBalance = max(0, $totalAdvances - $totalRepayments);
+
+        $caConfig = (array) config('payroll.ca', []);
+        $caps = (array) ($caConfig['cap'] ?? []);
+        $employmentType = $user->employment_type ?? 'regular';
+        $typeCap = isset($caps[$employmentType]) ? (float) $caps[$employmentType] : null;
+
+        $salaryBasedLimit = null;
+        if ($latestPayroll && $latestPayroll->period_start && $latestPayroll->period_end) {
+            $periodStart = $latestPayroll->period_start;
+            $periodEnd = $latestPayroll->period_end;
+            $daysInPeriod = max(1, $periodStart->diffInDays($periodEnd) + 1);
+            $daysPerMonth = (int) config('payroll.days_per_month', 26);
+
+            $netForPeriod = (float) ($latestPayroll->net_pay ?? 0);
+            if ($netForPeriod > 0 && $daysInPeriod > 0 && $daysPerMonth > 0) {
+                $monthlyApprox = ($netForPeriod / $daysInPeriod) * $daysPerMonth;
+                $maxPercent = (float) ($caConfig['max_percent_of_monthly_net'] ?? 0.8);
+
+                if ($monthlyApprox > 0 && $maxPercent > 0) {
+                    $salaryBasedLimit = $monthlyApprox * $maxPercent;
+                }
+            }
+        }
+
+        $effectiveLimit = null;
+        if ($typeCap !== null && $salaryBasedLimit !== null) {
+            $effectiveLimit = min($typeCap, $salaryBasedLimit);
+        } elseif ($typeCap !== null) {
+            $effectiveLimit = $typeCap;
+        } elseif ($salaryBasedLimit !== null) {
+            $effectiveLimit = $salaryBasedLimit;
+        }
+
+        $allowPartTime = (bool) ($caConfig['allow_part_time'] ?? false);
+        if ($employmentType !== 'regular' && !$allowPartTime) {
+            $effectiveLimit = null;
+            $typeCap = null;
+            $salaryBasedLimit = null;
+        }
+
+        $caLimit = [
+            'type_cap' => $typeCap,
+            'salary_based' => $salaryBasedLimit,
+            'effective' => $effectiveLimit,
+        ];
 
         $payrollBase = Payroll::where('user_id', $user->id)
             ->where('status', 'Released')
@@ -62,6 +116,52 @@ class WorkerController extends Controller
             ->orderByDesc('time_in')
             ->paginate(5)
             ->appends(['tab' => 'attendance']);
+
+        $yearStart = now()->copy()->startOfYear();
+        $yearEnd = now()->copy()->endOfYear();
+
+        $leaveEntries = LeaveEntry::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('date_start', '>=', $yearStart->toDateString())
+            ->whereDate('date_end', '<=', $yearEnd->toDateString())
+            ->get();
+
+        $leavePaidDays = 0.0;
+        $leaveUnpaidDays = 0.0;
+        $forceUnpaidLeave = method_exists($user, 'isPartTime') ? $user->isPartTime() : false;
+
+        foreach ($leaveEntries as $entry) {
+            $days = (float) ($entry->duration_days ?? 0);
+            if ($days <= 0) {
+                continue;
+            }
+
+            $isPaid = (bool) $entry->is_paid;
+            if ($forceUnpaidLeave && $isPaid) {
+                $isPaid = false;
+            }
+
+            if ($isPaid) {
+                $leavePaidDays += $days;
+            } else {
+                $leaveUnpaidDays += $days;
+            }
+        }
+
+        $leaveUsage = [
+            'year_label' => $yearStart->format('Y'),
+            'paid_days' => $leavePaidDays,
+            'unpaid_days' => $leaveUnpaidDays,
+            'is_part_time' => $forceUnpaidLeave,
+        ];
+
+        $pendingLeaveCount = LeaveEntry::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->count();
+
+        $pendingCashAdvanceCount = CashAdvanceRequest::where('user_id', $user->id)
+            ->whereIn('status', ['Pending', 'Supervisor approved', 'Manager approved', 'HR approved'])
+            ->count();
 
         $today = now()->toDateString();
 
@@ -86,6 +186,14 @@ class WorkerController extends Controller
             'monthHours' => $totalHours,
             'monthOvertime' => $totalOvertime,
             'caBalance' => $caBalance,
+            'monthPresentDays' => $presentDays,
+            'monthAwolDays' => $awolDays,
+            'monthLeaveDays' => $leaveDays,
+            'monthAbsentDays' => $absentDays,
+            'caLimit' => $caLimit,
+            'leaveUsage' => $leaveUsage,
+            'pendingLeaveCount' => $pendingLeaveCount,
+            'pendingCashAdvanceCount' => $pendingCashAdvanceCount,
             'payrolls' => $payrolls,
             'attendances' => $attendances,
             'announcements' => $announcements,
@@ -120,7 +228,9 @@ class WorkerController extends Controller
                 ->get();
 
             $totalHours = (float) $attendances->sum('total_hours');
-            $totalOvertime = (float) $attendances->sum('overtime_hours');
+            $totalOvertime = (float) $attendances
+                ->where('overtime_approved', true)
+                ->sum('overtime_hours');
 
             $presentDays = 0;
             $absentDays = 0;
@@ -185,7 +295,9 @@ class WorkerController extends Controller
                 ->get();
 
             $totalHours = (float) $attendances->sum('total_hours');
-            $totalOvertime = (float) $attendances->sum('overtime_hours');
+            $totalOvertime = (float) $attendances
+                ->where('overtime_approved', true)
+                ->sum('overtime_hours');
 
             $presentDays = 0;
             $absentDays = 0;

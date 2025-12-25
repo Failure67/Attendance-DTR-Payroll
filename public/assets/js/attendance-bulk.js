@@ -4,6 +4,8 @@ $(document).ready(function () {
         return;
     }
 
+    const isReadOnly = $wrapper.data('readonly') === 1 || $wrapper.data('readonly') === '1';
+
     const $tableContainer = $wrapper.find('.table-container.attendance-bulk-table');
     const $table = $tableContainer.find('table').first();
 
@@ -19,6 +21,10 @@ $(document).ready(function () {
     $applyBtn.on('click', function (e) {
         e.preventDefault();
 
+        if (isReadOnly) {
+            return;
+        }
+
         const timeIn = ($defaultTimeIn.val() || '').trim();
         const timeOut = ($defaultTimeOut.val() || '').trim();
         const status = ($defaultStatus.val() || '').trim();
@@ -30,20 +36,24 @@ $(document).ready(function () {
 
         $table.find('tbody tr').each(function () {
             const $row = $(this);
+            const isLeaveLinked = $row.find('[data-leave-linked="1"]').length > 0;
+            if (isLeaveLinked) {
+                return;
+            }
 
             const $timeInInput = $row.find('input[name$="[time_in]"]');
             const $timeOutInput = $row.find('input[name$="[time_out]"]');
             const $statusSelect = $row.find('select[name$="[status]"]');
 
-            if ($timeInInput.length && timeIn) {
+            if ($timeInInput.length && timeIn && !$timeInInput.prop('disabled')) {
                 $timeInInput.val(timeIn);
             }
 
-            if ($timeOutInput.length && timeOut) {
+            if ($timeOutInput.length && timeOut && !$timeOutInput.prop('disabled')) {
                 $timeOutInput.val(timeOut);
             }
 
-            if ($statusSelect.length) {
+            if ($statusSelect.length && !$statusSelect.prop('disabled')) {
                 if (status !== '') {
                     $statusSelect.val(status);
                 } else {
@@ -55,6 +65,9 @@ $(document).ready(function () {
 
     // Include/Skip toggle per row (similar to payroll process screen)
     $table.on('click', '.attendance-include-toggle', function () {
+        if (isReadOnly) {
+            return;
+        }
         const $btn = $(this);
         const index = $btn.data('index');
         const $hidden = $table.find('input[type="hidden"][name="records[' + index + '][include]"]');
@@ -82,6 +95,10 @@ $(document).ready(function () {
 
 	if ($bulkForm.length) {
 		$bulkForm.on('submit', function (e) {
+			if (isReadOnly) {
+				e.preventDefault();
+				return;
+			}
 			const form = this;
 			const dateVal = ($(form).find('input[name="date"]').val() || '').trim();
 			const message = dateVal

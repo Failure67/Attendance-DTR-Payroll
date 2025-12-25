@@ -33,6 +33,7 @@ body {
 	color: var(--text-body);
 	background: transparent;
 	min-height: 100vh;
+	overflow-x: hidden;
 }
 
 a {
@@ -91,10 +92,8 @@ header {
     display: flex;
     justify-content: center;
     padding: 10px 20px;
-    position: fixed;
-    z-index: 1000;
-    width: 100%;
-    margin-top: 42px;
+	position: relative;
+	z-index: 2000;
 }
 
 .header-container {
@@ -625,12 +624,14 @@ padding: 12px 14px;
 font-size: 13px;
 }
 
-.table-container.announcements-table tbody tr {
-cursor: pointer;
+.table-container.announcements-table tbody tr,
+.table-container.staff-announcements-table tbody tr {
+	cursor: pointer;
 }
 
-.table-container.announcements-table tbody tr:hover {
-background-color: #f3f4f6;
+.table-container.announcements-table tbody tr:hover,
+.table-container.staff-announcements-table tbody tr:hover {
+	background-color: #f3f4f6;
 }
 
 .crew-avatar {

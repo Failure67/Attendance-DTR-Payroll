@@ -25,6 +25,8 @@ class User extends Authenticatable
         'password',
         'profile_picture',
         'role',
+        'employment_type',
+        'employment_start_date',
     ];
 
     /**
@@ -45,7 +47,11 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'employment_start_date' => 'date',
     ];
+
+    public const EMPLOYMENT_TYPE_REGULAR = 'regular';
+    public const EMPLOYMENT_TYPE_PART_TIME = 'part_time';
 
     public function userCredential()
     {
@@ -60,5 +66,19 @@ class User extends Authenticatable
     public function cashAdvances()
     {
         return $this->hasMany(CashAdvance::class);
+    }
+
+    public function isRegular(): bool
+    {
+        $type = $this->employment_type ?? self::EMPLOYMENT_TYPE_REGULAR;
+
+        return $type === self::EMPLOYMENT_TYPE_REGULAR;
+    }
+
+    public function isPartTime(): bool
+    {
+        $type = $this->employment_type ?? self::EMPLOYMENT_TYPE_REGULAR;
+
+        return $type === self::EMPLOYMENT_TYPE_PART_TIME;
     }
 }

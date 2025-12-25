@@ -3,12 +3,17 @@
 namespace App\Services\Payroll;
 
 use App\Models\Attendance;
+use App\Models\ApprovalLog;
 use App\Models\CashAdvance;
 use App\Models\ContributionBracket;
+use App\Models\LeaveEntry;
+use App\Models\OvertimeEntry;
 use App\Models\Payroll;
+use App\Models\User;
 use App\Repositories\PayrollRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class PayrollService
 {
@@ -51,7 +56,7 @@ class PayrollService
 
             foreach ($rows as $attendance) {
                 $total = (float) $attendance->total_hours;
-                $ot = (float) $attendance->overtime_hours;
+                $ot = $attendance->overtime_approved ? (float) $attendance->overtime_hours : 0.0;
                 $regular = max(0, $total - $ot);
 
                 $regularHours += $regular;
@@ -160,6 +165,7 @@ class PayrollService
                 $overtimeHours = (float) $row['overtime_hours'];
                 $absentDays = (float) $row['absent_days'];
                 $presentDays = (float) $row['present_days'];
+                $leaveDaysAttendance = (float) ($row['leave_days'] ?? 0.0);
                 $requestedCaDeduction = isset($row['ca_deduction']) ? (float) $row['ca_deduction'] : 0.0;
 
                 if ($requestedCaDeduction < 0) {
@@ -170,21 +176,42 @@ class PayrollService
                 $hoursWorked = null;
                 $daysWorked = null;
 
+                $standardDailyHours = (float) config('attendance.standard_daily_hours', 8);
+                $hourlyRate = $this->calculateHourlyRate($wageType, $minWage, $standardDailyHours);
+                $dailyRate = $this->calculateDailyRate($wageType, $minWage, $standardDailyHours);
+
+                [$paidLeaveDays, $unpaidLeaveDays, $leaveEntryDetails] = $this->calculateLeaveForPeriod(
+                    $userId,
+                    $periodStartDate,
+                    $periodEndDate,
+                );
+
                 switch ($wageType) {
                     case 'Hourly':
                     case 'Piece rate':
-                        $unitsWorked = $regularHours + $overtimeHours;
+                        $paidLeaveHours = $paidLeaveDays * $standardDailyHours;
+                        $unitsWorked = $regularHours + $overtimeHours + $paidLeaveHours;
                         $hoursWorked = $unitsWorked;
                         break;
                     case 'Daily':
                     case 'Weekly':
                     case 'Monthly':
-                        $unitsWorked = $presentDays;
+                        $effectivePaidDays = $presentDays + $paidLeaveDays;
+                        $unitsWorked = $effectivePaidDays;
                         $daysWorked = $unitsWorked;
                         break;
                 }
 
-                $grossPay = $minWage * $unitsWorked;
+                $baseGrossPay = $minWage * $unitsWorked;
+
+                [$otPremiumTotal, $otPremiumDetails] = $this->calculateOvertimePremiumForPeriod(
+                    $userId,
+                    $periodStartDate,
+                    $periodEndDate,
+                    $hourlyRate,
+                );
+
+                $grossPay = $baseGrossPay + $otPremiumTotal;
 
                 $sss = $applySss ? ContributionBracket::calculateAmount('SSS', $grossPay) : 0.0;
                 $philhealth = ContributionBracket::calculateAmount('PhilHealth', $grossPay);
@@ -206,14 +233,22 @@ class PayrollService
                 $maxCaByBalance = $outstandingCa;
                 $maxCaByNet = max(0, $grossPay - $totalContrib - $incomeTax);
 
-                // Enforce company policy: at least ₱500 CA deduction per payroll
-                // when there is an outstanding balance, subject to available net pay.
+                // Enforce company policy: at least the configured minimum CA
+                // deduction per payroll while there is an outstanding balance,
+                // subject to available net pay. This reflects the documented
+                // "minimum 500 per pay" rule but allows configuration.
+                $caConfig = (array) config('payroll.ca', []);
+                $minCaDeduction = isset($caConfig['min_deduction'])
+                    ? (float) $caConfig['min_deduction']
+                    : 500.0;
+
                 $enforcedRequestedCa = $requestedCaDeduction;
 
-                if ($outstandingCa > 0 && $maxCaByNet > 0) {
-                    // Required minimum is ₱500, but cannot exceed outstanding balance
-                    // or the maximum CA we can deduct without making net pay negative.
-                    $requiredCa = min(500.0, $outstandingCa, $maxCaByNet);
+                if ($outstandingCa > 0 && $maxCaByNet > 0 && $minCaDeduction > 0) {
+                    // Required minimum is the configured amount, but cannot exceed
+                    // outstanding balance or the maximum we can deduct without
+                    // driving net pay negative.
+                    $requiredCa = min($minCaDeduction, $outstandingCa, $maxCaByNet);
 
                     if ($requiredCa > 0 && $enforcedRequestedCa < $requiredCa) {
                         $enforcedRequestedCa = $requiredCa;
@@ -228,6 +263,52 @@ class PayrollService
 
                 $totalDeductions = $totalContrib + $incomeTax + $caDeduction;
                 $netPay = $grossPay - $totalDeductions;
+
+                $snapshot = [
+                    'source' => 'attendance_run',
+                    'period' => [
+                        'start' => $periodStart,
+                        'end' => $periodEnd,
+                        'days' => $periodDays,
+                    ],
+                    'inputs' => [
+                        'wage_type' => $wageType,
+                        'min_wage' => $minWage,
+                        'regular_hours' => $regularHours,
+                        'overtime_hours' => $overtimeHours,
+                        'absent_days' => $absentDays,
+                        'present_days' => $presentDays,
+                        'leave_days_attendance' => $leaveDaysAttendance,
+                        'leave_paid_days_ledger' => $paidLeaveDays,
+                        'leave_unpaid_days_ledger' => $unpaidLeaveDays,
+                    ],
+                    'contributions' => [
+                        'sss' => $sss,
+                        'philhealth' => $philhealth,
+                        'pagibig' => $pagibig,
+                        'income_tax' => $incomeTax,
+                    ],
+                    'cash_advance' => [
+                        'outstanding_before' => $outstandingCa,
+                        'requested_deduction' => $requestedCaDeduction,
+                        'enforced_requested_deduction' => $enforcedRequestedCa,
+                        'deduction_applied' => $caDeduction,
+                    ],
+                    'computed' => [
+                        'gross_pay' => $grossPay,
+                        'total_deductions' => $totalDeductions,
+                        'net_pay' => $netPay,
+                    ],
+                    'overtime_premium' => [
+                        'total' => $otPremiumTotal,
+                        'entries' => $otPremiumDetails,
+                    ],
+                    'leave_ledger' => [
+                        'paid_days' => $paidLeaveDays,
+                        'unpaid_days' => $unpaidLeaveDays,
+                        'entries' => $leaveEntryDetails,
+                    ],
+                ];
 
                 $payroll = $this->payrollRepository->createPayroll([
                     'user_id' => $userId,
@@ -244,7 +325,42 @@ class PayrollService
                     'status' => 'Pending',
                     'period_start' => $periodStart,
                     'period_end' => $periodEnd,
+                    'snapshot' => $snapshot,
                 ]);
+
+                // Link OT premium entries to this payroll and record the premium amount
+                foreach ($otPremiumDetails as $detail) {
+                    if (!empty($detail['entry_id']) && isset($detail['premium_amount'])) {
+                        OvertimeEntry::where('id', (int) $detail['entry_id'])
+                            ->whereNull('payroll_id')
+                            ->update([
+                                'payroll_id' => $payroll->id,
+                                'premium_amount' => $detail['premium_amount'],
+                            ]);
+                    }
+                }
+
+                // Link leave ledger entries to this payroll and record the paid amount per entry
+                foreach ($leaveEntryDetails as $detail) {
+                    if (empty($detail['entry_id'])) {
+                        continue;
+                    }
+
+                    $durationDays = isset($detail['duration_days']) ? (float) $detail['duration_days'] : 0.0;
+                    if ($durationDays <= 0) {
+                        continue;
+                    }
+
+                    $isPaid = !empty($detail['is_paid']);
+                    $paidAmount = $isPaid ? round($dailyRate * $durationDays, 2) : 0.0;
+
+                    LeaveEntry::where('id', (int) $detail['entry_id'])
+                        ->whereNull('payroll_id')
+                        ->update([
+                            'payroll_id' => $payroll->id,
+                            'paid_amount' => $paidAmount,
+                        ]);
+                }
 
                 if ($sss > 0) {
                     $this->payrollRepository->addDeduction($payroll, 'SSS', $sss);
@@ -267,6 +383,40 @@ class PayrollService
                 }
             }
         });
+    }
+
+    /**
+     * Check whether a payroll's period still has pending leave or overtime
+     * approvals for its employee.
+     *
+     * Returns [hasAnyPending, hasPendingLeave, hasPendingOvertime].
+     */
+    public function hasPendingApprovalsForPayroll(Payroll $payroll): array
+    {
+        $userId = (int) $payroll->user_id;
+
+        if (!$userId || !$payroll->period_start || !$payroll->period_end) {
+            return [false, false, false];
+        }
+
+        $periodStart = Carbon::parse($payroll->period_start)->startOfDay();
+        $periodEnd = Carbon::parse($payroll->period_end)->endOfDay();
+
+        $hasPendingLeave = LeaveEntry::where('user_id', $userId)
+            ->where('status', 'pending')
+            ->whereDate('date_start', '<=', $periodEnd->toDateString())
+            ->whereDate('date_end', '>=', $periodStart->toDateString())
+            ->exists();
+
+        $hasPendingOvertime = OvertimeEntry::where('user_id', $userId)
+            ->whereIn('status', ['pending', 'pending_supervisor', 'pending_manager'])
+            ->whereDate('date', '>=', $periodStart->toDateString())
+            ->whereDate('date', '<=', $periodEnd->toDateString())
+            ->exists();
+
+        $hasAny = $hasPendingLeave || $hasPendingOvertime;
+
+        return [$hasAny, $hasPendingLeave, $hasPendingOvertime];
     }
 
     /**
@@ -308,6 +458,21 @@ class PayrollService
             $netPay = $grossPay - $totalDeductions;
 
             $statusUi = $validated['status'] ?? 'Pending';
+            $snapshot = [
+                'source' => 'manual_entry',
+                'inputs' => [
+                    'wage_type' => $wageType,
+                    'min_wage' => $minWage,
+                    'units_worked' => $unitsWorked,
+                    'status_ui' => $statusUi,
+                ],
+                'deductions' => $validated['deductions'] ?? [],
+                'computed' => [
+                    'gross_pay' => $grossPay,
+                    'total_deductions' => $totalDeductions,
+                    'net_pay' => $netPay,
+                ],
+            ];
             $payroll = $this->payrollRepository->createPayroll([
                 'user_id' => $validated['user_id'],
                 'wage_type' => $wageType,
@@ -318,6 +483,7 @@ class PayrollService
                 'total_deductions' => $totalDeductions,
                 'net_pay' => $netPay,
                 'status' => 'Pending',
+                'snapshot' => $snapshot,
             ]);
 
             if (!empty($validated['deductions'])) {
@@ -370,6 +536,22 @@ class PayrollService
 
             $statusUi = $validated['status'] ?? 'Pending';
 
+            $snapshot = [
+                'source' => 'manual_entry',
+                'inputs' => [
+                    'wage_type' => $wageType,
+                    'min_wage' => $minWage,
+                    'units_worked' => $unitsWorked,
+                    'status_ui' => $statusUi,
+                ],
+                'deductions' => $validated['deductions'] ?? [],
+                'computed' => [
+                    'gross_pay' => $grossPay,
+                    'total_deductions' => $totalDeductions,
+                    'net_pay' => $netPay,
+                ],
+            ];
+
             $updatedPayroll = $this->payrollRepository->updatePayroll($payroll, [
                 'user_id' => $validated['user_id'],
                 'wage_type' => $wageType,
@@ -379,6 +561,7 @@ class PayrollService
                 'gross_pay' => $grossPay,
                 'total_deductions' => $totalDeductions,
                 'net_pay' => $netPay,
+                'snapshot' => $snapshot,
             ]);
 
             $this->payrollRepository->replaceDeductions($updatedPayroll, $validated['deductions'] ?? []);
@@ -408,29 +591,301 @@ class PayrollService
 
     private function applyStatusAndSyncCashAdvance(Payroll $payroll, string $statusUi): void
     {
+        $previousStatus = $payroll->status;
         $statusDb = $statusUi;
 
+        // Always remove any existing payroll-linked CA repayments for this
+        // payroll before recalculating them based on the current deductions
+        // and outstanding balance.
         CashAdvance::where('user_id', $payroll->user_id)
             ->where('source', 'payroll')
             ->where('payroll_id', $payroll->id)
             ->delete();
 
         if ($statusDb === 'Released') {
+            // Recompute outstanding cash advance balance after removing any
+            // previous payroll-linked repayments for this payroll.
+            $totalAdvancesBefore = (float) CashAdvance::where('user_id', $payroll->user_id)
+                ->where('type', 'advance')
+                ->sum('amount');
+
+            $totalRepaymentsBefore = (float) CashAdvance::where('user_id', $payroll->user_id)
+                ->where('type', 'repayment')
+                ->sum('amount');
+
+            $outstandingBefore = max(0, $totalAdvancesBefore - $totalRepaymentsBefore);
+
+            // Total CA deduction on this payroll (from the detailed
+            // deductions table). This may be higher than the current
+            // outstanding balance if the worker's CA was repaid early via
+            // manual ledger entries between preview and release.
             $caDeductionTotal = (float) $payroll->deductions()
                 ->where('deduction_name', 'Cash advance')
                 ->sum('amount');
 
-            if ($caDeductionTotal > 0) {
-                $this->payrollRepository->recordCashAdvanceRepayment(
-                    (int) $payroll->user_id,
-                    $payroll,
-                    $caDeductionTotal,
-                );
+            $repaymentAmount = 0.0;
+            $repaymentEntry = null;
+
+            if ($caDeductionTotal > 0 && $outstandingBefore > 0) {
+                // Never repay more than the outstanding balance.
+                $repaymentAmount = min($caDeductionTotal, $outstandingBefore);
+
+                if ($repaymentAmount > 0) {
+                    $repaymentEntry = $this->payrollRepository->recordCashAdvanceRepayment(
+                        (int) $payroll->user_id,
+                        $payroll,
+                        $repaymentAmount,
+                    );
+                }
+            }
+
+            $outstandingAfter = max(0, $outstandingBefore - $repaymentAmount);
+            $overage = 0.0;
+
+            if ($caDeductionTotal > 0 && $outstandingBefore > 0 && $caDeductionTotal > $outstandingBefore) {
+                // Part of the payroll "Cash advance" deduction could not be
+                // applied to the CA ledger because the balance was already
+                // fully repaid. Track that difference in the audit log so
+                // accounting can reconcile any manual adjustments.
+                $overage = $caDeductionTotal - $outstandingBefore;
+            }
+
+            $actor = Auth::user();
+
+            if ($repaymentEntry && $actor) {
+                ApprovalLog::create([
+                    'resource_type' => 'cash_advance_ledger',
+                    'resource_id' => $repaymentEntry->id,
+                    'actor_id' => $actor->id,
+                    'actor_role' => $actor->role ?? null,
+                    'action' => $overage > 0 ? 'payroll_repayment_capped' : 'payroll_repayment_created',
+                    'meta' => [
+                        'for_user_id' => (int) $payroll->user_id,
+                        'payroll_id' => (int) $payroll->id,
+                        'from_status' => $previousStatus,
+                        'to_status' => $statusDb,
+                        'ca_deduction_total' => $caDeductionTotal,
+                        'repayment_applied' => $repaymentAmount,
+                        'outstanding_before' => $outstandingBefore,
+                        'outstanding_after' => $outstandingAfter,
+                        'overage_ignored' => $overage,
+                    ],
+                ]);
+            }
+
+            if ($caDeductionTotal > 0 && $outstandingBefore <= 0 && $actor) {
+                // There is a "Cash advance" deduction on the payroll but no
+                // outstanding CA balance to apply it to. Record this as an
+                // audit event tied to the payroll so it is visible in
+                // ApprovalLogs, while keeping the CA ledger consistent (no
+                // negative balances).
+                ApprovalLog::create([
+                    'resource_type' => 'payroll',
+                    'resource_id' => $payroll->id,
+                    'actor_id' => $actor->id,
+                    'actor_role' => $actor->role ?? null,
+                    'action' => 'payroll_ca_deduction_without_balance',
+                    'meta' => [
+                        'for_user_id' => (int) $payroll->user_id,
+                        'payroll_id' => (int) $payroll->id,
+                        'from_status' => $previousStatus,
+                        'to_status' => $statusDb,
+                        'ca_deduction_total' => $caDeductionTotal,
+                        'outstanding_before' => $outstandingBefore,
+                    ],
+                ]);
             }
         }
 
         $payroll->status = $statusDb;
+
+        if ($statusDb === 'Released' && !$payroll->released_at) {
+            $payroll->released_at = now();
+        }
+
         $payroll->save();
+    }
+
+    private function calculateHourlyRate(string $wageType, float $minWage, float $standardDailyHours): float
+    {
+        if ($minWage <= 0 || $standardDailyHours <= 0) {
+            return 0.0;
+        }
+
+        $daysPerWeek = (int) config('payroll.days_per_week', 6);
+        $daysPerMonth = (int) config('payroll.days_per_month', 26);
+
+        switch ($wageType) {
+            case 'Hourly':
+            case 'Piece rate':
+                return $minWage;
+            case 'Daily':
+                return $minWage / $standardDailyHours;
+            case 'Weekly':
+                if ($daysPerWeek <= 0) {
+                    return 0.0;
+                }
+
+                return ($minWage / $daysPerWeek) / $standardDailyHours;
+            case 'Monthly':
+                if ($daysPerMonth <= 0) {
+                    return 0.0;
+                }
+
+                return ($minWage / $daysPerMonth) / $standardDailyHours;
+            default:
+                return 0.0;
+        }
+    }
+
+    private function calculateDailyRate(string $wageType, float $minWage, float $standardDailyHours): float
+    {
+        if ($minWage <= 0 || $standardDailyHours <= 0) {
+            return 0.0;
+        }
+
+        $daysPerWeek = (int) config('payroll.days_per_week', 6);
+        $daysPerMonth = (int) config('payroll.days_per_month', 26);
+
+        switch ($wageType) {
+            case 'Hourly':
+            case 'Piece rate':
+                return $minWage * $standardDailyHours;
+            case 'Daily':
+                return $minWage;
+            case 'Weekly':
+                if ($daysPerWeek <= 0) {
+                    return 0.0;
+                }
+
+                return $minWage / $daysPerWeek;
+            case 'Monthly':
+                if ($daysPerMonth <= 0) {
+                    return 0.0;
+                }
+
+                return $minWage / $daysPerMonth;
+            default:
+                return 0.0;
+        }
+    }
+
+    /**
+     * Calculate overtime premium for the period based on approved ledger entries.
+     *
+     * Returns an array: [totalPremium, details[]].
+     */
+    private function calculateOvertimePremiumForPeriod(
+        int $userId,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+        float $hourlyRate,
+    ): array {
+        if ($hourlyRate <= 0) {
+            return [0.0, []];
+        }
+
+        $defaultMultiplier = (float) config('payroll.overtime_multiplier', 1.30);
+
+        $entries = OvertimeEntry::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->whereNull('payroll_id')
+            ->whereDate('date', '>=', $periodStart->toDateString())
+            ->whereDate('date', '<=', $periodEnd->toDateString())
+            ->get();
+
+        $totalPremium = 0.0;
+        $details = [];
+
+        foreach ($entries as $entry) {
+            $hours = (float) $entry->hours;
+            if ($hours <= 0) {
+                continue;
+            }
+
+            $multiplier = (float) ($entry->premium_multiplier ?: $defaultMultiplier);
+            $extraFactor = max(0.0, $multiplier - 1.0);
+            if ($extraFactor <= 0) {
+                continue;
+            }
+
+            $premiumAmount = round($hours * $hourlyRate * $extraFactor, 2);
+            if ($premiumAmount <= 0) {
+                continue;
+            }
+
+            $totalPremium += $premiumAmount;
+
+            $details[] = [
+                'entry_id' => (int) $entry->id,
+                'date' => $entry->date ? $entry->date->toDateString() : null,
+                'hours' => $hours,
+                'premium_multiplier' => $multiplier,
+                'premium_amount' => $premiumAmount,
+            ];
+        }
+
+        return [$totalPremium, $details];
+    }
+
+    /**
+     * Aggregate approved leave ledger entries for the period.
+     *
+     * Returns [paidLeaveDays, unpaidLeaveDays, details[]].
+     */
+    private function calculateLeaveForPeriod(
+        int $userId,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+    ): array {
+        $user = User::find($userId);
+        $forceUnpaid = $user && $user->isPartTime();
+
+        $entries = LeaveEntry::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->whereNull('payroll_id')
+            ->whereDate('date_start', '>=', $periodStart->toDateString())
+            ->whereDate('date_end', '<=', $periodEnd->toDateString())
+            ->get();
+
+        $paidLeaveDays = 0.0;
+        $unpaidLeaveDays = 0.0;
+        $details = [];
+
+        foreach ($entries as $entry) {
+            $durationDays = (float) $entry->duration_days;
+            if ($durationDays <= 0) {
+                continue;
+            }
+
+            $isPaid = (bool) $entry->is_paid;
+
+            // Company policy: paid leave applies only to regular employees by
+            // default. Part-time employees' leave is treated as unpaid unless
+            // explicitly handled as an exception. Enforce that here so payroll
+            // calculations stay consistent even if a leave entry was marked
+            // paid by mistake for a part-time worker.
+            if ($forceUnpaid && $isPaid) {
+                $isPaid = false;
+            }
+
+            if ($isPaid) {
+                $paidLeaveDays += $durationDays;
+            } else {
+                $unpaidLeaveDays += $durationDays;
+            }
+
+            $details[] = [
+                'entry_id' => (int) $entry->id,
+                'date_start' => $entry->date_start ? $entry->date_start->toDateString() : null,
+                'date_end' => $entry->date_end ? $entry->date_end->toDateString() : null,
+                'duration_days' => $durationDays,
+                'type' => $entry->type,
+                'is_paid' => $isPaid,
+            ];
+        }
+
+        return [$paidLeaveDays, $unpaidLeaveDays, $details];
     }
 
     /**

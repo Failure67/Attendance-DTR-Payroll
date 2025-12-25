@@ -73,6 +73,79 @@
 
 <script>
 	(function () {
+		function openStatCardDetails(card) {
+			const modalEl = document.getElementById('statCardDetailsModal');
+			if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+				return;
+			}
+
+			const title = card.getAttribute('data-stat-title') || 'Details';
+			const value = card.getAttribute('data-stat-value') || '—';
+			const details = card.getAttribute('data-stat-details') || '';
+			const source = card.getAttribute('data-stat-source') || '';
+			const link = card.getAttribute('data-stat-link') || '';
+
+			const titleEl = modalEl.querySelector('[data-stat-modal-title]');
+			const valueEl = modalEl.querySelector('[data-stat-modal-value]');
+			const detailsEl = modalEl.querySelector('[data-stat-modal-details]');
+			const sourceEl = modalEl.querySelector('[data-stat-modal-source]');
+			const linkEl = modalEl.querySelector('[data-stat-modal-link]');
+
+			if (titleEl) titleEl.textContent = title;
+			if (valueEl) valueEl.textContent = value;
+			if (detailsEl) {
+				detailsEl.textContent = details;
+				const detailsBlock = detailsEl.closest('.mb-3');
+				if (detailsBlock) {
+					detailsBlock.style.display = details ? '' : 'none';
+				}
+			}
+			if (sourceEl) {
+				sourceEl.textContent = source;
+				const sourceBlock = sourceEl.closest('.mb-0');
+				if (sourceBlock) {
+					sourceBlock.style.display = source ? '' : 'none';
+				}
+			}
+			if (linkEl) {
+				if (link) {
+					linkEl.setAttribute('href', link);
+					linkEl.style.display = '';
+				} else {
+					linkEl.setAttribute('href', '#');
+					linkEl.style.display = 'none';
+				}
+			}
+
+			const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+			modal.show();
+		}
+
+		document.addEventListener('click', function (e) {
+			const target = e.target;
+			if (!(target instanceof Element)) {
+				return;
+			}
+
+			const card = target.closest('[data-stat-card="1"]');
+			if (!card) {
+				return;
+			}
+
+			// Preserve normal browser behavior for modified clicks.
+			if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) {
+				return;
+			}
+
+			e.preventDefault();
+			e.stopPropagation();
+			openStatCardDetails(card);
+		}, true);
+	})();
+</script>
+
+<script>
+	(function () {
 		let confirmModal = null;
 		let confirmMessageEl = null;
 		let confirmOkBtn = null;

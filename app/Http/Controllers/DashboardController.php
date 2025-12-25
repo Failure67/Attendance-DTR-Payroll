@@ -41,7 +41,9 @@ class DashboardController extends Controller
             }
 
             $attendanceByDay[$day]['total_hours'] += (float) $attendance->total_hours;
-            $attendanceByDay[$day]['overtime_hours'] += (float) $attendance->overtime_hours;
+            if ($attendance->overtime_approved) {
+                $attendanceByDay[$day]['overtime_hours'] += (float) $attendance->overtime_hours;
+            }
         }
 
         $attendanceLabels = [];

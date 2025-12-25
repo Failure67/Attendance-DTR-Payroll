@@ -30,9 +30,14 @@
                     </div>
                 
                     <div class="name-info">
-                        
+
                         <div class="name-container">
                             {{ $user->full_name ?? $user->username }}
+                            @php
+                                $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                                $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+                            @endphp
+                            <span class="badge bg-light text-dark ms-2" style="font-size: 0.75rem;">{{ $employmentTypeLabel }}</span>
                         </div>
 
                         <div class="id-number">
@@ -67,9 +72,30 @@
                     Attendance
                 </a>
 
-                <a href="{{ route('worker.cash-advance-requests') }}" class="selector-item">
-                    Cash Advance Requests
-                </a>
+                @php
+                    $requestsSelected = in_array(Route::currentRouteName(), [
+                        'worker.cash-advance-requests',
+                        'worker.leave-requests',
+                        'worker.leave-credits',
+                    ], true);
+                @endphp
+
+                <div class="selector-dropdown">
+                    <a href="#" class="selector-item {{ $requestsSelected ? 'selected' : '' }}" onclick="return false;">
+                        Requests
+                    </a>
+                    <div class="selector-dropdown-menu">
+                        <a href="{{ route('worker.cash-advance-requests') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.cash-advance-requests' ? 'selected' : '' }}">
+                            Cash Advance Requests
+                        </a>
+                        <a href="{{ route('worker.leave-requests') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.leave-requests' ? 'selected' : '' }}">
+                            Leave Requests
+                        </a>
+                        <a href="{{ route('worker.leave-credits') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.leave-credits' ? 'selected' : '' }}">
+                            Leave Credits
+                        </a>
+                    </div>
+                </div>
 
             </div>
 
@@ -82,6 +108,21 @@
                 $latestPeriod = $latestPayroll && $latestPayroll->period_start && $latestPayroll->period_end
                     ? $latestPayroll->period_start->format('Y-m-d') . ' to ' . $latestPayroll->period_end->format('Y-m-d')
                     : null;
+
+                $presentThisMonth = (int) ($monthPresentDays ?? 0);
+                $awolThisMonth = (int) ($monthAwolDays ?? 0);
+                $leaveThisMonth = (int) ($monthLeaveDays ?? 0);
+
+                $pendingLeave = (int) ($pendingLeaveCount ?? 0);
+                $pendingCa = (int) ($pendingCashAdvanceCount ?? 0);
+
+                $usage = $leaveUsage ?? null;
+                $leaveYearLabel = $usage['year_label'] ?? now()->format('Y');
+                $leavePaidYear = (float) ($usage['paid_days'] ?? 0);
+                $leaveUnpaidYear = (float) ($usage['unpaid_days'] ?? 0);
+
+                $limit = $caLimit ?? null;
+                $caEffective = $limit['effective'] ?? null;
             @endphp
 
             <div class="content cards">
@@ -92,6 +133,9 @@
                     'countDesc' => 'As of ' . date('F d, Y'),
                     'countIcon' => '<i class="fa-solid fa-money-bills"></i>',
                     'countValue' => '₱ ' . ($latestNet ?? '0.00'),
+                    'countHref' => route('worker.payroll-history'),
+                    'statDetails' => 'Latest Released payroll net pay. Net pay = gross pay - total deductions.',
+                    'statSource' => 'Payrolls table: latest Released payroll for your account (sorted by period_end).',
                 ])
                 
                 @include('user.components.count', [
@@ -100,6 +144,9 @@
                     'countDesc' => 'As of ' . date('F Y'),
                     'countIcon' => '<i class="fa-solid fa-clock"></i>',
                     'countValue' => number_format($monthHours ?? 0) . 'h',
+                    'countHref' => route('worker.attendance'),
+                    'statDetails' => 'Sum of total_hours from your attendance records for the current month.',
+                    'statSource' => 'Attendance table: SUM(total_hours) between start/end of current month.',
                 ])
 
                 @include('user.components.count', [
@@ -108,6 +155,9 @@
                     'countDesc' => 'As of ' . date('F Y'),
                     'countIcon' => '<i class="fa-solid fa-bars-staggered"></i>',
                     'countValue' => number_format($monthOvertime ?? 0) . 'h',
+                    'countHref' => route('worker.attendance'),
+                    'statDetails' => 'Sum of approved overtime_hours from your attendance records for the current month.',
+                    'statSource' => 'Attendance table: SUM(overtime_hours) where overtime_approved = true for current month.',
                 ])
 
                 @include('user.components.count', [
@@ -116,6 +166,28 @@
                     'countDesc' => '',
                     'countIcon' => '<i class="fa-solid fa-file-waveform"></i>',
                     'countValue' => '₱ ' . number_format($caBalance ?? 0, 2),
+                    'countHref' => route('worker.cash-advance-requests'),
+                    'statDetails' => 'Outstanding cash advance balance = total advances - total repayments.',
+                    'statSource' => 'CashAdvances table: SUM(advance) - SUM(repayment) for your account.',
+                ])
+
+                @php
+                    $pendingLeaveCount = (int) ($pendingLeave ?? 0);
+                    $pendingCaCount = (int) ($pendingCa ?? 0);
+                    $pendingHref = $pendingLeaveCount > 0
+                        ? route('worker.leave-requests')
+                        : route('worker.cash-advance-requests');
+                @endphp
+
+                @include('user.components.count', [
+                    'countClass' => 'pending-approvals',
+                    'countLabel' => 'Requests in approval',
+                    'countDesc' => 'Leave / Cash advance',
+                    'countIcon' => '<i class="fa-solid fa-inbox"></i>',
+                    'countValue' => 'Leave ' . $pendingLeaveCount . ' / CA ' . $pendingCaCount,
+                    'countHref' => $pendingHref,
+                    'statDetails' => 'Counts your pending leave requests and cash advance requests currently in the approval workflow.',
+                    'statSource' => 'LeaveEntries table (status=pending) and CashAdvanceRequests table (status in Pending/Supervisor approved/Manager approved/HR approved).',
                 ])
 
             </div>

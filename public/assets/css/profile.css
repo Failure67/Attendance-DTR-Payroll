@@ -285,7 +285,9 @@
     color: #7f1d1d;
 }
 
-.btn-close {
+/* Profile page specific close buttons. Keep Bootstrap's default .btn-close
+   (with the built-in X icon) everywhere else. */
+.wrapper.profile .btn-close {
     opacity: 0.6;
     transition: opacity 0.2s ease;
     padding: 0.25rem;
@@ -295,7 +297,7 @@
     font-size: 1.5rem;
 }
 
-.btn-close:hover {
+.wrapper.profile .btn-close:hover {
     opacity: 1;
 }
 

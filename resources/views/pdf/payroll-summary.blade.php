@@ -39,6 +39,7 @@
             <tr>
                 <th>#</th>
                 <th>Employee</th>
+                <th>Emp. type</th>
                 <th>Period start</th>
                 <th>Period end</th>
                 <th>Wage type</th>
@@ -54,6 +55,8 @@
         @forelse($payrolls as $index => $payroll)
             @php
                 $employeeName = $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : 'Unknown employee';
+                $employmentType = $payroll->user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
                 $start = $payroll->period_start ? $payroll->period_start->format('Y-m-d') : '';
                 $end = $payroll->period_end ? $payroll->period_end->format('Y-m-d') : '';
                 $units = $payroll->hours_worked ?? $payroll->days_worked ?? 0;
@@ -70,6 +73,7 @@
             <tr>
                 <td class="text-center">{{ $index + 1 }}</td>
                 <td>{{ $employeeName }}</td>
+                <td class="text-center">{{ $employmentTypeLabel }}</td>
                 <td class="text-center">{{ $start }}</td>
                 <td class="text-center">{{ $end }}</td>
                 <td class="text-center">{{ $payroll->wage_type ?? '' }}</td>
@@ -82,7 +86,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="11" class="text-center">No payroll records found for the selected filters.</td>
+                <td colspan="12" class="text-center">No payroll records found for the selected filters.</td>
             </tr>
         @endforelse
         </tbody>

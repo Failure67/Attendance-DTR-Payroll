@@ -7,6 +7,7 @@ $(document).ready(function() {
 
     const $wrapper = $('.wrapper.attendance');
     const isArchivedView = $wrapper.data('archived') === 1 || $wrapper.data('archived') === '1';
+    const isReadOnly = $wrapper.data('readonly') === 1 || $wrapper.data('readonly') === '1';
     const currentQueryString = window.location.search || '';
 
     const $deleteBtn = $('#delete-attendance');
@@ -165,6 +166,10 @@ $(document).ready(function() {
             return;
         }
 
+        if (isReadOnly) {
+            return;
+        }
+
         const $row = $(this);
         const $cell = $row.find('.attendance-employee').first();
         const id = $cell.data('attendance-id');
@@ -225,6 +230,9 @@ $(document).ready(function() {
     const $attendanceForm = $('#attendanceForm');
     const $methodInput = $('#attendance-form-method');
 
+    const $otSupervisorApproveBtn = $('#attendance-ot-supervisor-approve');
+    const $otManagerApproveBtn = $('#attendance-ot-manager-approve');
+
     function resetAttendanceForm() {
         $attendanceForm[0].reset();
         // Default to POST so Laravel treats this as a normal create request
@@ -241,6 +249,44 @@ $(document).ready(function() {
         // Reset approval checkboxes
         $('#attendance-overtime-approved').prop('checked', false);
         $('#attendance-leave-approved').prop('checked', false);
+
+        if ($otSupervisorApproveBtn.length) {
+            $otSupervisorApproveBtn.addClass('d-none').data('entryId', null);
+        }
+        if ($otManagerApproveBtn.length) {
+            $otManagerApproveBtn.addClass('d-none').data('entryId', null);
+        }
+    }
+
+    function getCsrfToken() {
+        return $('meta[name="csrf-token"]').attr('content') || $('input[name="_token"]').val() || '';
+    }
+
+    function postOvertimeApproval(url, entryId) {
+        if (!entryId) {
+            return;
+        }
+
+        const csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            alert('Missing CSRF token. Please refresh the page and try again.');
+            return;
+        }
+
+        $.ajax({
+            url,
+            method: 'POST',
+            data: { _token: csrfToken },
+            success: function () {
+                window.location.reload();
+            },
+            error: function (xhr) {
+                const msg = (xhr && xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message
+                    : (xhr && xhr.responseText ? xhr.responseText : 'Request failed');
+                alert(msg);
+            },
+        });
     }
 
     // Initialize delete/view-archived button state
@@ -274,6 +320,9 @@ $(document).ready(function() {
 
     // New attendance
     $('#add-attendance').on('click', function() {
+        if (isReadOnly) {
+            return;
+        }
         resetAttendanceForm();
         $attendanceForm.attr('action', '/attendance' + currentQueryString);
         $attendanceModal.find('.modal-title').text('New attendance record');
@@ -281,8 +330,25 @@ $(document).ready(function() {
         modalInstance.show();
     });
 
+    if ($otSupervisorApproveBtn.length) {
+        $otSupervisorApproveBtn.on('click', function () {
+            const entryId = $(this).data('entryId');
+            postOvertimeApproval(`/overtime-entries/${entryId}/supervisor-approve`, entryId);
+        });
+    }
+
+    if ($otManagerApproveBtn.length) {
+        $otManagerApproveBtn.on('click', function () {
+            const entryId = $(this).data('entryId');
+            postOvertimeApproval(`/overtime-entries/${entryId}/manager-approve`, entryId);
+        });
+    }
+
     // Edit attendance
     $('#edit-attendance').on('click', function() {
+        if (isReadOnly) {
+            return;
+        }
         if (!selectedAttendanceIds.size) {
             alert('Please select a record to edit.');
             return;
@@ -299,12 +365,15 @@ $(document).ready(function() {
         const $row = $('.attendance-table-detail').first().find('tbody tr.selected');
         const $employeeCell = $row.find('.attendance-employee').first();
         const userId = $employeeCell.data('user-id') || null;
-        const date = $row.find('td').eq(1).text().trim();
+        const date = $row.find('td.date').first().text().trim();
 
         const timeIn = ($row.find('.attendance-time-in').data('time-24') || '').toString();
         const timeOut = ($row.find('.attendance-time-out').data('time-24') || '').toString();
-        const statusText = $row.find('td').eq(6).text().trim();
-        const overtimeApproved = $employeeCell.data('overtime-approved');
+        const $statusCell = $row.find('td.status').first();
+        const statusText = ($statusCell.find('.badge').first().text() || $statusCell.text()).trim();
+        const overtimeRequested = $employeeCell.data('overtime-requested');
+        const overtimeEntryId = $employeeCell.data('overtime-entry-id');
+        const overtimeStatus = ($employeeCell.data('overtime-status') || '').toString();
         const leaveApproved = $employeeCell.data('leave-approved');
 
         resetAttendanceForm();
@@ -338,11 +407,33 @@ $(document).ready(function() {
         }
 
         // Populate approval checkboxes
-        if (typeof overtimeApproved !== 'undefined') {
-            $('#attendance-overtime-approved').prop('checked', String(overtimeApproved) === '1');
+        if (typeof overtimeRequested !== 'undefined') {
+            $('#attendance-overtime-approved').prop('checked', String(overtimeRequested) === '1');
         }
         if (typeof leaveApproved !== 'undefined') {
             $('#attendance-leave-approved').prop('checked', String(leaveApproved) === '1');
+        }
+
+        const currentRole = ($wrapper.data('role') || '').toString().toLowerCase();
+
+        if ($otSupervisorApproveBtn.length) {
+            $otSupervisorApproveBtn.addClass('d-none').data('entryId', null);
+            if ((currentRole === 'supervisor' || currentRole === 'admin')
+                && overtimeEntryId
+                && (overtimeStatus === 'pending_supervisor' || overtimeStatus === 'pending')
+            ) {
+                $otSupervisorApproveBtn.removeClass('d-none').data('entryId', overtimeEntryId);
+            }
+        }
+
+        if ($otManagerApproveBtn.length) {
+            $otManagerApproveBtn.addClass('d-none').data('entryId', null);
+            if ((currentRole === 'manager' || currentRole === 'admin')
+                && overtimeEntryId
+                && overtimeStatus === 'pending_manager'
+            ) {
+                $otManagerApproveBtn.removeClass('d-none').data('entryId', overtimeEntryId);
+            }
         }
 
         $attendanceModal.find('.modal-title').text('Edit attendance record');
@@ -354,6 +445,10 @@ $(document).ready(function() {
 // Delete attendance or toggle archived view
 $('#delete-attendance').on('click', function() {
     const selectedCount = selectedAttendanceIds.size;
+
+    if (isReadOnly && selectedCount > 0) {
+        return;
+    }
 
     // No selection: act as View archived / Back to attendance toggle
     if (selectedCount === 0) {
@@ -382,7 +477,7 @@ $('#delete-attendance').on('click', function() {
             return String($cell.data('attendance-id')) === String(ids[0]);
         }).first();
         const employeeName = $row.find('.attendance-employee').text().trim();
-        const date = $row.find('td').eq(1).text().trim();
+        const date = $row.find('td.date').first().text().trim();
         $modal.find('#confirm-item-name').text(`attendance record for ${employeeName} on ${date}?`);
     } else {
         $modal.find('#confirm-item-name').text(`these ${ids.length} attendance records?`);
@@ -456,6 +551,9 @@ $('#delete-attendance').on('click', function() {
     const $generateDefaultsForm = $('#attendance-generate-defaults-form');
     if ($moreGenerateDefaults.length && $generateDefaultsForm.length) {
         $moreGenerateDefaults.on('click', function () {
+            if (isReadOnly) {
+                return;
+            }
             const message = 'Generate default attendance for the selected period? This may create or update multiple records.';
 
             if (typeof window.appConfirm === 'function') {
@@ -478,10 +576,16 @@ $('#delete-attendance').on('click', function() {
     const $importFileInput = $('#attendance_import_file');
     if ($moreImportBtn.length && $importForm.length && $importFileInput.length) {
         $moreImportBtn.on('click', function () {
+            if (isReadOnly) {
+                return;
+            }
             $importFileInput.trigger('click');
         });
 
         $importFileInput.on('change', function () {
+            if (isReadOnly) {
+                return;
+            }
             if (this.files && this.files.length) {
                 $importForm.submit();
             }
@@ -522,6 +626,27 @@ $('#delete-attendance').on('click', function() {
                 }
             });
 
+            window.location.href = exportUrl.toString();
+        });
+    }
+
+    const $moreExportDtr = $('#attendance-more-export-dtr');
+    if ($moreExportDtr.length) {
+        $moreExportDtr.on('click', function () {
+            const currentUrl = new URL(window.location.href);
+            const params = currentUrl.searchParams;
+            const employeeId = params.get('employee_id');
+            if (!employeeId) {
+                alert('Please select an employee in the filters before exporting a DTR report.');
+                return;
+            }
+            let exportUrl = new URL(window.location.origin + '/attendance/dtr-pdf');
+            ['employee_id', 'status', 'period_start', 'period_end', 'archived', 'sort_by', 'sort_dir', 'search'].forEach(function (key) {
+                const value = params.get(key);
+                if (value !== null && value !== '') {
+                    exportUrl.searchParams.set(key, value);
+                }
+            });
             window.location.href = exportUrl.toString();
         });
     }

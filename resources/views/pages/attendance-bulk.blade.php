@@ -4,7 +4,17 @@
 
     @include('partials.menu')
 
-    <div class="wrapper {{ $pageClass }}">
+    @php
+        $attendanceRole = strtolower(trim(auth()->user()->role ?? ''));
+        if ($attendanceRole === 'project manager') {
+            $attendanceRole = 'manager';
+        }
+        $canWriteAttendance = in_array($attendanceRole, ['supervisor', 'manager', 'hr', 'admin'], true);
+        $isAttendanceReadOnly = !$canWriteAttendance;
+        $isAttendanceSuperadmin = $attendanceRole === 'superadmin';
+    @endphp
+
+    <div class="wrapper {{ $pageClass }}{{ $isAttendanceReadOnly ? ' attendance-readonly' : '' }}" data-readonly="{{ $isAttendanceReadOnly ? '1' : '0' }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -16,15 +26,27 @@
             </div>
         </div>
 
+        @if ($isAttendanceSuperadmin)
+            <div class="container {{ $pageClass }} mb-3">
+                <div class="alert alert-info mb-0" role="alert">
+                    <strong>Read-only:</strong> Superadmin accounts can view bulk attendance but cannot save changes.
+                </div>
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} mb-3">
-            <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-2 align-items-end">
+            <form method="GET" action="{{ route('attendance.bulk') }}" class="row g-2 align-items-end attendance-filter-row">
                 <div class="col-12 col-md-4 col-lg-3">
-                    <label for="bulk_attendance_date" class="form-label mb-1">Date</label>
-                    <input type="date" name="date" id="bulk_attendance_date" class="form-control" value="{{ $filters['date'] ?? $bulkDate }}">
+                    <label for="bulk_attendance_period_start" class="form-label mb-1">Period start</label>
+                    <input type="date" name="period_start" id="bulk_attendance_period_start" class="date-field" value="{{ $filters['period_start'] ?? $bulkDate }}">
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label for="bulk_attendance_period_end" class="form-label mb-1">Period end</label>
+                    <input type="date" name="period_end" id="bulk_attendance_period_end" class="date-field" value="{{ $filters['period_end'] ?? '' }}">
                 </div>
                 <div class="col-12 col-md-4 col-lg-3">
                     <label for="bulk_attendance_employee" class="form-label mb-1">Employee</label>
-                    <select name="employee_id" id="bulk_attendance_employee" class="form-control">
+                    <select name="employee_id" id="bulk_attendance_employee" class="select w-100">
                         <option value="">All employees</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" @if(($filters['employee_id'] ?? '') == $id) selected @endif>{{ $name }}</option>
@@ -59,55 +81,88 @@
 
                 @include('components.modal-error')
 
-                <div class="row g-2 mb-3 align-items-end">
+                <div class="row g-2 mb-3 align-items-end attendance-bulk-default-row">
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_time_in" class="form-label mb-1">Default time in</label>
-                        <input type="time" id="bulk_default_time_in" class="form-control" value="{{ config('attendance.default_shift_start', '08:00') }}">
+                        <input type="time" id="bulk_default_time_in" class="form-control" value="{{ config('attendance.default_shift_start', '08:00') }}" @if ($isAttendanceReadOnly) disabled @endif>
                     </div>
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_time_out" class="form-label mb-1">Default time out</label>
-                        <input type="time" id="bulk_default_time_out" class="form-control" value="{{ config('attendance.default_shift_end', '17:00') }}">
+                        <input type="time" id="bulk_default_time_out" class="form-control" value="{{ config('attendance.default_shift_end', '17:00') }}" @if ($isAttendanceReadOnly) disabled @endif>
                     </div>
                     <div class="col-12 col-md-4 col-lg-3">
                         <label for="bulk_default_status" class="form-label mb-1">Default status</label>
-                        <select id="bulk_default_status" class="form-control">
+                        <select id="bulk_default_status" class="form-control" @if ($isAttendanceReadOnly) disabled @endif>
                             <option value="">Auto (Present/Late/Absent)</option>
                             <option value="Present">Present</option>
                             <option value="Late">Late</option>
                             <option value="Absent">Absent</option>
+                            <option value="AWOL">AWOL</option>
                             <option value="On leave">On leave</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-4 col-lg-auto ms-lg-auto d-flex align-items-end justify-content-end">
-                        <button type="button" id="bulk-apply-to-all" class="button secondary filter">Apply to all rows</button>
+                        <button type="button" id="bulk-apply-to-all" class="button secondary filter" @if ($isAttendanceReadOnly) disabled @endif>Apply to all rows</button>
                     </div>
                 </div>
+
+                @if (!empty($hasLeaveLinkedRows))
+                    <div class="mb-2 small text-muted">
+                        Some rows are from approved leave requests. Their time and status fields are locked; edit or cancel the leave request instead of changing attendance directly.
+                    </div>
+                @endif
 
                 @php
                     $bulkTableData = [];
 
                     if (!empty($rows) && count($rows)) {
                         foreach ($rows as $index => $row) {
+                            $isLeaveLinked = !empty($row['is_leave_linked']);
+                            $leaveTooltip = $row['leave_tooltip'] ?? null;
+
+                            $badgeHtml = '';
+                            if ($isLeaveLinked) {
+                                $badgeTitle = $leaveTooltip ?: 'From leave request';
+                                $badgeHtml = ' <span class="badge rounded-pill bg-info-subtle text-info leave-linked-badge" title="' . e($badgeTitle) . '">From leave request</span>';
+                            }
+
                             $employeeCell = e($row['name']) .
-                                '<input type="hidden" name="records[' . $index . '][user_id]" value="' . e($row['user_id']) . '">' .
+                                $badgeHtml .
+                                '<input type="hidden" name="records[' . $index . '][user_id]" value="' . e($row['user_id']) . '"' . ($isLeaveLinked ? ' data-leave-linked="1"' : '') . '>' .
                                 '<input type="hidden" name="records[' . $index . '][attendance_id]" value="' . e($row['attendance_id']) . '">';
 
-                            $timeInInput = '<input type="time" name="records[' . $index . '][time_in]" class="form-control form-control-sm" value="' . e($row['time_in']) . '">';
+                            $timeInClasses = 'form-control form-control-sm' . ($isLeaveLinked ? ' leave-linked-input' : '');
+                            $timeOutClasses = 'form-control form-control-sm' . ($isLeaveLinked ? ' leave-linked-input' : '');
+                            $statusClasses = 'form-select form-select-sm' . ($isLeaveLinked ? ' leave-linked-input' : '');
 
-                            $timeOutInput = '<input type="time" name="records[' . $index . '][time_out]" class="form-control form-control-sm" value="' . e($row['time_out']) . '">';
+                            $readOnlyExtra = $isAttendanceReadOnly ? ' disabled data-readonly="1"' : '';
+
+                            $timeInExtra = ($isLeaveLinked ? ' disabled data-leave-linked="1"' : '') . $readOnlyExtra;
+                            $timeOutExtra = ($isLeaveLinked ? ' disabled data-leave-linked="1"' : '') . $readOnlyExtra;
+                            $statusExtra = ($isLeaveLinked ? ' disabled data-leave-linked="1"' : '') . $readOnlyExtra;
+
+                            $timeInInput = '<input type="time" name="records[' . $index . '][time_in]" class="' . $timeInClasses . '" value="' . e($row['time_in']) . '"' . $timeInExtra . '>';
+
+                            $timeOutInput = '<input type="time" name="records[' . $index . '][time_out]" class="' . $timeOutClasses . '" value="' . e($row['time_out']) . '"' . $timeOutExtra . '>';
 
                             $statusValue = $row['status'] ?? '';
 
-                            $statusSelect = '<select name="records[' . $index . '][status]" class="form-select form-select-sm">'
+                            $statusSelect = '<select name="records[' . $index . '][status]" class="' . $statusClasses . '"' . $statusExtra . '>'
                                 . '<option value="">Auto (Present/Late/Absent)</option>'
                                 . '<option value="Present"' . ($statusValue === 'Present' ? ' selected' : '') . '>Present</option>'
                                 . '<option value="Late"' . ($statusValue === 'Late' ? ' selected' : '') . '>Late</option>'
                                 . '<option value="Absent"' . ($statusValue === 'Absent' ? ' selected' : '') . '>Absent</option>'
+                                . '<option value="AWOL"' . ($statusValue === 'AWOL' ? ' selected' : '') . '>AWOL</option>'
                                 . '<option value="On leave"' . ($statusValue === 'On leave' ? ' selected' : '') . '>On leave</option>'
                                 . '</select>';
 
-                            $actionButton = '<button type="button" class="btn btn-sm btn-outline-primary attendance-include-toggle" data-index="' . $index . '">Include</button>' .
-                                '<input type="hidden" name="records[' . $index . '][include]" value="1">';
+                            if ($isLeaveLinked) {
+                                $actionButton = '<span class="text-muted small">From leave request</span>' .
+                                    '<input type="hidden" name="records[' . $index . '][include]" value="0" data-leave-linked="1">';
+                            } else {
+                                $actionButton = '<button type="button" class="btn btn-sm btn-outline-primary attendance-include-toggle" data-index="' . $index . '"' . ($isAttendanceReadOnly ? ' disabled' : '') . '>Include</button>' .
+                                    '<input type="hidden" name="records[' . $index . '][include]" value="1">';
+                            }
 
                             $bulkTableData[] = [
                                 $employeeCell,
@@ -148,9 +203,11 @@
                     'rawColumns' => ['employee-name', 'time-in', 'time-out', 'status', 'include'],
                 ])
 
-                <div class="mt-3 d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary">Save attendance for {{ $bulkDate }}</button>
-                </div>
+                @if ($canWriteAttendance)
+                    <div class="mt-3 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">Save attendance for {{ $bulkDate }}</button>
+                    </div>
+                @endif
 
             </form>
         </div>

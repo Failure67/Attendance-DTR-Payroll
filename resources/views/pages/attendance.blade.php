@@ -4,7 +4,17 @@
 
     @include('partials.menu')
 
-    <div class="wrapper {{ $pageClass }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}">
+    @php
+        $attendanceRole = strtolower(trim(auth()->user()->role ?? ''));
+        if ($attendanceRole === 'project manager') {
+            $attendanceRole = 'manager';
+        }
+        $canWriteAttendance = in_array($attendanceRole, ['supervisor', 'manager', 'hr', 'admin'], true);
+        $isAttendanceReadOnly = !$canWriteAttendance;
+        $isAttendanceSuperadmin = $attendanceRole === 'superadmin';
+    @endphp
+
+    <div class="wrapper {{ $pageClass }}{{ $isAttendanceReadOnly ? ' attendance-readonly' : '' }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}" data-readonly="{{ $isAttendanceReadOnly ? '1' : '0' }}" data-role="{{ $attendanceRole }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -34,6 +44,14 @@
             </div>
         @endif
 
+        @if ($isAttendanceSuperadmin)
+            <div class="container {{ $pageClass }} mb-3">
+                <div class="alert alert-info mb-0" role="alert">
+                    <strong>Read-only:</strong> Superadmin accounts can view attendance but cannot create, edit, delete, import, or generate defaults.
+                </div>
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} summary mb-3">
 
             @php
@@ -51,6 +69,18 @@
                 ];
                 $summary = array_merge($summaryDefaults, $attendanceSummary ?? []);
                 $periodText = $summary['period_label'] ?? 'selected period';
+
+                $attendanceStatLinkQuery = array_filter([
+                    'employee_id' => $filters['employee_id'] ?? null,
+                    'status' => $filters['status'] ?? null,
+                    'period_start' => $filters['period_start'] ?? null,
+                    'period_end' => $filters['period_end'] ?? null,
+                    'search' => $filters['search'] ?? null,
+                    'archived' => ($showArchived ?? false) ? '1' : null,
+                ], function ($value) {
+                    return !is_null($value) && $value !== '';
+                });
+                $attendanceStatLink = route('attendance') . (count($attendanceStatLinkQuery) ? ('?' . http_build_query($attendanceStatLinkQuery)) : '');
             @endphp
 
             @include('components.dashboard-count', [
@@ -59,6 +89,9 @@
                 'countSublabel' => 'For ' . $periodText,
                 'countIcon' => '<i class="fa-solid fa-clock"></i>',
                 'countValue' => number_format($summary['total_hours'], 2),
+                'statDetails' => 'Sum of total_hours for attendance records in the selected period and filters (employee, status, search, archived).',
+                'statSource' => 'Attendances table: SUM(total_hours) over the filtered dataset. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
             @include('components.dashboard-count', [
@@ -67,6 +100,9 @@
                 'countSublabel' => 'For ' . $periodText,
                 'countIcon' => '<i class="fa-solid fa-business-time"></i>',
                 'countValue' => number_format($summary['total_overtime'], 2),
+                'statDetails' => 'Sum of overtime_hours where overtime_approved = true for the filtered attendance records in the selected period.',
+                'statSource' => 'Attendances table: SUM(overtime_hours) where overtime_approved = true. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
             @include('components.dashboard-count', [
@@ -75,6 +111,9 @@
                 'countSublabel' => 'For ' . $periodText . ' (' . ($summary['records'] ?? 0) . ' records)',
                 'countIcon' => '<i class="fa-solid fa-chart-column"></i>',
                 'countValue' => $summary['attendance_rate'] . '%',
+                'statDetails' => 'Attendance rate = (worked days / total records) × 100. Worked days are records with status Present or Late.',
+                'statSource' => 'Attendances table: status counts for Present/Late vs total records. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
             @include('components.dashboard-count', [
@@ -83,6 +122,9 @@
                 'countSublabel' => 'For ' . $periodText,
                 'countIcon' => '<i class="fa-solid fa-calendar-check"></i>',
                 'countValue' => $summary['worked_days'] . ' / ' . $summary['absent_days'] . ' / ' . $summary['leave_days'],
+                'statDetails' => 'Worked days = Present + Late. Absent days = Absent + AWOL. Leave days = On leave. Counts are for filtered records in the selected period.',
+                'statSource' => 'Attendances table: grouped counts by status over the filtered dataset. Computed in AttendanceService::getIndexData().',
+                'statLink' => $attendanceStatLink,
             ])
 
         </div>
@@ -97,21 +139,23 @@
 
             <div class="crud-buttons">
 
-                @include('components.button', [
-                    'buttonType' => 'main',
-                    'buttonVar' => 'add',
-                    'buttonSrc' => 'attendance',
-                    'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
-                    'buttonLabel' => 'New',
-                ])
+                @if ($canWriteAttendance)
+                    @include('components.button', [
+                        'buttonType' => 'main',
+                        'buttonVar' => 'add',
+                        'buttonSrc' => 'attendance',
+                        'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
+                        'buttonLabel' => 'New',
+                    ])
 
-                @include('components.button', [
-                    'buttonType' => 'secondary',
-                    'buttonVar' => 'edit',
-                    'buttonSrc' => 'attendance',
-                    'buttonIcon' => '<i class="fa-solid fa-pen"></i>',
-                    'buttonLabel' => 'Edit',
-                ])
+                    @include('components.button', [
+                        'buttonType' => 'secondary',
+                        'buttonVar' => 'edit',
+                        'buttonSrc' => 'attendance',
+                        'buttonIcon' => '<i class="fa-solid fa-pen"></i>',
+                        'buttonLabel' => 'Edit',
+                    ])
+                @endif
 
                 @include('components.button', [
                     'buttonType' => 'danger',
@@ -131,23 +175,29 @@
                         'btnAttribute' => 'data-bs-toggle="dropdown" aria-expanded="false"',
                     ])
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <button type="button" class="dropdown-item" id="attendance-more-generate-defaults">Generate defaults</button>
-                        </li>
+                        @if ($canWriteAttendance)
+                            <li>
+                                <button type="button" class="dropdown-item" id="attendance-more-generate-defaults">Generate defaults</button>
+                            </li>
+                        @endif
                         <li>
                             <button type="button" class="dropdown-item" id="summary-attendance">
                                 <span class="button-label">Summary view</span>
                             </button>
                         </li>
-                        <li>
-                            <a href="{{ route('attendance.bulk') }}" class="dropdown-item">Bulk sheet</a>
-                        </li>
+                        @if ($canWriteAttendance)
+                            <li>
+                                <a href="{{ route('attendance.bulk') }}" class="dropdown-item">Bulk sheet</a>
+                            </li>
+                        @endif
                         <li>
                             <a href="{{ route('attendance.daily', ['date' => $filters['period_end'] ?? ($filters['period_start'] ?? now()->toDateString()), 'employee_id' => $filters['employee_id'] ?? null]) }}" class="dropdown-item">Daily sheet</a>
                         </li>
-                        <li>
-                            <button type="button" class="dropdown-item" id="attendance-more-import">Import CSV</button>
-                        </li>
+                        @if ($canWriteAttendance)
+                            <li>
+                                <button type="button" class="dropdown-item" id="attendance-more-import">Import CSV</button>
+                            </li>
+                        @endif
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <button type="button" class="dropdown-item" id="export-attendance">Export detailed CSV</button>
@@ -157,6 +207,9 @@
                         </li>
                         <li>
                             <button type="button" class="dropdown-item" id="attendance-more-export-pdf">Export detailed PDF</button>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item" id="attendance-more-export-dtr">Export DTR (paper-style PDF)</button>
                         </li>
                     </ul>
                 </div>
@@ -196,6 +249,7 @@
                         <option value="Present" @if(($filters['status'] ?? '') === 'Present') selected @endif>Present</option>
                         <option value="Late" @if(($filters['status'] ?? '') === 'Late') selected @endif>Late</option>
                         <option value="Absent" @if(($filters['status'] ?? '') === 'Absent') selected @endif>Absent</option>
+                        <option value="AWOL" @if(($filters['status'] ?? '') === 'AWOL') selected @endif>AWOL</option>
                         <option value="On leave" @if(($filters['status'] ?? '') === 'On leave') selected @endif>On leave</option>
                     </select>
                 </div>
@@ -205,25 +259,27 @@
             </form>
         </div>
 
-        <form id="attendance-generate-defaults-form" method="POST" action="{{ route('attendance.generate-defaults') }}" style="display: none;">
-            @csrf
-            <input type="hidden" name="period_start" value="{{ $filters['period_start'] ?? '' }}">
-            <input type="hidden" name="period_end" value="{{ $filters['period_end'] ?? '' }}">
-            <input type="hidden" name="employee_id" value="{{ $filters['employee_id'] ?? '' }}">
-        </form>
-
-        <div class="container {{ $pageClass }} mb-3" style="display: none;">
-            <form id="attendance-import-form" method="POST" action="{{ route('attendance.import') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+        @if ($canWriteAttendance)
+            <form id="attendance-generate-defaults-form" method="POST" action="{{ route('attendance.generate-defaults') }}" style="display: none;">
                 @csrf
-                <div class="col-12 col-md-8">
-                    <label for="attendance_import_file" class="form-label mb-1">Import attendance from CSV</label>
-                    <input type="file" name="file" id="attendance_import_file" class="form-control" accept=".csv,text/csv" required>
-                </div>
-                <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end">
-                    <button type="submit" class="btn btn-secondary w-100 w-md-auto">Import CSV</button>
-                </div>
+                <input type="hidden" name="period_start" value="{{ $filters['period_start'] ?? '' }}">
+                <input type="hidden" name="period_end" value="{{ $filters['period_end'] ?? '' }}">
+                <input type="hidden" name="employee_id" value="{{ $filters['employee_id'] ?? '' }}">
             </form>
-        </div>
+
+            <div class="container {{ $pageClass }} mb-3" style="display: none;">
+                <form id="attendance-import-form" method="POST" action="{{ route('attendance.import') }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+                    @csrf
+                    <div class="col-12 col-md-8">
+                        <label for="attendance_import_file" class="form-label mb-1">Import attendance from CSV</label>
+                        <input type="file" name="file" id="attendance_import_file" class="form-control" accept=".csv,text/csv" required>
+                    </div>
+                    <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end">
+                        <button type="submit" class="btn btn-secondary w-100 w-md-auto">Import CSV</button>
+                    </div>
+                </form>
+            </div>
+        @endif
 
         <div class="container {{ $pageClass }} table-component">
 
@@ -231,6 +287,7 @@
                 $isArchivedView = $showArchived ?? false;
                 $attendanceTableCols = [
                     'employee-name',
+                    'employment-type',
                     'date',
                     'time-in',
                     'time-out',
@@ -240,6 +297,7 @@
                 ];
                 $attendanceTableLabels = [
                     'Name of employee',
+                    'Employment type',
                     'Date',
                     'Time-in',
                     'Time-out',
@@ -248,7 +306,7 @@
                     'Status',
                 ];
 
-                if ($isArchivedView) {
+                if ($isArchivedView && $canWriteAttendance) {
                     $attendanceTableCols[] = 'actions';
                     $attendanceTableLabels[] = 'Actions';
                 }
@@ -264,8 +322,8 @@
                         'tableLabel' => $attendanceTableLabels,
                         'tableData' => $attendanceTableData ?? [],
                         'rawColumns' => $isArchivedView
-                            ? ['employee-name', 'time-in', 'time-out', 'status', 'actions']
-                            : ['employee-name', 'time-in', 'time-out', 'status'],
+                            ? ['employee-name', 'employment-type', 'time-in', 'time-out', 'status', 'actions']
+                            : ['employee-name', 'employment-type', 'time-in', 'time-out', 'status'],
                         'sortableColumns' => [
                             'employee-name' => 'name',
                             'date' => 'date',
@@ -273,6 +331,12 @@
                         'currentSortBy' => $sortBy ?? null,
                         'currentSortDir' => $sortDir ?? 'asc',
                     ])
+
+                    @if (!empty($hasLeaveLinkedRows))
+                        <div class="mt-2 small text-muted">
+                            Days covered by approved leave can only be changed via the Leave Requests page.
+                        </div>
+                    @endif
 
                 </div>
 
@@ -388,6 +452,7 @@
                                     'Present' => 'Present',
                                     'Late' => 'Late',
                                     'Absent' => 'Absent',
+                                    'AWOL' => 'AWOL',
                                     'On leave' => 'On leave',
                                 ],
                                 'isShort' => false,
@@ -398,7 +463,7 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" value="1" id="attendance-overtime-approved" name="overtime_approved">
                                 <label class="form-check-label" for="attendance-overtime-approved">
-                                    Overtime approved
+                                    Overtime requested
                                 </label>
                             </div>
                             <div class="form-check mt-1">
@@ -413,6 +478,8 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-outline-success d-none" id="attendance-ot-supervisor-approve">Supervisor approve OT</button>
+                        <button type="button" class="btn btn-outline-success d-none" id="attendance-ot-manager-approve">Manager approve OT</button>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </div>
                 </form>

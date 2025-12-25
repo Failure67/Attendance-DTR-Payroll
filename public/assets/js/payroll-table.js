@@ -348,7 +348,12 @@ $(document).ready(function() {
                 ? `${data.period_start} to ${data.period_end}`
                 : (data.created_at ? (data.created_at.split(' ')[0] || data.created_at) : 'N/A');
 
-            $modal.find('#payroll-details-employee').text(data.employee_name || 'N/A');
+            const employmentTypeLabel = data.employment_type_label || '';
+            const employeeDisplay = employmentTypeLabel
+                ? `${data.employee_name || 'N/A'} · ${employmentTypeLabel}`
+                : (data.employee_name || 'N/A');
+
+            $modal.find('#payroll-details-employee').text(employeeDisplay);
             $modal.find('#payroll-details-period').text(period);
             $modal.find('#payroll-details-created-at').text(data.created_at || 'N/A');
 
@@ -372,9 +377,17 @@ $(document).ready(function() {
             $modal.find('#payroll-details-overtime-hours').text((parseFloat(data.overtime_hours) || 0).toFixed(2));
             $modal.find('#payroll-details-absent-days').text((parseFloat(data.absent_days) || 0).toFixed(2));
 
+            const leavePaidDays = parseFloat(data.leave_paid_days) || 0;
+            const leaveUnpaidDays = parseFloat(data.leave_unpaid_days) || 0;
+            $modal.find('#payroll-details-leave-days').text(
+                leavePaidDays.toFixed(2) + ' paid / ' + leaveUnpaidDays.toFixed(2) + ' unpaid'
+            );
+
             $modal.find('#payroll-details-gross-pay').text(formatMoney(data.gross_pay));
             $modal.find('#payroll-details-total-deductions').text(formatMoney(data.total_deductions));
             $modal.find('#payroll-details-net-pay').text(formatMoney(data.net_pay));
+
+            $modal.find('#payroll-details-overtime-premium').text(formatMoney(data.overtime_premium_total));
 
             const $dedList = $modal.find('#payroll-details-deductions-list');
             $dedList.empty();
@@ -400,6 +413,43 @@ $(document).ready(function() {
                 $caList.append('<li class="text-muted">No cash advance deductions in this payroll.</li>');
             }
 
+            const $otList = $modal.find('#payroll-details-ot-list');
+            $otList.empty();
+            if (Array.isArray(data.overtime_premium_entries) && data.overtime_premium_entries.length) {
+                data.overtime_premium_entries.forEach(function(entry) {
+                    const date = entry.date || 'N/A';
+                    const hours = (parseFloat(entry.hours) || 0).toFixed(2);
+                    const multiplier = entry.premium_multiplier !== null && typeof entry.premium_multiplier !== 'undefined'
+                        ? (parseFloat(entry.premium_multiplier) || 0).toFixed(2)
+                        : '1.00';
+                    const amount = formatMoney(entry.premium_amount);
+
+                    const label = `${date} · ${hours} h @ x${multiplier}`;
+                    $otList.append(`<li><span>${label}</span><span class="float-end fw-semibold">${amount}</span></li>`);
+                });
+            } else {
+                $otList.append('<li class="text-muted">No overtime premium in this payroll.</li>');
+            }
+
+            const $leaveList = $modal.find('#payroll-details-leave-list');
+            $leaveList.empty();
+            if (Array.isArray(data.leave_entries) && data.leave_entries.length) {
+                data.leave_entries.forEach(function(entry) {
+                    const start = entry.date_start || 'N/A';
+                    const end = entry.date_end || start;
+                    const range = start === end ? start : (start + ' to ' + end);
+                    const days = (parseFloat(entry.duration_days) || 0).toFixed(2);
+                    const typeLabel = entry.type || 'Leave';
+                    const paidLabel = entry.is_paid ? 'Paid' : 'Unpaid';
+
+                    const label = `${range} · ${typeLabel} · ${days} day(s) · ${paidLabel}`;
+                    $leaveList.append(`<li><span>${label}</span></li>`);
+                });
+            } else {
+                $leaveList.append('<li class="text-muted">No leave entries in this payroll.</li>');
+            }
+
+// ... (rest of the code remains the same)
             const modalInstance = new bootstrap.Modal($modal[0]);
             modalInstance.show();
         }).fail(function() {
