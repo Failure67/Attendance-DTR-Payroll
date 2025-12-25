@@ -1,5 +1,9 @@
 @extends('layouts.user')
 
-@section('content')ashsh
-    testashsh
+@section('content')
+    
+    <div class="wrapper {{ $pageClass }}">
+
+    </div>
+
 @endsection
