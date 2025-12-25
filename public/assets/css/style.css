@@ -92,15 +92,8 @@ header {
     display: flex;
     justify-content: center;
     padding: 10px 20px;
-<<<<<<< HEAD
-    position: fixed;
-    z-index: 1000;
-    width: 100%;
-    margin-top: 42px;
-=======
 	position: relative;
 	z-index: 2000;
->>>>>>> 84140422cd3c428dd6cd71229897351921381bff
 }
 
 .header-container {
