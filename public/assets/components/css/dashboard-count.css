@@ -15,6 +15,7 @@
     transform: translateY(0);
     transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
     user-select: none;
+    cursor: pointer;
 }
 
 .dashboard-count:hover {

@@ -1,4 +1,12 @@
-<div class="dashboard-count {{ $countClass }}">
+@php
+    $statTitle = $statTitle ?? ($countLabel ?? '');
+    $statValue = $statValue ?? ($countValue ?? '');
+    $statDetails = $statDetails ?? '';
+    $statSource = $statSource ?? '';
+    $statLink = $statLink ?? '';
+@endphp
+
+<div class="dashboard-count {{ $countClass }}" data-stat-card="1" data-stat-title="{{ $statTitle }}" data-stat-value="{{ $statValue }}" data-stat-details="{{ $statDetails }}" data-stat-source="{{ $statSource }}" data-stat-link="{{ $statLink }}">
 
     <div class="dashboard-count-container">
 

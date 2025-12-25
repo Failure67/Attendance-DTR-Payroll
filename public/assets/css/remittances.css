@@ -6,3 +6,18 @@
     padding-top: 10px;
     padding-bottom: 10px;
 }
+
+.wrapper.remittance-show .form-select,
+.wrapper.remittance-show .form-control {
+    height: 44px !important;
+    min-height: 44px !important;
+    box-sizing: border-box;
+    padding: 10px 12px !important;
+}
+
+.wrapper.remittance-show input[type="file"].form-control {
+    height: 44px !important;
+    min-height: 44px !important;
+    box-sizing: border-box;
+    padding: 8px 12px !important;
+}

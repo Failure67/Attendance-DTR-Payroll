@@ -6,6 +6,7 @@ use App\Models\ApprovalLog;
 use App\Models\Attendance;
 use App\Models\CrewAssignment;
 use App\Models\LeaveEntry;
+use App\Models\OvertimeEntry;
 use App\Models\User;
 use Carbon\Carbon;
 use DB;
@@ -20,7 +21,7 @@ class AttendanceService
      * @param  array  $filters
      * @return array
      */
-    public function getIndexData(array $filters): array
+    public function getIndexData($currentUser, array $filters): array
     {
         $employeeId = $filters['employee_id'] ?? null;
         $status = $filters['status'] ?? null;
@@ -32,15 +33,81 @@ class AttendanceService
         $sortBy = $filters['sort_by'] ?? 'name';
         $sortDir = $filters['sort_dir'] ?? 'asc';
 
-        $employees = User::whereNull('deleted_at')
-            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
+        $actorRole = $currentUser ? $this->normalizeRole($currentUser->role ?? '') : '';
+
+        $employeeQuery = $this->getAttendanceEmployeeQuery($currentUser);
+
+        $employees = $employeeQuery
+            ->orderBy('full_name')
+            ->orderBy('username')
             ->get();
+
+        $allowedEmployeeIds = $employees->pluck('id');
+
+        $pendingManagerOtAttendanceIds = collect();
+        $pendingManagerOtEmployeeIds = collect();
+
+        if ($actorRole === 'manager') {
+            $pendingManagerOtAttendanceIds = OvertimeEntry::whereNull('deleted_at')
+                ->where('status', 'pending_manager')
+                ->whereNotNull('attendance_id')
+                ->pluck('attendance_id')
+                ->unique();
+
+            $pendingManagerOtEmployeeIds = OvertimeEntry::whereNull('deleted_at')
+                ->where('status', 'pending_manager')
+                ->pluck('user_id')
+                ->unique();
+
+            $allowedEmployeeIds = $allowedEmployeeIds
+                ->merge($pendingManagerOtEmployeeIds)
+                ->unique();
+
+            $employees = User::whereNull('deleted_at')
+                ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
+                ->whereIn('id', $allowedEmployeeIds)
+                ->orderBy('full_name')
+                ->orderBy('username')
+                ->get();
+        }
 
         $employeeOptions = $employees->mapWithKeys(function ($user) {
             return [$user->id => $user->full_name ?? $user->username];
         })->toArray();
 
         $baseQuery = $showArchived ? Attendance::onlyTrashed() : Attendance::query();
+
+        if ($actorRole === 'manager') {
+            $supervisorIds = $employees
+                ->filter(function ($user) {
+                    return $this->normalizeRole($user->role ?? '') === 'supervisor';
+                })
+                ->pluck('id');
+
+            $baseQuery->where(function ($q) use ($supervisorIds, $pendingManagerOtAttendanceIds) {
+                if ($supervisorIds->isNotEmpty()) {
+                    $q->whereIn('user_id', $supervisorIds);
+                }
+
+                if ($pendingManagerOtAttendanceIds->isNotEmpty()) {
+                    if ($supervisorIds->isNotEmpty()) {
+                        $q->orWhereIn('attendances.id', $pendingManagerOtAttendanceIds);
+                    } else {
+                        $q->whereIn('attendances.id', $pendingManagerOtAttendanceIds);
+                    }
+                }
+
+                if ($supervisorIds->isEmpty() && $pendingManagerOtAttendanceIds->isEmpty()) {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+        } else {
+            if ($allowedEmployeeIds->isNotEmpty()) {
+                $baseQuery->whereIn('user_id', $allowedEmployeeIds);
+            } else {
+                $baseQuery->whereRaw('1 = 0');
+            }
+        }
 
         if (!empty($employeeId)) {
             $baseQuery->where('user_id', $employeeId);
@@ -172,10 +239,37 @@ class AttendanceService
 
             $statusBadge = '<span class="badge rounded-pill ' . $statusClass . '">' . e($status) . '</span>';
 
+            $otEntry = null;
+            $otStatus = '';
+            $otEntryId = '';
+            $otRequested = false;
+
+            if ((float) $attendance->overtime_hours > 0) {
+                $otEntry = OvertimeEntry::where('attendance_id', $attendance->id)
+                    ->latest('id')
+                    ->first();
+
+                $otStatus = $otEntry ? (string) ($otEntry->status ?? '') : '';
+                $otEntryId = $otEntry ? (string) ($otEntry->id ?? '') : '';
+                $otRequested = $otEntry && !in_array($otStatus, ['cancelled', 'rejected'], true);
+            }
+
             $flagBadges = [];
             if ((float) $attendance->overtime_hours > 0) {
-                if ($attendance->overtime_approved) {
+                if ($otStatus === 'approved' || $attendance->overtime_approved) {
                     $flagBadges[] = '<span class="badge rounded-pill bg-success-subtle text-success ms-1">OT approved</span>';
+                } elseif (in_array($otStatus, ['pending_manager'], true)) {
+                    $flagBadges[] = '<span class="badge rounded-pill bg-info-subtle text-info ms-1">OT pending manager</span>';
+                } elseif (in_array($otStatus, ['pending_supervisor', 'pending', ''], true)) {
+                    if ($otEntry) {
+                        $flagBadges[] = '<span class="badge rounded-pill bg-warning-subtle text-warning ms-1">OT pending supervisor</span>';
+                    } else {
+                        $flagBadges[] = '<span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1">OT not requested</span>';
+                    }
+                } elseif ($otStatus === 'cancelled') {
+                    $flagBadges[] = '<span class="badge rounded-pill bg-secondary-subtle text-secondary ms-1">OT cancelled</span>';
+                } elseif ($otStatus === 'rejected') {
+                    $flagBadges[] = '<span class="badge rounded-pill bg-danger-subtle text-danger ms-1">OT rejected</span>';
                 } else {
                     $flagBadges[] = '<span class="badge rounded-pill bg-warning-subtle text-warning ms-1">OT pending</span>';
                 }
@@ -211,10 +305,27 @@ class AttendanceService
                 $statusHtml .= ' ' . implode(' ', $flagBadges);
             }
 
-            $employeeCell = '<span class="attendance-employee" data-attendance-id="' . $attendance->id . '" data-user-id="' . $attendance->user_id . '" data-overtime-approved="' . ($attendance->overtime_approved ? '1' : '0') . '" data-leave-approved="' . ($attendance->leave_approved ? '1' : '0') . '">' . e($employeeName) . '</span>';
+            $employeeCell = '<span class="attendance-employee" data-attendance-id="' . $attendance->id
+                . '" data-user-id="' . $attendance->user_id
+                . '" data-overtime-approved="' . ($attendance->overtime_approved ? '1' : '0')
+                . '" data-overtime-requested="' . ($otRequested ? '1' : '0')
+                . '" data-overtime-entry-id="' . e($otEntryId)
+                . '" data-overtime-status="' . e($otStatus)
+                . '" data-leave-approved="' . ($attendance->leave_approved ? '1' : '0')
+                . '">' . e($employeeName) . '</span>';
+
+            $employmentType = $attendance->user
+                ? ($attendance->user->employment_type ?? User::EMPLOYMENT_TYPE_REGULAR)
+                : User::EMPLOYMENT_TYPE_REGULAR;
+            $employmentTypeLabel = $employmentType === User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+            $employmentTypeClass = $employmentType === User::EMPLOYMENT_TYPE_PART_TIME
+                ? 'bg-secondary-subtle text-secondary'
+                : 'bg-success-subtle text-success';
+            $employmentTypeBadge = '<span class="badge rounded-pill ' . $employmentTypeClass . '">' . e($employmentTypeLabel) . '</span>';
 
             $row = [
                 $employeeCell,
+                $employmentTypeBadge,
                 e($date),
                 $timeIn,
                 $timeOut,
@@ -254,7 +365,9 @@ class AttendanceService
         })->toArray();
 
         $totalHours = (float) $summaryAttendances->sum('total_hours');
-        $totalOvertime = (float) $summaryAttendances->sum('overtime_hours');
+        $totalOvertime = (float) $summaryAttendances
+            ->where('overtime_approved', true)
+            ->sum('overtime_hours');
         $recordCount = $summaryAttendances->count();
         $workedDays = $summaryAttendances->whereIn('status', ['Present', 'Late'])->count();
         $awolDays = $summaryAttendances->where('status', 'AWOL')->count();
@@ -312,22 +425,10 @@ class AttendanceService
      */
     public function getDailyViewData($currentUser, array $filters): array
     {
-        $currentRole = strtolower($currentUser->role ?? '');
-
         $dateInput = $filters['date'] ?? null;
         $date = $dateInput ? Carbon::parse($dateInput)->startOfDay() : now()->startOfDay();
 
-        $employeeQuery = User::whereNull('deleted_at')
-            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
-
-        if ($currentRole === 'supervisor') {
-            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
-            if ($crewWorkerIds->isNotEmpty()) {
-                $employeeQuery->whereIn('id', $crewWorkerIds);
-            } else {
-                $employeeQuery->whereRaw('1 = 0');
-            }
-        }
+        $employeeQuery = $this->getAttendanceEmployeeQuery($currentUser);
 
         $filterEmployeeId = $filters['employee_id'] ?? null;
         if (!empty($filterEmployeeId)) {
@@ -430,22 +531,10 @@ class AttendanceService
      */
     public function getBulkViewData($currentUser, array $filters): array
     {
-        $currentRole = strtolower($currentUser->role ?? '');
-
         $dateInput = $filters['date'] ?? ($filters['period_start'] ?? null);
         $date = $dateInput ? Carbon::parse($dateInput)->startOfDay() : now()->startOfDay();
 
-        $employeeQuery = User::whereNull('deleted_at')
-            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
-
-        if ($currentRole === 'supervisor') {
-            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
-            if ($crewWorkerIds->isNotEmpty()) {
-                $employeeQuery->whereIn('id', $crewWorkerIds);
-            } else {
-                $employeeQuery->whereRaw('1 = 0');
-            }
-        }
+        $employeeQuery = $this->getAttendanceEmployeeQuery($currentUser);
 
         $filterEmployeeId = $filters['employee_id'] ?? null;
         if (!empty($filterEmployeeId)) {
@@ -532,7 +621,7 @@ class AttendanceService
     /**
      * Build data set for detailed attendance export.
      */
-    public function getExportAttendanceData(array $filters): array
+    public function getExportAttendanceData($currentUser, array $filters): array
     {
         $employeeId = $filters['employee_id'] ?? null;
         $status = $filters['status'] ?? null;
@@ -540,6 +629,10 @@ class AttendanceService
         $periodEnd = $filters['period_end'] ?? null;
         $includeArchived = !empty($filters['archived']);
         $search = $filters['search'] ?? null;
+
+        $employeeQuery = $this->getAttendanceEmployeeQuery($currentUser);
+
+        $allowedEmployeeIds = $employeeQuery->pluck('id');
 
         if (empty($periodStart) && empty($periodEnd)) {
             $periodStart = now()->subDays(30)->toDateString();
@@ -549,6 +642,12 @@ class AttendanceService
         $query = $includeArchived
             ? Attendance::withTrashed()->with('user')
             : Attendance::with('user');
+
+        if ($allowedEmployeeIds->isNotEmpty()) {
+            $query->whereIn('user_id', $allowedEmployeeIds);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
 
         if (!empty($employeeId)) {
             $query->where('user_id', $employeeId);
@@ -600,7 +699,7 @@ class AttendanceService
     /**
      * Build summary rows for attendance summary export.
      */
-    public function getExportSummaryRows(array $filters): array
+    public function getExportSummaryRows($currentUser, array $filters): array
     {
         $employeeId = $filters['employee_id'] ?? null;
         $status = $filters['status'] ?? null;
@@ -608,6 +707,10 @@ class AttendanceService
         $periodEnd = $filters['period_end'] ?? null;
         $includeArchived = !empty($filters['archived']);
         $search = $filters['search'] ?? null;
+
+        $employeeQuery = $this->getAttendanceEmployeeQuery($currentUser);
+
+        $allowedEmployeeIds = $employeeQuery->pluck('id');
 
         if (empty($periodStart) && empty($periodEnd)) {
             $periodStart = now()->subDays(30)->toDateString();
@@ -617,6 +720,12 @@ class AttendanceService
         $query = $includeArchived
             ? Attendance::withTrashed()->with('user')
             : Attendance::with('user');
+
+        if ($allowedEmployeeIds->isNotEmpty()) {
+            $query->whereIn('user_id', $allowedEmployeeIds);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
 
         if (!empty($employeeId)) {
             $query->where('user_id', $employeeId);
@@ -679,7 +788,9 @@ class AttendanceService
             $leaveDays = $records->where('status', 'On leave')->count();
 
             $totalHours = (float) $records->sum('total_hours');
-            $overtimeHours = (float) $records->sum('overtime_hours');
+            $overtimeHours = (float) $records
+                ->where('overtime_approved', true)
+                ->sum('overtime_hours');
 
             $rows[] = [
                 (int) $userId,
@@ -701,6 +812,64 @@ class AttendanceService
         return $rows;
     }
 
+    private function getAttendanceEmployeeQuery($currentUser, bool $forWrite = false)
+    {
+        $employeeQuery = User::whereNull('deleted_at')
+            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
+
+        if (!$currentUser) {
+            $employeeQuery->whereRaw('1 = 0');
+            return $employeeQuery;
+        }
+
+        $actorRole = $this->normalizeRole($currentUser->role ?? '');
+
+        if ($forWrite && $actorRole === 'superadmin') {
+            $employeeQuery->whereRaw('1 = 0');
+            return $employeeQuery;
+        }
+
+        if ($forWrite && !in_array($actorRole, ['supervisor', 'manager', 'hr', 'admin'], true)) {
+            $employeeQuery->whereRaw('1 = 0');
+            return $employeeQuery;
+        }
+
+        if ($actorRole === 'supervisor') {
+            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
+            if ($crewWorkerIds->isNotEmpty()) {
+                $employeeQuery->whereIn('id', $crewWorkerIds);
+            } else {
+                $employeeQuery->whereRaw('1 = 0');
+            }
+
+            return $employeeQuery;
+        }
+
+        if ($actorRole === 'manager') {
+            $employeeQuery->whereRaw('LOWER(TRIM(role)) = ?', ['supervisor']);
+            return $employeeQuery;
+        }
+
+        if ($actorRole === 'admin') {
+            $employeeQuery->whereIn(DB::raw('LOWER(TRIM(role))'), ['hr', 'manager', 'project manager']);
+            return $employeeQuery;
+        }
+
+        return $employeeQuery;
+    }
+
+    public function getAttendanceScopedEmployeeIds($currentUser, bool $forWrite = false): Collection
+    {
+        return $this->getAttendanceEmployeeQuery($currentUser, $forWrite)->pluck('id');
+    }
+
+    public function isEmployeeInAttendanceScope($currentUser, int $employeeId, bool $forWrite = false): bool
+    {
+        return $this->getAttendanceEmployeeQuery($currentUser, $forWrite)
+            ->where('id', $employeeId)
+            ->exists();
+    }
+
     /**
      * Store bulk attendance records inside a transaction.
      * Returns the canonical date string used for redirect.
@@ -708,19 +877,8 @@ class AttendanceService
     public function storeAttendanceBulk($currentUser, array $validated): string
     {
         $date = Carbon::parse($validated['date'])->startOfDay();
-        $currentRole = strtolower($currentUser->role ?? '');
 
-        $allowedWorkerQuery = User::whereNull('deleted_at')
-            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
-
-        if ($currentRole === 'supervisor') {
-            $crewWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
-            if ($crewWorkerIds->isNotEmpty()) {
-                $allowedWorkerQuery->whereIn('id', $crewWorkerIds);
-            } else {
-                $allowedWorkerQuery->whereRaw('1 = 0');
-            }
-        }
+        $allowedWorkerQuery = $this->getAttendanceEmployeeQuery($currentUser, true);
 
         $allowedWorkerIds = $allowedWorkerQuery->pluck('id')->all();
         $records = $validated['records'] ?? [];
@@ -912,23 +1070,7 @@ class AttendanceService
         $start = Carbon::parse($validated['period_start'])->startOfDay();
         $end = Carbon::parse($validated['period_end'])->endOfDay();
 
-        $employeeQuery = User::whereNull('deleted_at')
-            ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin']);
-
-        $currentRole = strtolower($currentUser->role ?? '');
-        
-        if ($currentRole === 'supervisor') {
-            $assignedWorkerIds = CrewAssignment::where('supervisor_id', $currentUser->id)->pluck('worker_id');
-        } else {
-            $assignedWorkerIds = CrewAssignment::pluck('worker_id');
-        }
-
-        if ($assignedWorkerIds->isNotEmpty()) {
-            $employeeQuery->whereIn('id', $assignedWorkerIds);
-        } else {
-            // No workers are currently assigned to any supervisor; nothing to generate.
-            $employeeQuery->whereRaw('1 = 0');
-        }
+        $employeeQuery = $this->getAttendanceEmployeeQuery($currentUser, true);
 
         if (!empty($validated['employee_id'])) {
             $employeeQuery->where('id', $validated['employee_id']);
@@ -940,6 +1082,10 @@ class AttendanceService
 
         try {
             foreach ($employees as $employee) {
+                if (!$this->canBulkEditAttendanceFor($currentUser, $employee)) {
+                    continue;
+                }
+
                 for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
                     $existing = Attendance::where('user_id', $employee->id)
                         ->whereDate('date', $date->toDateString())

@@ -23,7 +23,9 @@ class AttendanceController extends Controller
 
     public function viewAttendance(Request $request)
     {
-        $data = $this->attendanceService->getIndexData($request->query());
+        $currentUser = auth()->user();
+
+        $data = $this->attendanceService->getIndexData($currentUser, $request->query());
 
         return view('pages.attendance', array_merge([
             'title' => 'Attendance',
@@ -56,6 +58,7 @@ class AttendanceController extends Controller
             'records.*.include' => 'nullable|in:0,1',
         ]);
         $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
 
         try {
             $dateString = $this->attendanceService->storeAttendanceBulk($currentUser, $validated);
@@ -89,9 +92,18 @@ class AttendanceController extends Controller
             'employee_id' => 'nullable|exists:users,id',
         ]);
         $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
         
         if (empty($validated['period_end'])) {
             $validated['period_end'] = $validated['period_start'];
+        }
+
+        if (!empty($validated['employee_id'])) {
+            $targetUser = User::findOrFail($validated['employee_id']);
+
+            if (!$this->canEditAttendanceFor($currentUser, $targetUser)) {
+                abort(403);
+            }
         }
         try {
             $this->attendanceService->generateDefaultAttendance($currentUser, $validated);
@@ -122,9 +134,10 @@ class AttendanceController extends Controller
         $date = Carbon::parse($validated['date'])->startOfDay();
 
         $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
         $targetUser = User::findOrFail($validated['user_id']);
 
-        if (!$currentUser || !$this->canEditAttendanceFor($currentUser, $targetUser)) {
+        if (!$this->canEditAttendanceFor($currentUser, $targetUser)) {
             abort(403);
         }
 
@@ -156,10 +169,10 @@ class AttendanceController extends Controller
             }
         }
 
-        $overtimeApproved = $request->boolean('overtime_approved') && $calculated['overtime_hours'] > 0;
+        $overtimeRequested = $request->boolean('overtime_approved') && $calculated['overtime_hours'] > 0;
         $leaveApproved = $request->boolean('leave_approved') && ($calculated['status'] === 'On leave');
 
-        if ($overtimeApproved || $leaveApproved) {
+        if ($leaveApproved) {
             // Enforce global attendance approval policy (no Superadmin, no self-approval).
             $tempAttendance = new Attendance([
                 'user_id' => $validated['user_id'],
@@ -176,7 +189,7 @@ class AttendanceController extends Controller
             'total_hours' => $calculated['total_hours'],
             'overtime_hours' => $calculated['overtime_hours'],
             'status' => $calculated['status'],
-            'overtime_approved' => $overtimeApproved,
+            'overtime_approved' => false,
             'leave_approved' => $leaveApproved,
         ]);
 
@@ -188,9 +201,8 @@ class AttendanceController extends Controller
             ]);
         }
 
-        if ($overtimeApproved) {
+        if ($overtimeRequested) {
             $multiplier = (float) config('payroll.overtime_multiplier', 1.30);
-            $currentUser = auth()->user();
 
             OvertimeEntry::updateOrCreate(
                 ['attendance_id' => $attendance->id],
@@ -199,14 +211,16 @@ class AttendanceController extends Controller
                     'date' => $attendance->date ? $attendance->date->toDateString() : $date->toDateString(),
                     'hours' => $attendance->overtime_hours,
                     'premium_multiplier' => $multiplier,
-                    'status' => 'approved',
+                    'status' => 'pending_supervisor',
                     'requested_by_id' => $attendance->user_id,
-                    'approved_by_id' => $currentUser ? $currentUser->id : null,
-                    'approved_at' => now(),
+                    'approved_by_id' => null,
+                    'approved_at' => null,
+                    'supervisor_approved_at' => null,
+                    'manager_approved_at' => null,
                 ]
             );
 
-            $this->logApproval('attendance', $attendance->id, 'overtime_approved', [
+            $this->logApproval('attendance', $attendance->id, 'overtime_requested', [
                 'date' => $attendance->date ? $attendance->date->toDateString() : null,
                 'overtime_hours' => (float) $attendance->overtime_hours,
             ]);
@@ -229,6 +243,7 @@ class AttendanceController extends Controller
         $attendance = Attendance::findOrFail($id);
 
         $previousStatus = (string) $attendance->status;
+        $previousOvertimeHours = (float) $attendance->overtime_hours;
 
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -241,9 +256,10 @@ class AttendanceController extends Controller
         $date = Carbon::parse($validated['date'])->startOfDay();
 
         $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
         $targetUser = User::findOrFail($validated['user_id']);
 
-        if (!$currentUser || !$this->canEditAttendanceFor($currentUser, $targetUser)) {
+        if (!$this->canEditAttendanceFor($currentUser, $targetUser)) {
             abort(403);
         }
 
@@ -275,12 +291,39 @@ class AttendanceController extends Controller
             }
         }
 
-        $overtimeApproved = $request->boolean('overtime_approved') && $calculated['overtime_hours'] > 0;
+        $overtimeRequestedInput = $request->boolean('overtime_approved');
+        $overtimeRequested = $overtimeRequestedInput && $calculated['overtime_hours'] > 0;
         $leaveApproved = $request->boolean('leave_approved') && ($calculated['status'] === 'On leave');
         $previousOvertimeApproved = (bool) $attendance->overtime_approved;
         $previousLeaveApproved = (bool) $attendance->leave_approved;
 
-        if ($overtimeApproved !== $previousOvertimeApproved) {
+        $existingOvertimeEntry = OvertimeEntry::where('attendance_id', $attendance->id)
+            ->latest('id')
+            ->first();
+
+        $attemptingOtCancel = !$overtimeRequestedInput
+            && $existingOvertimeEntry
+            && !in_array($existingOvertimeEntry->status, ['cancelled', 'rejected'], true);
+
+        $newOvertimeHours = (float) $calculated['overtime_hours'];
+        $overtimeHoursChanged = round($previousOvertimeHours, 2) !== round($newOvertimeHours, 2);
+
+        $otRelevantChange = $overtimeHoursChanged
+            || ($overtimeRequested && !$existingOvertimeEntry && $newOvertimeHours > 0)
+            || ($attemptingOtCancel && $newOvertimeHours > 0);
+
+        if ($attemptingOtCancel && $newOvertimeHours > 0) {
+            $status = (string) ($existingOvertimeEntry->status ?? '');
+            if (in_array($status, ['pending_manager', 'approved'], true)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors([
+                        'overtime_approved' => 'Overtime request cannot be cancelled once it is already awaiting manager approval or approved. Adjust the time in/out (overtime hours) instead.',
+                    ]);
+            }
+        }
+
+        if ($otRelevantChange) {
             $dateString = $date->toDateString();
 
             $hasReleasedPayroll = Payroll::where('user_id', $attendance->user_id)
@@ -293,12 +336,12 @@ class AttendanceController extends Controller
                 return redirect()->back()
                     ->withInput()
                     ->withErrors([
-                        'overtime_approved' => 'Overtime approval cannot be changed because a released payroll already exists for this date.',
+                        'overtime_approved' => 'Overtime cannot be changed because a released payroll already exists for this date.',
                     ]);
             }
         }
 
-        if ($overtimeApproved || $leaveApproved) {
+        if ($leaveApproved) {
             // Enforce global attendance approval policy (no Superadmin, no self-approval).
             $this->authorize('approve', $attendance);
         }
@@ -311,7 +354,7 @@ class AttendanceController extends Controller
             'total_hours' => $calculated['total_hours'],
             'overtime_hours' => $calculated['overtime_hours'],
             'status' => $calculated['status'],
-            'overtime_approved' => $overtimeApproved,
+            'overtime_approved' => $previousOvertimeApproved,
             'leave_approved' => $leaveApproved,
         ]);
 
@@ -333,45 +376,91 @@ class AttendanceController extends Controller
             ]);
         }
 
-        if (!$previousOvertimeApproved && $attendance->overtime_approved) {
-            $this->logApproval('attendance', $attendance->id, 'overtime_approved', [
-                'date' => $attendance->date ? $attendance->date->toDateString() : null,
-                'overtime_hours' => (float) $attendance->overtime_hours,
-            ]);
-        } elseif ($previousOvertimeApproved && !$attendance->overtime_approved) {
-            $this->logApproval('attendance', $attendance->id, 'overtime_unapproved', [
-                'date' => $attendance->date ? $attendance->date->toDateString() : null,
-            ]);
-        }
-
-        $currentUser = auth()->user();
         $multiplier = (float) config('payroll.overtime_multiplier', 1.30);
 
-        if ($attendance->overtime_approved) {
-            OvertimeEntry::updateOrCreate(
-                ['attendance_id' => $attendance->id],
-                [
-                    'user_id' => $attendance->user_id,
-                    'date' => $attendance->date ? $attendance->date->toDateString() : $date->toDateString(),
-                    'hours' => $attendance->overtime_hours,
-                    'premium_multiplier' => $multiplier,
-                    'status' => 'approved',
-                    'requested_by_id' => $attendance->user_id,
-                    'approved_by_id' => $currentUser ? $currentUser->id : null,
-                    'approved_at' => now(),
-                ]
-            );
-        } elseif ($previousOvertimeApproved && !$attendance->overtime_approved) {
-            $entry = OvertimeEntry::where('attendance_id', $attendance->id)
-                ->latest('id')
-                ->first();
+        $overtimeEntry = $existingOvertimeEntry;
 
-            if ($entry) {
-                $entry->status = 'cancelled';
-                $entry->approved_by_id = $currentUser ? $currentUser->id : null;
-                $entry->approved_at = now();
-                $entry->save();
+        if ($overtimeRequested && (float) $attendance->overtime_hours > 0) {
+            if (!$overtimeEntry || in_array($overtimeEntry->status, ['cancelled', 'rejected'], true)) {
+                OvertimeEntry::updateOrCreate(
+                    ['attendance_id' => $attendance->id],
+                    [
+                        'user_id' => $attendance->user_id,
+                        'date' => $attendance->date ? $attendance->date->toDateString() : $date->toDateString(),
+                        'hours' => $attendance->overtime_hours,
+                        'premium_multiplier' => $multiplier,
+                        'status' => 'pending_supervisor',
+                        'requested_by_id' => $attendance->user_id,
+                        'approved_by_id' => null,
+                        'approved_at' => null,
+                        'supervisor_approved_at' => null,
+                        'manager_approved_at' => null,
+                    ]
+                );
+
+                $this->logApproval('attendance', $attendance->id, 'overtime_requested', [
+                    'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                    'overtime_hours' => (float) $attendance->overtime_hours,
+                ]);
+
+                $overtimeEntry = OvertimeEntry::where('attendance_id', $attendance->id)
+                    ->latest('id')
+                    ->first();
+            } else {
+                $previousOtStatus = (string) ($overtimeEntry->status ?? '');
+
+                $overtimeEntry->date = $attendance->date ? $attendance->date->toDateString() : $date->toDateString();
+                $overtimeEntry->hours = $attendance->overtime_hours;
+                $overtimeEntry->premium_multiplier = $multiplier;
+
+                if ($overtimeHoursChanged) {
+                    $overtimeEntry->status = 'pending_supervisor';
+                    $overtimeEntry->approved_by_id = null;
+                    $overtimeEntry->approved_at = null;
+                    $overtimeEntry->supervisor_approved_at = null;
+                    $overtimeEntry->manager_approved_at = null;
+                } elseif ($overtimeEntry->status === 'pending') {
+                    $overtimeEntry->status = 'pending_supervisor';
+                }
+
+                $overtimeEntry->save();
+
+                if ($overtimeHoursChanged) {
+                    $this->logApproval('attendance', $attendance->id, 'overtime_request_updated', [
+                        'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                        'from_status' => $previousOtStatus,
+                        'to_status' => $overtimeEntry->status,
+                        'overtime_hours' => (float) $attendance->overtime_hours,
+                    ]);
+                }
             }
+        } else {
+            if ($overtimeEntry
+                && !in_array($overtimeEntry->status, ['cancelled'], true)
+                && ((float) $attendance->overtime_hours <= 0 || $attemptingOtCancel)
+            ) {
+                $previousOtStatus = (string) ($overtimeEntry->status ?? '');
+
+                $overtimeEntry->status = 'cancelled';
+                $overtimeEntry->approved_by_id = $currentUser ? $currentUser->id : null;
+                $overtimeEntry->approved_at = now();
+                $overtimeEntry->save();
+
+                $this->logApproval('attendance', $attendance->id, 'overtime_cancelled', [
+                    'date' => $attendance->date ? $attendance->date->toDateString() : null,
+                    'from_status' => $previousOtStatus,
+                    'to_status' => $overtimeEntry->status,
+                ]);
+            }
+        }
+
+        $overtimeApprovedFinal = $overtimeEntry
+            && $overtimeEntry->status === 'approved'
+            && (float) $attendance->overtime_hours > 0;
+
+        if ((bool) $attendance->overtime_approved !== (bool) $overtimeApprovedFinal) {
+            $attendance->overtime_approved = (bool) $overtimeApprovedFinal;
+            $attendance->save();
         }
 
         if (!$previousLeaveApproved && $attendance->leave_approved) {
@@ -390,6 +479,151 @@ class AttendanceController extends Controller
             ->with('success', 'Attendance record updated successfully.');
     }
 
+    public function supervisorApproveOvertime($id)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $roleKey = $this->normalizeRole($user->role ?? '');
+
+        if (!in_array($roleKey, ['admin', 'supervisor'], true)) {
+            abort(403, 'Only Supervisor/Admin can approve at supervisor stage.');
+        }
+
+        $entry = OvertimeEntry::findOrFail($id);
+
+        $attendance = $entry->attendance ?: Attendance::find($entry->attendance_id);
+        if ($attendance) {
+            if ((int) $attendance->user_id === (int) $user->id) {
+                abort(403);
+            }
+
+            $target = $attendance->user ?: User::find($attendance->user_id);
+            if ($target) {
+                $targetRole = $this->normalizeRole($target->role ?? '');
+                if (in_array($targetRole, ['admin', 'superadmin'], true)) {
+                    abort(403);
+                }
+
+                if ($roleKey === 'supervisor' && !$this->attendanceService->isEmployeeInAttendanceScope($user, (int) $target->id, true)) {
+                    abort(403);
+                }
+            }
+        }
+
+        if (!in_array($entry->status, ['pending', 'pending_supervisor'], true)) {
+            return redirect()->back()->with('error', 'Only pending overtime entries can be supervisor-approved.');
+        }
+
+        if ($entry->supervisor_approved_at) {
+            return redirect()->back()->with('error', 'Overtime entry is already supervisor-approved.');
+        }
+
+        $entryDate = $entry->date ? $entry->date->toDateString() : null;
+        if ($entryDate) {
+            $hasReleasedPayroll = Payroll::where('user_id', $entry->user_id)
+                ->where('status', 'Released')
+                ->whereDate('period_start', '<=', $entryDate)
+                ->whereDate('period_end', '>=', $entryDate)
+                ->exists();
+
+            if ($hasReleasedPayroll) {
+                return redirect()->back()->with('error', 'Overtime cannot be approved because a released payroll already exists for this date.');
+            }
+        }
+
+        $previousStatus = (string) ($entry->status ?? '');
+
+        $entry->status = 'pending_manager';
+        $entry->supervisor_approved_at = now();
+        $entry->save();
+
+        $this->logApproval('overtime_entry', $entry->id, 'supervisor_approved', [
+            'from_status' => $previousStatus,
+            'to_status' => $entry->status,
+        ]);
+
+        return redirect()->back()->with('success', 'Overtime entry marked as Supervisor approved.');
+    }
+
+    public function managerApproveOvertime($id)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $roleKey = $this->normalizeRole($user->role ?? '');
+
+        if (!in_array($roleKey, ['admin', 'manager'], true)) {
+            abort(403, 'Only Manager/Admin can approve at manager stage.');
+        }
+
+        $entry = OvertimeEntry::findOrFail($id);
+
+        $attendance = $entry->attendance ?: Attendance::find($entry->attendance_id);
+        if ($attendance) {
+            if ((int) $attendance->user_id === (int) $user->id) {
+                abort(403);
+            }
+
+            $target = $attendance->user ?: User::find($attendance->user_id);
+            if ($target) {
+                $targetRole = $this->normalizeRole($target->role ?? '');
+                if (in_array($targetRole, ['admin', 'superadmin'], true)) {
+                    abort(403);
+                }
+            }
+        }
+
+        if (!in_array($entry->status, ['pending_manager'], true)) {
+            return redirect()->back()->with('error', 'Only supervisor-approved overtime entries can be manager-approved.');
+        }
+
+        if (!$entry->supervisor_approved_at) {
+            return redirect()->back()->with('error', 'Only supervisor-approved overtime entries can be manager-approved.');
+        }
+
+        if ($entry->manager_approved_at || $entry->status === 'approved') {
+            return redirect()->back()->with('success', 'Overtime entry is already approved.');
+        }
+
+        $entryDate = $entry->date ? $entry->date->toDateString() : null;
+        if ($entryDate) {
+            $hasReleasedPayroll = Payroll::where('user_id', $entry->user_id)
+                ->where('status', 'Released')
+                ->whereDate('period_start', '<=', $entryDate)
+                ->whereDate('period_end', '>=', $entryDate)
+                ->exists();
+
+            if ($hasReleasedPayroll) {
+                return redirect()->back()->with('error', 'Overtime cannot be approved because a released payroll already exists for this date.');
+            }
+        }
+
+        $previousStatus = (string) ($entry->status ?? '');
+
+        $entry->status = 'approved';
+        $entry->approved_by_id = $user->id;
+        $entry->approved_at = now();
+        $entry->manager_approved_at = $entry->approved_at;
+        $entry->save();
+
+        if ($attendance) {
+            $attendance->overtime_approved = true;
+            $attendance->save();
+        }
+
+        $this->logApproval('overtime_entry', $entry->id, 'manager_approved', [
+            'from_status' => $previousStatus,
+            'to_status' => $entry->status,
+        ]);
+
+        return redirect()->back()->with('success', 'Overtime entry approved.');
+    }
+
     protected function canEditAttendanceFor(User $actor, User $target): bool
     {
         $actorRole = $this->normalizeRole($actor->role ?? '');
@@ -397,7 +631,15 @@ class AttendanceController extends Controller
 
         // Superadmin can adjust attendance for diagnostics but cannot approve.
         if ($actorRole === 'superadmin') {
-            return true;
+            return false;
+        }
+
+        if (!in_array($actorRole, ['supervisor', 'manager', 'hr', 'admin'], true)) {
+            return false;
+        }
+
+        if (!$this->attendanceService->isEmployeeInAttendanceScope($actor, $target->id, true)) {
+            return false;
         }
 
         // Do not manage attendance for Admin/Superadmin via this workflow.
@@ -425,6 +667,23 @@ class AttendanceController extends Controller
         return in_array($actorRole, ['manager', 'hr', 'admin'], true);
     }
 
+    protected function assertAttendanceWriteAccess(?User $user): void
+    {
+        if (!$user) {
+            abort(403);
+        }
+
+        $role = $this->normalizeRole($user->role ?? '');
+
+        if ($role === 'superadmin') {
+            abort(403);
+        }
+
+        if (!in_array($role, ['supervisor', 'manager', 'hr', 'admin'], true)) {
+            abort(403);
+        }
+    }
+
     protected function normalizeRole(?string $role): string
     {
         $role = strtolower(trim((string) $role));
@@ -439,6 +698,14 @@ class AttendanceController extends Controller
     public function deleteAttendance(Request $request, $id)
     {
         $attendance = Attendance::withTrashed()->findOrFail($id);
+
+        $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
+
+        $targetUser = $attendance->user ?: User::find($attendance->user_id);
+        if (!$targetUser || !$this->canEditAttendanceFor($currentUser, $targetUser)) {
+            abort(403);
+        }
 
         $stayOnArchived = $request->boolean('archived');
 
@@ -458,6 +725,15 @@ class AttendanceController extends Controller
     public function restoreAttendance($id)
     {
         $attendance = Attendance::withTrashed()->findOrFail($id);
+
+        $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
+
+        $targetUser = $attendance->user ?: User::find($attendance->user_id);
+        if (!$targetUser || !$this->canEditAttendanceFor($currentUser, $targetUser)) {
+            abort(403);
+        }
+
         if ($attendance->trashed()) {
             $attendance->restore();
         }
@@ -472,9 +748,19 @@ class AttendanceController extends Controller
             'attendance_ids.*' => 'exists:attendances,id',
         ]);
 
+        $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
+
         $stayOnArchived = $request->boolean('archived');
 
         $attendances = Attendance::withTrashed()->whereIn('id', $validated['attendance_ids'])->get();
+
+        foreach ($attendances as $attendance) {
+            $targetUser = $attendance->user ?: User::find($attendance->user_id);
+            if (!$targetUser || !$this->canEditAttendanceFor($currentUser, $targetUser)) {
+                abort(403);
+            }
+        }
 
         foreach ($attendances as $attendance) {
             if ($attendance->trashed()) {
@@ -491,7 +777,9 @@ class AttendanceController extends Controller
 
     public function exportAttendance(Request $request)
     {
-        $exportData = $this->attendanceService->getExportAttendanceData($request->query());
+        $currentUser = auth()->user();
+
+        $exportData = $this->attendanceService->getExportAttendanceData($currentUser, $request->query());
 
         $attendances = $exportData['attendances'];
         $includeArchivedColumn = $exportData['includeArchivedColumn'];
@@ -565,7 +853,9 @@ class AttendanceController extends Controller
 
     public function exportAttendancePdf(Request $request)
     {
-        $exportData = $this->attendanceService->getExportAttendanceData($request->query());
+        $currentUser = auth()->user();
+
+        $exportData = $this->attendanceService->getExportAttendanceData($currentUser, $request->query());
 
         $attendances = $exportData['attendances'];
         $includeArchivedColumn = $exportData['includeArchivedColumn'];
@@ -605,7 +895,17 @@ class AttendanceController extends Controller
                 ->withErrors(['error' => 'Please select an employee before exporting a DTR report.']);
         }
 
-        $exportData = $this->attendanceService->getExportAttendanceData($request->query());
+        $currentUser = auth()->user();
+        if (!$currentUser) {
+            abort(403);
+        }
+        $employeeIdInt = (int) $employeeId;
+
+        if (!$this->attendanceService->isEmployeeInAttendanceScope($currentUser, $employeeIdInt)) {
+            abort(403);
+        }
+
+        $exportData = $this->attendanceService->getExportAttendanceData($currentUser, $request->query());
 
         /** @var \Illuminate\Support\Collection $attendances */
         $attendances = $exportData['attendances'];
@@ -727,7 +1027,9 @@ class AttendanceController extends Controller
 
     public function exportAttendanceSummary(Request $request)
     {
-        $summaryRows = $this->attendanceService->getExportSummaryRows($request->query());
+        $currentUser = auth()->user();
+
+        $summaryRows = $this->attendanceService->getExportSummaryRows($currentUser, $request->query());
         
         $filename = 'attendance_summary_' . now()->format('Ymd_His') . '.csv';
 
@@ -766,6 +1068,9 @@ class AttendanceController extends Controller
         $validated = $request->validate([
             'file' => 'required|file|mimes:csv,txt',
         ]);
+
+        $currentUser = auth()->user();
+        $this->assertAttendanceWriteAccess($currentUser);
 
         $path = $validated['file']->getRealPath();
         $handle = fopen($path, 'r');
@@ -823,6 +1128,10 @@ class AttendanceController extends Controller
 
                 $user = User::find((int) $employeeIdRaw);
                 if (!$user || $user->deleted_at !== null) {
+                    continue;
+                }
+
+                if (!$this->canEditAttendanceFor($currentUser, $user)) {
                     continue;
                 }
 

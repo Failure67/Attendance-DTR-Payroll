@@ -22,6 +22,11 @@
 
                         <div class="name-container">
                             {{ $user->full_name ?? $user->username }}
+                            @php
+                                $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
+                                $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+                            @endphp
+                            <span class="badge bg-light text-dark ms-2" style="font-size: 0.75rem;">{{ $employmentTypeLabel }}</span>
                         </div>
 
                         <div class="id-number">
@@ -53,17 +58,30 @@
                     Attendance
                 </a>
 
-                <a href="{{ route('worker.cash-advance-requests') }}" class="selector-item selected">
-                    Cash Advance Requests
-                </a>
+                @php
+                    $requestsSelected = in_array(Route::currentRouteName(), [
+                        'worker.cash-advance-requests',
+                        'worker.leave-requests',
+                        'worker.leave-credits',
+                    ], true);
+                @endphp
 
-                <a href="{{ route('worker.leave-requests') }}" class="selector-item">
-                    Leave Requests
-                </a>
-
-                <a href="{{ route('worker.leave-credits') }}" class="selector-item">
-                    Leave Credits
-                </a>
+                <div class="selector-dropdown">
+                    <a href="#" class="selector-item {{ $requestsSelected ? 'selected' : '' }}" onclick="return false;">
+                        Requests
+                    </a>
+                    <div class="selector-dropdown-menu">
+                        <a href="{{ route('worker.cash-advance-requests') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.cash-advance-requests' ? 'selected' : '' }}">
+                            Cash Advance Requests
+                        </a>
+                        <a href="{{ route('worker.leave-requests') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.leave-requests' ? 'selected' : '' }}">
+                            Leave Requests
+                        </a>
+                        <a href="{{ route('worker.leave-credits') }}" class="selector-dropdown-item {{ Route::currentRouteName() === 'worker.leave-credits' ? 'selected' : '' }}">
+                            Leave Credits
+                        </a>
+                    </div>
+                </div>
 
             </div>
 

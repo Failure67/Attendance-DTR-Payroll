@@ -90,6 +90,9 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::get('/attendance/summary-export', [AttendanceController::class, 'exportAttendanceSummary'])->name('attendance.summary-export');
         Route::get('/attendance/daily', [AttendanceController::class, 'viewAttendanceDaily'])->name('attendance.daily');
 
+        Route::post('/overtime-entries/{id}/supervisor-approve', [AttendanceController::class, 'supervisorApproveOvertime'])->name('overtime-entries.supervisor-approve');
+        Route::post('/overtime-entries/{id}/manager-approve', [AttendanceController::class, 'managerApproveOvertime'])->name('overtime-entries.manager-approve');
+
         Route::post('/attendance/import', [AttendanceController::class, 'importAttendance'])->name('attendance.import');
 
         Route::get('/attendance/bulk', [AttendanceController::class, 'viewAttendanceBulk'])->name('attendance.bulk');
@@ -123,6 +126,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
 
         Route::get('/remittances', [RemittanceController::class, 'index'])->name('remittances');
         Route::post('/remittances/generate', [RemittanceController::class, 'generate'])->name('remittances.generate');
+        Route::get('/remittances/export-month', [RemittanceController::class, 'exportMonth'])->name('remittances.export-month');
         Route::get('/remittances/{batch}', [RemittanceController::class, 'show'])->name('remittances.show');
         Route::put('/remittances/{batch}', [RemittanceController::class, 'update'])->name('remittances.update');
         Route::get('/remittances/{batch}/export', [RemittanceController::class, 'export'])->name('remittances.export');
@@ -154,6 +158,12 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/leave-requests/{id}/manager-approve', [LeaveRequestController::class, 'managerApprove'])->name('leave-requests.manager-approve');
         Route::post('/leave-requests/{id}/approve', [LeaveRequestController::class, 'approve'])->name('leave-requests.approve');
         Route::post('/leave-requests/{id}/reject', [LeaveRequestController::class, 'reject'])->name('leave-requests.reject');
+    });
+
+    Route::middleware(['role:Admin,HR,Accounting,Project Manager,Manager,Supervisor'])->group(function () {
+        Route::get('/my-leave-requests', [LeaveRequestController::class, 'myIndex'])->name('my.leave-requests');
+        Route::post('/my-leave-requests', [LeaveRequestController::class, 'myStore'])->name('my.leave-requests.store');
+        Route::post('/my-leave-requests/{id}/cancel', [LeaveRequestController::class, 'cancel'])->name('my.leave-requests.cancel');
     });
 
     Route::middleware(['role:Superadmin'])->group(function () {

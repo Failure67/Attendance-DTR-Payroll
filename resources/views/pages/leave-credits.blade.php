@@ -17,10 +17,10 @@
         </div>
 
         <div class="container leave-credits filter mb-3">
-            <form method="GET" action="{{ route('leave-credits') }}" class="row g-2 align-items-end">
-                <div class="col-md-4">
-                    <label for="employee_id" class="form-label">Employee</label>
-                    <select name="employee_id" id="employee_id" class="form-select select2">
+            <form method="GET" action="{{ route('leave-credits') }}" class="row g-3 align-items-end leave-credits-filter-row">
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="employee_id" class="input-label mb-1">Employee</label>
+                    <select name="employee_id" id="employee_id" class="select w-100 select2">
                         <option value="">Select employee</option>
                         @foreach (($employeeOptions ?? []) as $id => $name)
                             <option value="{{ $id }}" {{ (string)($filters['employee_id'] ?? '') === (string)$id ? 'selected' : '' }}>{{ $name }}</option>
@@ -28,9 +28,9 @@
                     </select>
                 </div>
 
-                <div class="col-md-3">
-                    <label for="leave_code" class="form-label">Leave bucket</label>
-                    <select name="leave_code" id="leave_code" class="form-select">
+                <div class="col-12 col-md-6 col-lg">
+                    <label for="leave_code" class="input-label mb-1">Leave bucket</label>
+                    <select name="leave_code" id="leave_code" class="select w-100">
                         <option value="">All</option>
                         @foreach(($leaveTypeLabels ?? []) as $code => $label)
                             <option value="{{ $code }}" {{ (string)($filters['leave_code'] ?? '') === (string)$code ? 'selected' : '' }}>{{ $label }}</option>
@@ -38,9 +38,11 @@
                     </select>
                 </div>
 
-                <div class="col-md-5 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary mt-auto">View</button>
-                    <a href="{{ route('leave-credits') }}" class="btn btn-outline-secondary mt-auto">Reset</a>
+                <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
+                    <button type="submit" class="button main filter">View</button>
+                </div>
+                <div class="col-12 col-md-6 col-lg-auto d-flex align-items-end justify-content-lg-end">
+                    <a href="{{ route('leave-credits') }}" class="button secondary filter">Reset</a>
                 </div>
             </form>
         </div>
