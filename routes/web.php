@@ -6,10 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CrewAssignmentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AnalyticsController;
-<<<<<<< HEAD
-=======
 use App\Http\Controllers\DebugController;
->>>>>>> 5395f652ac77a567497165442a059e59b3366e75
 use App\Http\Controllers\NewController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\UserController;
@@ -37,11 +34,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // new
-<<<<<<< HEAD
-Route::get('/new', [NewController::class, 'newUser'])->name('new');
-=======
 Route::get('/new', [NewController::class, 'index'])->name('new');
->>>>>>> 5395f652ac77a567497165442a059e59b3366e75
 
 // auth routes
 Route::middleware('guest')->group(function () {
