@@ -20,6 +20,8 @@ class OvertimeEntry extends Model
         'requested_by_id',
         'approved_by_id',
         'approved_at',
+        'supervisor_approved_at',
+        'manager_approved_at',
         'reason',
         'meta',
         'payroll_id',
@@ -32,6 +34,8 @@ class OvertimeEntry extends Model
         'premium_multiplier' => 'decimal:2',
         'premium_amount' => 'decimal:2',
         'approved_at' => 'datetime',
+        'supervisor_approved_at' => 'datetime',
+        'manager_approved_at' => 'datetime',
         'meta' => 'array',
     ];
 

@@ -307,7 +307,7 @@ class AnalyticsController extends Controller
             'hours',
             'created_at',
         ])->with(['user:id,full_name,username'])
-            ->where('status', 'pending')
+            ->whereIn('status', ['pending', 'pending_supervisor', 'pending_manager'])
             ->whereDate('date', '>=', $start->toDateString())
             ->whereDate('date', '<=', $end->toDateString());
 
@@ -760,7 +760,9 @@ class AnalyticsController extends Controller
         $absentDays = $attendances->whereIn('status', ['Absent', 'AWOL'])->count();
         $leaveDays = $attendances->where('status', 'On leave')->count();
         $totalHours = (float) $attendances->sum('total_hours');
-        $totalOvertime = (float) $attendances->sum('overtime_hours');
+        $totalOvertime = (float) $attendances
+            ->where('overtime_approved', true)
+            ->sum('overtime_hours');
         $employeeCount = $attendances->pluck('user_id')->unique()->count();
 
         $anomalies = [];
@@ -981,7 +983,9 @@ class AnalyticsController extends Controller
             }
 
             $attendanceByDay[$day]['total_hours'] += (float) $attendance->total_hours;
-            $attendanceByDay[$day]['overtime_hours'] += (float) $attendance->overtime_hours;
+            if ($attendance->overtime_approved) {
+                $attendanceByDay[$day]['overtime_hours'] += (float) $attendance->overtime_hours;
+            }
         }
 
         $attendanceLabels = [];
@@ -1024,7 +1028,9 @@ class AnalyticsController extends Controller
             $leaveDaysEmp = $records->where('status', 'On leave')->count();
 
             $totalHoursEmp = (float) $records->sum('total_hours');
-            $overtimeHoursEmp = (float) $records->sum('overtime_hours');
+            $overtimeHoursEmp = (float) $records
+                ->where('overtime_approved', true)
+                ->sum('overtime_hours');
 
             $employeeSummary[] = [
                 'employee_name' => $employeeName,

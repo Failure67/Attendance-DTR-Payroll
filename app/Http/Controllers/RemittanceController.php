@@ -372,4 +372,92 @@ class RemittanceController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    public function exportMonth(Request $request)
+    {
+        $this->authorizeView();
+
+        $validated = $request->validate([
+            'month' => 'required|date_format:Y-m',
+        ]);
+
+        $periodMonth = Carbon::parse($validated['month'] . '-01')->startOfMonth();
+        $periodStart = $periodMonth->copy()->startOfMonth()->startOfDay();
+        $periodEnd = $periodMonth->copy()->endOfMonth()->endOfDay();
+
+        $rows = PayrollDeduction::query()
+            ->join('payrolls', 'payrolls.id', '=', 'payroll_deductions.payroll_id')
+            ->join('users', 'users.id', '=', 'payrolls.user_id')
+            ->leftJoin('user_credentials', 'user_credentials.user_id', '=', 'users.id')
+            ->whereIn('payroll_deductions.deduction_name', $this->allowedAgencies())
+            ->where('payrolls.status', 'Released')
+            ->whereDate('payrolls.period_end', '>=', $periodStart->toDateString())
+            ->whereDate('payrolls.period_end', '<=', $periodEnd->toDateString())
+            ->select([
+                'payrolls.user_id as user_id',
+                'users.full_name as employee_name',
+            ])
+            ->selectRaw('user_credentials.sss_number as sss_number')
+            ->selectRaw('user_credentials.philhealth_number as philhealth_number')
+            ->selectRaw('user_credentials.pagibig_number as pagibig_number')
+            ->selectRaw("SUM(CASE WHEN payroll_deductions.deduction_name = 'SSS' THEN payroll_deductions.amount ELSE 0 END) as sss_amount")
+            ->selectRaw("SUM(CASE WHEN payroll_deductions.deduction_name = 'PhilHealth' THEN payroll_deductions.amount ELSE 0 END) as philhealth_amount")
+            ->selectRaw("SUM(CASE WHEN payroll_deductions.deduction_name = 'Pag-IBIG' THEN payroll_deductions.amount ELSE 0 END) as pagibig_amount")
+            ->selectRaw('SUM(payroll_deductions.amount) as total_amount')
+            ->groupBy(
+                'payrolls.user_id',
+                'users.full_name',
+                'user_credentials.sss_number',
+                'user_credentials.philhealth_number',
+                'user_credentials.pagibig_number'
+            )
+            ->orderBy('users.full_name')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return redirect()->back()->with('error', 'No matching Released payroll deductions found for that month.')->withInput();
+        }
+
+        $monthLabel = $periodMonth->format('Y-m');
+        $filename = 'remittances_bulk_' . $monthLabel . '_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($rows, $monthLabel) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'Month',
+                'Employee',
+                'SSS no.',
+                'SSS amount',
+                'PhilHealth no.',
+                'PhilHealth amount',
+                'Pag-IBIG no.',
+                'Pag-IBIG amount',
+                'Total amount',
+            ]);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    "'" . $monthLabel,
+                    (string) ($row->employee_name ?? ''),
+                    (string) ($row->sss_number ?? ''),
+                    round((float) ($row->sss_amount ?? 0), 2),
+                    (string) ($row->philhealth_number ?? ''),
+                    round((float) ($row->philhealth_amount ?? 0), 2),
+                    (string) ($row->pagibig_number ?? ''),
+                    round((float) ($row->pagibig_amount ?? 0), 2),
+                    round((float) ($row->total_amount ?? 0), 2),
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
