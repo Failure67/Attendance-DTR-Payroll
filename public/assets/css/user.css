@@ -343,6 +343,11 @@ header .dropdown-menu {
     justify-content: space-between;
 }
 
+.user-count-container .user-count-wrapper.label,
+.user-count-container .user-count-label-container.label {
+    min-width: 0;
+}
+
 .user-count-container .user-count-wrapper.count {
     justify-content: flex-end;
 }
@@ -350,10 +355,16 @@ header .dropdown-menu {
 .user-count-container .user-count-label {
     font-weight: 600;
     font-size: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-count-container .user-count-desc {
     font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-count-container .user-count-label-container.label {
@@ -368,6 +379,9 @@ header .dropdown-menu {
 .user-count-container .user-count-value {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 35px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* payroll breakdown, payroll history, attendance */

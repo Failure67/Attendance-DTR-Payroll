@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 
@@ -186,6 +187,13 @@ class AuthController extends Controller
 
         $token = bin2hex(random_bytes(32));
         $code = (string) random_int(100000, 999999);
+
+        if (app()->environment('local') && config('mail.default') === 'log') {
+            Log::info('Password reset OTP generated.', [
+                'email' => $request->email,
+                'code' => $code,
+            ]);
+        }
 
         cache()->put('password_reset_' . $token, [
             'email' => $request->email,

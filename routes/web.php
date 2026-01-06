@@ -91,8 +91,8 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/attendance/bulk', [AttendanceController::class, 'storeAttendanceBulk'])->name('attendance.bulk.store');
         Route::post('/attendance/generate-defaults', [AttendanceController::class, 'generateDefaultAttendance'])->name('attendance.generate-defaults');
 
-        // Crew assignments (Superadmin, Admin, HR, Accounting, Project Manager only)
-        Route::middleware(['role:Superadmin,Admin,Accounting,Project Manager,Manager,Supervisor'])->group(function () {
+        // Crew assignments (Manager only)
+        Route::middleware(['role:Manager'])->group(function () {
             Route::get('/crew-assignments', [CrewAssignmentController::class, 'viewCrewAssignments'])->name('crew.assignments');
             Route::post('/crew-assignments', [CrewAssignmentController::class, 'storeCrewAssignments'])->name('crew.assignments.store');
             Route::delete('/crew-assignments/{id}', [CrewAssignmentController::class, 'deleteCrewAssignment'])->name('crew.assignments.delete');

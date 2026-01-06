@@ -13,6 +13,10 @@ class CrewAssignmentController extends Controller
         $currentUser = auth()->user();
         $currentRole = strtolower($currentUser->role ?? '');
 
+        if ($currentRole !== 'manager') {
+            abort(403);
+        }
+
         $supervisors = User::whereNull('deleted_at')
             ->where('role', 'Supervisor')
             ->orderBy('full_name')
@@ -97,6 +101,10 @@ class CrewAssignmentController extends Controller
         $currentUser = auth()->user();
         $currentRole = strtolower($currentUser->role ?? '');
 
+        if ($currentRole !== 'manager') {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'supervisor_id' => 'required|exists:users,id',
             'worker_ids' => 'required|array',
@@ -132,6 +140,10 @@ class CrewAssignmentController extends Controller
     {
         $currentUser = auth()->user();
         $currentRole = strtolower($currentUser->role ?? '');
+
+        if ($currentRole !== 'manager') {
+            abort(403);
+        }
 
         $assignment = CrewAssignment::findOrFail($id);
 

@@ -24,7 +24,7 @@
         $currentRole = strtolower($currentUser->role ?? '');
         $canSeeAttendance = in_array($currentRole, ['admin', 'superadmin', 'accounting', 'project manager', 'manager', 'supervisor'], true);
         $canSeeAnalytics = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'manager', 'supervisor'], true);
-        $canSeeCrewAssignments = in_array($currentRole, ['admin', 'superadmin', 'accounting', 'project manager', 'manager'], true);
+        $canSeeCrewAssignments = $currentRole === 'manager';
         $canSeePayrollAndCa = in_array($currentRole, ['admin', 'superadmin', 'hr', 'accounting', 'project manager', 'manager'], true);
         $canSeeCashAdvance = $canSeePayrollAndCa || $currentRole === 'supervisor';
         $canSeeLeaveRequests = in_array($currentRole, ['admin', 'superadmin', 'hr', 'manager', 'supervisor'], true);

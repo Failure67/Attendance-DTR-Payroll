@@ -133,7 +133,7 @@ body.auth-body {
     border-radius: 8px;
     font-size: 14px;
     font-family: inherit;
-    transition: all 0.3s ease;
+    transition: border-color 0.12s ease-out, background-color 0.12s ease-out;
     background-color: #fafbfc;
     width: 100%;
 }
@@ -142,7 +142,7 @@ body.auth-body {
     outline: none;
     border-color: var(--primary-dark);
     background-color: var(--white);
-    box-shadow: 0 0 0 3px rgba(13, 44, 66, 0.1);
+    box-shadow: none;
 }
 
 .form-control::placeholder {
@@ -303,6 +303,11 @@ body.auth-body {
     flex-wrap: wrap;
 }
 
+.auth-form .auth-footer-links {
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
 .auth-footer-link {
     font-size: 13px;
     color: var(--primary-dark);
@@ -312,11 +317,17 @@ body.auth-body {
     display: flex;
     align-items: center;
     gap: 5px;
+    white-space: nowrap;
 }
 
 .auth-footer-link:hover {
     color: #0a1f2e;
     text-decoration: underline;
+}
+
+.auth-divider {
+    margin-top: 18px;
+    border-top: 1px solid #e5e7eb;
 }
 
 .auth-text {

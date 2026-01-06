@@ -56,16 +56,20 @@
                 @enderror
             </div>
 
-            <div class="form-check form-group">
-                <input 
-                    class="form-check-input" 
-                    type="checkbox" 
-                    id="remember" 
-                    name="remember"
-                >
-                <label class="form-check-label" for="remember">
-                    Remember me
-                </label>
+            <div class="auth-footer-links">
+                <div class="form-check form-group">
+                    <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="remember" 
+                        name="remember"
+                    >
+                    <label class="form-check-label" for="remember">
+                        Remember me
+                    </label>
+                </div>
+
+                <a href="{{ route('auth.forgot-password.show') }}" class="auth-footer-link"><i class="fa-solid fa-key"></i> Forgot password?</a>
             </div>
 
             <button type="submit" class="btn btn-primary btn-auth w-100">
@@ -73,11 +77,7 @@
             </button>
         </form>
 
-        <div class="auth-footer">
-            <div class="auth-footer-links">
-                <a href="{{ route('auth.forgot-password.show') }}" class="auth-footer-link"><i class="fa-solid fa-key"></i> Forgot password?</a>
-            </div>
-        </div>
+        <div class="auth-divider"></div>
     </div>
 </div>
 @endsection
