@@ -1,5 +1,5 @@
 <div class="modal fade {{ $modalClass }}" id="{{ $modalId }}" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <form id="{{ $modalForm }}" action="{{ route($modalRoute) }}" method="POST">
             @csrf

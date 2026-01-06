@@ -21,6 +21,34 @@ class PayrollController extends Controller
     {
     }
 
+    protected function assertPayrollWriteAccess(?User $user): void
+    {
+        if (!$user) {
+            abort(403);
+        }
+
+        $role = $this->normalizeRole($user->role ?? '');
+
+        if ($role === 'superadmin') {
+            abort(403);
+        }
+
+        if (!in_array($role, ['hr', 'admin', 'accounting'], true)) {
+            abort(403);
+        }
+    }
+
+    protected function normalizeRole(?string $role): string
+    {
+        $role = strtolower(trim((string) $role));
+
+        if ($role === 'project manager') {
+            return 'manager';
+        }
+
+        return $role;
+    }
+
     public function viewPayroll(Request $request)
     {
         $currentUser = auth()->user();
@@ -753,6 +781,8 @@ class PayrollController extends Controller
 
     public function viewProcessPayroll(Request $request)
     {
+        $this->assertPayrollWriteAccess(auth()->user());
+
         $periodStartInput = $request->input('period_start');
         $periodEndInput = $request->input('period_end');
 
@@ -781,6 +811,8 @@ class PayrollController extends Controller
 
     public function runProcessPayroll(RunProcessPayrollRequest $request)
     {
+        $this->assertPayrollWriteAccess(auth()->user());
+
         $validated = $request->validated();
 
         $rows = $validated['rows'] ?? [];
@@ -841,6 +873,8 @@ class PayrollController extends Controller
 
     public function updatePayroll(UpdatePayrollRequest $request, $id)
     {
+        $this->assertPayrollWriteAccess(auth()->user());
+
         $payroll = Payroll::findOrFail($id);
         $validated = $request->validated();
 
@@ -851,6 +885,8 @@ class PayrollController extends Controller
 
     public function storePayroll(StorePayrollRequest $request)
     {
+        $this->assertPayrollWriteAccess(auth()->user());
+
         $validated = $request->validated();
 
         $this->payrollService->createManualPayroll($validated);
@@ -860,6 +896,8 @@ class PayrollController extends Controller
 
     public function updatePayrollStatus(Request $request, $id)
     {
+        $this->assertPayrollWriteAccess(auth()->user());
+
         $validated = $request->validate([
             'status' => 'required|in:Pending,Released,Cancelled',
         ]);
@@ -898,10 +936,12 @@ class PayrollController extends Controller
             abort(403);
         }
 
-        $role = (string) ($user->role ?? '');
+        $this->assertPayrollWriteAccess($user);
 
-        // HR stage is restricted to HR (with Superadmin override)
-        if (!in_array($role, ['HR', 'Superadmin'], true)) {
+        $role = $this->normalizeRole($user->role ?? '');
+
+        // HR stage is restricted to HR
+        if ($role !== 'hr') {
             abort(403, 'You are not allowed to approve payroll at HR stage.');
         }
 
@@ -970,9 +1010,11 @@ class PayrollController extends Controller
             abort(403);
         }
 
-        $role = (string) ($user->role ?? '');
+        $this->assertPayrollWriteAccess($user);
 
-        $finalRoles = ['Superadmin', 'Admin', 'Accounting'];
+        $role = $this->normalizeRole($user->role ?? '');
+
+        $finalRoles = ['admin', 'accounting'];
         if (!in_array($role, $finalRoles, true)) {
             abort(403, 'You are not allowed to approve payroll at final stage.');
         }
@@ -1015,6 +1057,8 @@ class PayrollController extends Controller
     {
         $payroll = Payroll::withTrashed()->findOrFail($id);
 
+        $this->assertPayrollWriteAccess(auth()->user());
+
         if ($payroll->trashed()) {
             $payroll->restore();
         }
@@ -1026,6 +1070,8 @@ class PayrollController extends Controller
     public function deletePayroll(Request $request, $id)
     {
         $payroll = Payroll::withTrashed()->findOrFail($id);
+
+        $this->assertPayrollWriteAccess(auth()->user());
 
         $stayOnArchived = $request->boolean('archived');
 
@@ -1048,6 +1094,8 @@ class PayrollController extends Controller
             'payroll_ids' => 'required|array',
             'payroll_ids.*' => 'exists:payrolls,id',
         ]);
+
+        $this->assertPayrollWriteAccess(auth()->user());
 
         $stayOnArchived = $request->boolean('archived');
 

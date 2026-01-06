@@ -153,7 +153,7 @@
 
             @if(!empty($caRequestsUrl))
                 <a href="{{ $caRequestsUrl }}" class="theme-toggle-btn ca-requests-btn" aria-label="View cash advance requests" title="View cash advance requests">
-                    <i class="fa-solid fa-file-invoice-dollar theme-icon"></i>
+                    <i class="fa-solid fa-money-bill-wave theme-icon"></i>
                     @if($pendingCaRequestsCount > 0)
                         <span class="notification-badge">{{ $pendingCaRequestsCount > 9 ? '9+' : $pendingCaRequestsCount }}</span>
                     @endif

@@ -354,9 +354,61 @@ class CashAdvanceRequestController extends Controller
             'reason' => 'required|string|max:1000',
         ]);
 
+        $caConfig = (array) config('payroll.ca', []);
+        $caps = (array) ($caConfig['cap'] ?? []);
+        $employmentType = $user->employment_type ?? User::EMPLOYMENT_TYPE_REGULAR;
+        $typeCap = isset($caps[$employmentType]) ? (float) $caps[$employmentType] : null;
+
+        $lastPayroll = Payroll::where('user_id', $user->id)
+            ->where('status', 'Released')
+            ->orderByDesc('period_end')
+            ->orderByDesc('created_at')
+            ->first();
+
+        $salaryBasedLimit = null;
+        if ($lastPayroll && $lastPayroll->period_start && $lastPayroll->period_end) {
+            $periodStart = $lastPayroll->period_start;
+            $periodEnd = $lastPayroll->period_end;
+            $daysInPeriod = max(1, $periodStart->diffInDays($periodEnd) + 1);
+            $daysPerMonth = (int) config('payroll.days_per_month', 26);
+
+            $netForPeriod = (float) ($lastPayroll->net_pay ?? 0);
+            if ($netForPeriod > 0 && $daysInPeriod > 0 && $daysPerMonth > 0) {
+                $monthlyApprox = ($netForPeriod / $daysInPeriod) * $daysPerMonth;
+                $maxPercent = (float) ($caConfig['max_percent_of_monthly_net'] ?? 0.8);
+
+                if ($monthlyApprox > 0 && $maxPercent > 0) {
+                    $salaryBasedLimit = $monthlyApprox * $maxPercent;
+                }
+            }
+        }
+
+        $effectiveLimit = null;
+        if ($typeCap !== null && $salaryBasedLimit !== null) {
+            $effectiveLimit = min($typeCap, $salaryBasedLimit);
+        } elseif ($typeCap !== null) {
+            $effectiveLimit = $typeCap;
+        } elseif ($salaryBasedLimit !== null) {
+            $effectiveLimit = $salaryBasedLimit;
+        }
+
+        $allowPartTime = (bool) ($caConfig['allow_part_time'] ?? false);
+        if (!$user->isRegular() && !$allowPartTime) {
+            $effectiveLimit = null;
+        }
+
+        $amount = (float) $validated['amount'];
+        if (!is_null($effectiveLimit) && $effectiveLimit > 0 && $amount - $effectiveLimit > 0.0001) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors([
+                    'amount' => 'Requested amount exceeds your estimated request capacity of ₱ ' . number_format($effectiveLimit, 2) . '.',
+                ]);
+        }
+
         CashAdvanceRequest::create([
             'user_id' => $user->id,
-            'amount' => (float) $validated['amount'],
+            'amount' => $amount,
             'reason' => $validated['reason'],
             'status' => 'Pending',
         ]);

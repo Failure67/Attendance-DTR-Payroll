@@ -35,7 +35,7 @@
 
     {{-- Global confirm modal used by JS helper (appConfirm) for styled confirmations --}}
     <div class="modal fade" id="globalConfirmModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog confirm">
+        <div class="modal-dialog modal-dialog-centered confirm">
             <div class="modal-content confirm">
                 <div class="modal-body confirm">
                     <div class="modal-container confirm">

@@ -92,14 +92,6 @@
             autocomplete="off"
             {{ $isDisabled ?? false ? 'disabled' : null }}>
 
-            @include('components.button', [
-                'buttonType' => 'icon toggle-password',
-                'buttonVar' => $inputVar,
-                'buttonSrc' => 'toggle-password',
-                'buttonIcon' => '<i class="fa-solid fa-eye"></i>',
-                'buttonModal' => false,
-            ])
-
         </div>
     @endif
 

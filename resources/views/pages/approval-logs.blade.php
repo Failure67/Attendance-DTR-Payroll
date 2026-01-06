@@ -18,36 +18,86 @@
 
         <div class="container {{ $pageClass }} tab">
 
-            <div class="d-flex align-items-center" style="gap: 10px;">
-                <form method="GET" action="{{ route('approval-logs') }}" class="d-flex align-items-center flex-wrap" style="gap: 8px;">
-                    <select name="resource_type" class="tab-select" onchange="this.form.submit()">
-                        <option value="">All resources</option>
-                        <option value="attendance" {{ request('resource_type') === 'attendance' ? 'selected' : '' }}>Attendance</option>
-                        <option value="cash_advance_request" {{ request('resource_type') === 'cash_advance_request' ? 'selected' : '' }}>Cash advance requests</option>
-                        <option value="payroll" {{ request('resource_type') === 'payroll' ? 'selected' : '' }}>Payroll</option>
-                    </select>
+            <form id="approval-logs-filter-form" method="GET" action="{{ route('approval-logs') }}" class="d-flex align-items-end flex-wrap" style="gap: 8px;">
+                @include('components.search', [
+                    'searchClass' => 'approval-logs',
+                    'searchId' => 'approval-logs-search',
+                    'searchValue' => request('action'),
+                ])
+                <input type="hidden" name="action" id="approval-logs-filter-action" value="{{ request('action') }}">
 
-                    <select name="actor_role" class="tab-select" onchange="this.form.submit()">
-                        <option value="">All roles</option>
-                        <option value="HR" {{ request('actor_role') === 'HR' ? 'selected' : '' }}>HR</option>
-                        <option value="Supervisor" {{ request('actor_role') === 'Supervisor' ? 'selected' : '' }}>Supervisor</option>
-                        <option value="Manager" {{ request('actor_role') === 'Manager' ? 'selected' : '' }}>Manager</option>
-                        <option value="Admin" {{ request('actor_role') === 'Admin' ? 'selected' : '' }}>Admin</option>
-                        <option value="Accounting" {{ request('actor_role') === 'Accounting' ? 'selected' : '' }}>Accounting</option>
-                    </select>
+                <select name="resource_type" id="approval-logs-resource-type" class="tab-select">
+                    <option value="">All resources</option>
+                    <option value="attendance" {{ request('resource_type') === 'attendance' ? 'selected' : '' }}>Attendance</option>
+                    <option value="cash_advance_request" {{ request('resource_type') === 'cash_advance_request' ? 'selected' : '' }}>Cash advance requests</option>
+                    <option value="payroll" {{ request('resource_type') === 'payroll' ? 'selected' : '' }}>Payroll</option>
+                </select>
 
-                    <input
-                        type="text"
-                        name="action"
-                        class="form-control form-control-sm"
-                        style="max-width: 220px;"
-                        placeholder="Filter by action (e.g. approved)"
-                        value="{{ request('action') }}"
-                    >
+                <select name="actor_role" id="approval-logs-actor-role" class="tab-select">
+                    <option value="">All roles</option>
+                    <option value="HR" {{ request('actor_role') === 'HR' ? 'selected' : '' }}>HR</option>
+                    <option value="Supervisor" {{ request('actor_role') === 'Supervisor' ? 'selected' : '' }}>Supervisor</option>
+                    <option value="Manager" {{ request('actor_role') === 'Manager' ? 'selected' : '' }}>Manager</option>
+                    <option value="Admin" {{ request('actor_role') === 'Admin' ? 'selected' : '' }}>Admin</option>
+                    <option value="Accounting" {{ request('actor_role') === 'Accounting' ? 'selected' : '' }}>Accounting</option>
+                </select>
+            </form>
 
-                    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-                </form>
-            </div>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const form = document.getElementById('approval-logs-filter-form');
+                    const searchInput = document.getElementById('approval-logs-search');
+                    const searchHidden = document.getElementById('approval-logs-filter-action');
+                    const resourceSelect = document.getElementById('approval-logs-resource-type');
+                    const roleSelect = document.getElementById('approval-logs-actor-role');
+
+                    let timer = null;
+
+                    function syncSearch() {
+                        if (searchHidden && searchInput) {
+                            searchHidden.value = searchInput.value;
+                        }
+                    }
+
+                    function submit() {
+                        if (!form) {
+                            return;
+                        }
+                        syncSearch();
+                        form.submit();
+                    }
+
+                    if (searchInput) {
+                        searchInput.addEventListener('input', function () {
+                            syncSearch();
+
+                            if (timer) {
+                                clearTimeout(timer);
+                            }
+
+                            timer = setTimeout(function () {
+                                submit();
+                            }, 400);
+                        });
+                    }
+
+                    if (resourceSelect) {
+                        resourceSelect.addEventListener('change', submit);
+                    }
+
+                    if (roleSelect) {
+                        roleSelect.addEventListener('change', submit);
+                    }
+
+                    if (form) {
+                        form.addEventListener('submit', function () {
+                            syncSearch();
+                        });
+                    }
+
+                    syncSearch();
+                });
+            </script>
 
         </div>
 

@@ -76,7 +76,6 @@
         <div class="auth-footer">
             <div class="auth-footer-links">
                 <a href="{{ route('auth.forgot-password.show') }}" class="auth-footer-link"><i class="fa-solid fa-key"></i> Forgot password?</a>
-                <a href="{{ route('auth.register.show') }}" class="auth-footer-link">Create an account</a>
             </div>
         </div>
     </div>

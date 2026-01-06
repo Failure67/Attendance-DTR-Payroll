@@ -31,7 +31,7 @@
    only real interactive elements (buttons, links) show a hand cursor. */
 .table-container.users-table table tbody tr,
 .table-container.archived-users-table table tbody tr {
-    cursor: default;
+    cursor: pointer;
 }
 
 /* Disabled delete button */

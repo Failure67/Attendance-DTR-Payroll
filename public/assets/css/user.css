@@ -79,6 +79,14 @@ header .dropdown-menu {
     z-index: 2100;
 }
 
+.modal {
+    z-index: 3000 !important;
+}
+
+.modal-backdrop {
+    z-index: 2990 !important;
+}
+
 .header-container {
     display: flex;
     justify-content: space-between;

@@ -4,7 +4,17 @@
 
     @include('partials.menu')
 
-    <div class="wrapper {{ $pageClass }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}">
+    @php
+        $payrollRole = strtolower(trim(auth()->user()->role ?? ''));
+        if ($payrollRole === 'project manager') {
+            $payrollRole = 'manager';
+        }
+        $canWritePayroll = in_array($payrollRole, ['hr', 'admin', 'accounting'], true);
+        $isPayrollReadOnly = !$canWritePayroll;
+        $isPayrollSuperadmin = $payrollRole === 'superadmin';
+    @endphp
+
+    <div class="wrapper {{ $pageClass }}{{ $isPayrollReadOnly ? ' payroll-readonly' : '' }}" data-archived="{{ ($showArchived ?? false) ? '1' : '0' }}" data-readonly="{{ $isPayrollReadOnly ? '1' : '0' }}" data-role="{{ $payrollRole }}">
 
         <div class="page-header">
             <div class="page-title">
@@ -34,6 +44,14 @@
             </div>
         @endif
 
+        @if ($isPayrollSuperadmin)
+            <div class="container {{ $pageClass }} mb-3">
+                <div class="alert alert-info mb-0" role="alert">
+                    <strong>Read-only:</strong> Superadmin accounts can view payroll but cannot create, edit, delete, approve, cancel, restore, or process payroll.
+                </div>
+            </div>
+        @endif
+
         <div class="container {{ $pageClass }} tab">
 
             @include('components.search', [
@@ -58,24 +76,26 @@
 
             <div class="crud-buttons">
 
-                @include('components.button', [
-                    'buttonType' => 'main',
-                    'buttonVar' => 'payroll-add',
-                    'buttonSrc' => 'payroll',
-                    'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
-                    'buttonLabel' => 'New',
-                    'buttonModal' => true,
-                    'buttonTarget' => 'addPayrollModal'
-                ])
+                @if ($canWritePayroll)
+                    @include('components.button', [
+                        'buttonType' => 'main',
+                        'buttonVar' => 'payroll-add',
+                        'buttonSrc' => 'payroll',
+                        'buttonIcon' => '<i class="fa-solid fa-plus"></i>',
+                        'buttonLabel' => 'New',
+                        'buttonModal' => true,
+                        'buttonTarget' => 'addPayrollModal'
+                    ])
 
-                @include('components.button', [
-                    'buttonType' => 'secondary',
-                    'buttonVar' => 'payroll-edit',
-                    'buttonSrc' => 'payroll',
-                    'buttonIcon' => '<i class="fa-solid fa-pen"></i>',
-                    'buttonLabel' => 'Edit',
-                    'buttonModal' => false,
-                ])
+                    @include('components.button', [
+                        'buttonType' => 'secondary',
+                        'buttonVar' => 'payroll-edit',
+                        'buttonSrc' => 'payroll',
+                        'buttonIcon' => '<i class="fa-solid fa-pen"></i>',
+                        'buttonLabel' => 'Edit',
+                        'buttonModal' => false,
+                    ])
+                @endif
 
                 @include('components.button', [
                     'buttonType' => 'danger',
@@ -99,9 +119,11 @@
                         <li>
                             <button type="button" class="dropdown-item" id="payroll-more-details">View details</button>
                         </li>
-                        <li>
-                            <button type="button" class="dropdown-item" id="payroll-more-process" data-url="{{ route('payroll.process') }}">Process from attendance</button>
-                        </li>
+                        @if ($canWritePayroll)
+                            <li>
+                                <button type="button" class="dropdown-item" id="payroll-more-process" data-url="{{ route('payroll.process') }}">Process from attendance</button>
+                            </li>
+                        @endif
                         <li>
                             <button type="button" class="dropdown-item" id="payroll-more-export-csv" data-url="{{ $exportUrl }}">Export as CSV</button>
                         </li>
@@ -163,15 +185,15 @@
             @php
                 $isArchivedView = $showArchived ?? false;
 
-                $currentUser = auth()->user();
-                $currentRole = $currentUser->role ?? '';
-                // HR final release stage: HR (and Superadmin) can release after admin approval
-                $canHrApproveAndRelease = in_array($currentRole, ['Superadmin', 'HR'], true);
-                // Admin/Accounting (and Superadmin) can perform initial approval
-                $canAdminApprove = in_array($currentRole, ['Superadmin', 'Admin', 'Accounting'], true);
-                $canCancelPayroll = in_array($currentRole, ['Superadmin', 'Admin', 'HR', 'Accounting'], true);
+                $showActionsColumn = $canWritePayroll;
 
-                $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) use ($isArchivedView, $canHrApproveAndRelease, $canAdminApprove, $canCancelPayroll, $currentRole) {
+                // HR final release stage: HR (and Superadmin) can release after admin approval
+                $canHrApproveAndRelease = $canWritePayroll && $payrollRole === 'hr';
+                // Admin/Accounting (and Superadmin) can perform initial approval
+                $canAdminApprove = $canWritePayroll && in_array($payrollRole, ['admin', 'accounting'], true);
+                $canCancelPayroll = $canWritePayroll && in_array($payrollRole, ['admin', 'hr', 'accounting'], true);
+
+                $payrollTableData = ($payrolls ?? collect())->map(function ($payroll) use ($isArchivedView, $canHrApproveAndRelease, $canAdminApprove, $canCancelPayroll, $showActionsColumn) {
                     $employeeName = $payroll->user ? ($payroll->user->full_name ?? $payroll->user->username) : 'Unknown employee';
 
                     $employmentType = $payroll->user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
@@ -219,7 +241,7 @@
 
                     $actionsHtml = '';
 
-                    if ($isArchivedView) {
+                    if ($showActionsColumn && $isArchivedView) {
                         $csrf = csrf_token();
 
                         $restoreForm = "<form method=\"POST\" action=\"" . route('payroll.restore', ['id' => $payroll->id]) . "\" style=\"display:inline-block;margin-right:4px;\" data-confirm=\"Recover this payroll record?\">"
@@ -242,7 +264,7 @@
                             . $restoreForm
                             . $deleteForm
                             . '</div>';
-                    } else {
+                    } elseif ($showActionsColumn) {
                         $leftParts = [];
                         $rightParts = [];
 
@@ -260,7 +282,7 @@
 
                             // HR (and Superadmin) final approve & release; requires admin approval first (unless Superadmin)
                             if ($canHrApproveAndRelease && !$payroll->hr_approved_at) {
-                                $canReleaseNow = $payroll->admin_approved_at || $currentRole === 'Superadmin';
+                                $canReleaseNow = $payroll->admin_approved_at;
                                 $disabledAttr = $canReleaseNow ? '' : ' disabled';
                                 $titleAttr = $canReleaseNow ? '' : ' title="Admin must approve before HR can release."';
 
@@ -306,7 +328,7 @@
                     $employeeCell = '<span class="payroll-employee" data-payroll-id="' . $payroll->id . '">' . e($employeeName) . '</span>'
                         . ' <span class="' . $employmentTypeClass . '">' . e($employmentTypeLabel) . '</span>';
 
-                    return [
+                    $rowData = [
                         $employeeCell,
                         e($payroll->wage_type ?? 'N/A'),
                         e($minWage),
@@ -315,14 +337,16 @@
                         e($totalDeductions),
                         e($netPay),
                         '<span class="badge rounded-pill ' . $statusClass . '">' . e($statusLabel) . '</span>',
-                        $actionsHtml,
                     ];
-                })->toArray();
-            @endphp
 
-            @include('components.table', [
-                'tableClass' => 'payroll-table',
-                'tableCol' => [
+                    if ($showActionsColumn) {
+                        $rowData[] = $actionsHtml;
+                    }
+
+                    return $rowData;
+                })->toArray();
+
+                $payrollTableCols = [
                     'employee-name',
                     'wage-type',
                     'min-wage',
@@ -331,9 +355,9 @@
                     'deductions',
                     'net-pay',
                     'status',
-                    'actions',
-                ],
-                'tableLabel' => [
+                ];
+
+                $payrollTableLabels = [
                     'Name of employee',
                     'Type of wage',
                     'Minimum wage',
@@ -342,10 +366,23 @@
                     'Deductions',
                     'Net pay',
                     'Status',
-                    'Actions',
-                ],
+                ];
+
+                $payrollRawColumns = ['employee-name', 'status'];
+
+                if ($showActionsColumn) {
+                    $payrollTableCols[] = 'actions';
+                    $payrollTableLabels[] = 'Actions';
+                    $payrollRawColumns[] = 'actions';
+                }
+            @endphp
+
+            @include('components.table', [
+                'tableClass' => 'payroll-table',
+                'tableCol' => $payrollTableCols,
+                'tableLabel' => $payrollTableLabels,
                 'tableData' => $payrollTableData,
-                'rawColumns' => ['employee-name', 'status', 'actions'],
+                'rawColumns' => $payrollRawColumns,
             ])
 
     </div>

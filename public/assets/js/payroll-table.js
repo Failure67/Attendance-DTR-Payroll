@@ -5,6 +5,7 @@ $(document).ready(function() {
 
     const $wrapper = $('.wrapper.payroll');
     const isArchivedView = $wrapper.data('archived') === 1 || $wrapper.data('archived') === '1';
+    const isReadOnly = $wrapper.data('readonly') === 1 || $wrapper.data('readonly') === '1';
 
     const $payrollModal = $('#addPayrollModal');
     const $payrollForm = $('#addPayrollForm');
@@ -19,6 +20,18 @@ $(document).ready(function() {
 
     function updateDeleteButtonState() {
         if (!$deleteBtn.length || !$deleteLabel.length) return;
+
+        if (isReadOnly) {
+            if (isArchivedView) {
+                $deleteLabel.text('Back to payroll');
+            } else {
+                $deleteLabel.text('View archived');
+            }
+            if ($deleteIcon.length) {
+                $deleteIcon.removeClass('fa-trash').addClass('fa-clock-rotate-left');
+            }
+            return;
+        }
 
         const count = selectedPayrollIds.size;
 
@@ -110,6 +123,9 @@ $(document).ready(function() {
 
     // New payroll: ensure form is in create mode
     $('#payroll-add-payroll').on('click', function() {
+        if (isReadOnly) {
+            return;
+        }
         if (!$payrollForm.length) return;
 
         selectedPayrollId = null;
@@ -131,6 +147,9 @@ $(document).ready(function() {
 
     // Edit selected payroll
     $('#payroll-edit-payroll').on('click', function() {
+        if (isReadOnly) {
+            return;
+        }
         if (!selectedPayrollId) {
             alert('Please select a payroll record to edit.');
             return;
@@ -245,6 +264,25 @@ $(document).ready(function() {
     $('#payroll-delete-payroll').on('click', function() {
         const selectedCount = selectedPayrollIds.size;
 
+        if (isReadOnly && selectedCount > 0) {
+            return;
+        }
+
+        if (isReadOnly) {
+            const url = new URL(window.location.href);
+            const params = url.searchParams;
+
+            if (isArchivedView) {
+                params.delete('archived');
+            } else {
+                params.set('archived', '1');
+            }
+
+            url.search = params.toString();
+            window.location.href = url.toString();
+            return;
+        }
+
         // No selection: act as View archived / Back to payroll toggle
         if (selectedCount === 0) {
             const url = new URL(window.location.href);
@@ -283,6 +321,10 @@ $(document).ready(function() {
 
     $('#confirm-delete-payroll').on('click', function(e) {
         e.preventDefault();
+
+        if (isReadOnly) {
+            return;
+        }
 
         const $modal = $('#deletePayrollModal');
         const ids = $modal.data('payrollIds') || [];
@@ -510,6 +552,10 @@ $(document).ready(function() {
     if ($table.length) {
         $table.on('click', '.payroll-action.complete, .payroll-action.cancel', function(e) {
             e.preventDefault();
+
+            if (isReadOnly) {
+                return;
+            }
 
             const $btn = $(this);
             const payrollId = $btn.data('id');

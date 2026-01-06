@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -184,12 +185,31 @@ class AuthController extends Controller
         }
 
         $token = bin2hex(random_bytes(32));
-        
-        cache()->put('password_reset_' . $token, $request->email, now()->addMinutes(60));
+        $code = (string) random_int(100000, 999999);
 
-        // Redirect to reset form with token
+        cache()->put('password_reset_' . $token, [
+            'email' => $request->email,
+            'code_hash' => Hash::make($code),
+        ], now()->addMinutes(10));
+
+        try {
+            Mail::raw(
+                'Your password reset code is: ' . $code . "\n\n" . 'This code expires in 10 minutes.',
+                function ($message) use ($request) {
+                    $message->to($request->email)
+                        ->subject('Password reset code');
+                }
+            );
+        } catch (\Throwable $e) {
+            cache()->forget('password_reset_' . $token);
+
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => 'Unable to send reset code right now. Please contact the administrator.']);
+        }
+
         return redirect()->route('auth.reset.show', ['token' => $token])
-                        ->with('email', $request->email);
+            ->with('success', 'A one-time code has been sent to your email.');
     }
 
     /**
@@ -197,7 +217,8 @@ class AuthController extends Controller
      */
     public function showResetForm($token)
     {
-        $email = cache()->get('password_reset_' . $token);
+        $payload = cache()->get('password_reset_' . $token);
+        $email = is_array($payload) ? ($payload['email'] ?? null) : $payload;
         
         if (!$email) {
             return redirect(route('auth.login.show'))
@@ -215,13 +236,20 @@ class AuthController extends Controller
         $validated = $request->validate([
             'token' => 'required|string',
             'email' => 'required|email|exists:users',
+            'code' => 'required|digits:6',
             'password' => ['required', 'string', Password::defaults(), 'confirmed'],
         ]);
 
-        $email = cache()->get('password_reset_' . $validated['token']);
+        $payload = cache()->get('password_reset_' . $validated['token']);
+        $email = is_array($payload) ? ($payload['email'] ?? null) : $payload;
+        $codeHash = is_array($payload) ? ($payload['code_hash'] ?? null) : null;
         
         if (!$email || $email !== $validated['email']) {
             return back()->withErrors(['token' => 'This password reset link is invalid.']);
+        }
+
+        if (!$codeHash || !Hash::check($validated['code'], $codeHash)) {
+            return back()->withErrors(['code' => 'Invalid or expired code.']);
         }
 
         $user = User::where('email', $validated['email'])->first();
