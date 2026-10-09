@@ -9,7 +9,7 @@ $(document).ready(function() {
                 const fullName = this.$modal.find('[name="full_name"]').val();
                 const email = this.$modal.find('[name="email"]').val();
                 const role = this.$modal.find('[name="role"]').val();
-                const password = this.$modal.find('[name="password"]').val();
+                let password = this.$modal.find('[name="password"]').val();
                 const birthdate = this.$modal.find('[name="birthdate"]').val();
                 const gender = this.$modal.find('[name="gender"]').val();
 

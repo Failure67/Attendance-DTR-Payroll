@@ -40,8 +40,6 @@ Route::get('/new', [NewController::class, 'index'])->name('new');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('auth.login.show');
     Route::post('/login', [AuthController::class, 'handleLogin'])->name('auth.login.handle');
-    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('auth.register.show');
-    Route::post('/register', [AuthController::class, 'handleRegister'])->name('auth.register.handle');
     Route::get('/forgot-password', [AuthController::class, 'showForgotPasswordForm'])->name('auth.forgot-password.show');
     Route::post('/forgot-password', [AuthController::class, 'handleForgotPassword'])->name('auth.forgot-password.handle');
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('auth.reset.show');
@@ -98,8 +96,8 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/attendance/bulk', [AttendanceController::class, 'storeAttendanceBulk'])->name('attendance.bulk.store');
         Route::post('/attendance/generate-defaults', [AttendanceController::class, 'generateDefaultAttendance'])->name('attendance.generate-defaults');
 
-        // Crew assignments (Superadmin, Admin, HR, Accounting, Project Manager only)
-        Route::middleware(['role:Superadmin,Admin,Accounting,Project Manager,Manager,Supervisor'])->group(function () {
+        // Crew assignments (Manager only)
+        Route::middleware(['role:Manager'])->group(function () {
             Route::get('/crew-assignments', [CrewAssignmentController::class, 'viewCrewAssignments'])->name('crew.assignments');
             Route::post('/crew-assignments', [CrewAssignmentController::class, 'storeCrewAssignments'])->name('crew.assignments.store');
             Route::delete('/crew-assignments/{id}', [CrewAssignmentController::class, 'deleteCrewAssignment'])->name('crew.assignments.delete');
@@ -159,7 +157,7 @@ Route::middleware(['auth:superadmin,admin,web', 'log.role.activity'])->group(fun
         Route::post('/leave-requests/{id}/reject', [LeaveRequestController::class, 'reject'])->name('leave-requests.reject');
     });
 
-    Route::middleware(['role:Admin,HR,Accounting,Project Manager,Manager,Supervisor'])->group(function () {
+    Route::middleware(['role:HR,Accounting,Project Manager,Manager,Supervisor'])->group(function () {
         Route::get('/my-leave-requests', [LeaveRequestController::class, 'myIndex'])->name('my.leave-requests');
         Route::post('/my-leave-requests', [LeaveRequestController::class, 'myStore'])->name('my.leave-requests.store');
         Route::post('/my-leave-requests/{id}/cancel', [LeaveRequestController::class, 'cancel'])->name('my.leave-requests.cancel');

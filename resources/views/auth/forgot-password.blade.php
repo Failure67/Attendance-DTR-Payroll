@@ -6,7 +6,7 @@
         <div class="auth-header">
             <img src="{{ asset('assets/img/logo/logo.webp') }}" alt="Logo" class="auth-logo">
             <h1 class="auth-title">Reset Password</h1>
-            <p class="auth-subtitle">Enter your email to receive a password reset link</p>
+            <p class="auth-subtitle">Enter your email to receive a one-time code</p>
         </div>
 
         @if ($errors->any())
@@ -49,14 +49,13 @@
             </div>
 
             <button type="submit" class="btn btn-primary btn-auth w-100">
-                <i class="fa-solid fa-envelope"></i> Send Reset Link
+                <i class="fa-solid fa-envelope"></i> Send Code
             </button>
         </form>
 
         <div class="auth-footer">
             <div class="auth-footer-links">
                 <a href="{{ route('auth.login.show') }}" class="auth-footer-link"><i class="fa-solid fa-arrow-left"></i> Back to login</a>
-                <a href="{{ route('auth.register.show') }}" class="auth-footer-link">Create an account</a>
             </div>
         </div>
     </div>

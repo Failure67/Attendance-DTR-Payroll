@@ -4,79 +4,59 @@
 
     @include('partials.menu')
 
+    @php
+        $filters = $filters ?? [];
+        $showArchived = $showArchived ?? false;
+    @endphp
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const activeSection = document.getElementById('active-users');
             const archivedSection = document.getElementById('archived-users');
             const searchInput = document.getElementById('users-search');
+            const searchHiddenInput = document.getElementById('users-filter-search');
             const roleFilter = document.getElementById('role-filter');
             const employmentTypeFilter = document.getElementById('employment-type-filter');
             const archiveToggleBtn = document.getElementById('archive-toggle-users');
             const archiveToggleLabel = archiveToggleBtn ? archiveToggleBtn.querySelector('.button-label') : null;
             const archiveToggleIcon = archiveToggleBtn ? archiveToggleBtn.querySelector('.button-icon i') : null;
 
-            let showingArchived = false;
+            const $wrapper = document.querySelector('.wrapper.users');
+            let showingArchived = $wrapper && ($wrapper.dataset.archived === '1' || $wrapper.dataset.archived === 1);
+
+            const filterForm = document.getElementById('users-filter-form');
+            let searchSubmitTimer = null;
+
+            function syncSearchToHidden() {
+                if (searchHiddenInput && searchInput) {
+                    searchHiddenInput.value = searchInput.value;
+                }
+            }
 
             function setView(showArchived) {
                 showingArchived = showArchived;
 
-                if (activeSection && archivedSection) {
-                    activeSection.style.display = showArchived ? 'none' : '';
-                    archivedSection.style.display = showArchived ? '' : 'none';
+                const url = new URL(window.location.href);
+
+                if (showArchived) {
+                    url.searchParams.set('archived', '1');
+                } else {
+                    url.searchParams.delete('archived');
                 }
 
-                if (archiveToggleLabel && archiveToggleIcon) {
-                    if (showArchived) {
-                        archiveToggleLabel.textContent = 'Back to users';
-                        archiveToggleIcon.classList.remove('fa-clock-rotate-left');
-                        archiveToggleIcon.classList.add('fa-users');
-                    } else {
-                        archiveToggleLabel.textContent = 'View archived';
-                        archiveToggleIcon.classList.remove('fa-users');
-                        archiveToggleIcon.classList.add('fa-clock-rotate-left');
-                    }
-                }
+                url.searchParams.delete('page');
+                url.searchParams.delete('archived_page');
 
-                applyFilters();
+                window.location.href = url.toString();
             }
 
-            function applyFilters() {
-                const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-                const role = roleFilter ? roleFilter.value.trim().toLowerCase() : '';
-                const empType = employmentTypeFilter ? employmentTypeFilter.value.trim().toLowerCase() : '';
+            function submitFilters() {
+                if (!filterForm) {
+                    return;
+                }
 
-                [activeSection, archivedSection].forEach(section => {
-                    if (!section) return;
-                    const table = section.querySelector('table');
-                    if (!table) return;
-
-                    table.querySelectorAll('tbody tr').forEach(row => {
-                        // full text search
-                        const text = row.innerText.toLowerCase();
-
-                        // Find the role text robustly:
-                        // 1) prefer an element with data-role attribute
-                        // 2) else try to use the 3rd td (cells[2]) as a fallback
-                        let roleText = '';
-                        const roleNode = row.querySelector('[data-role]');
-                        if (roleNode) {
-                            roleText = roleNode.innerText.trim().toLowerCase();
-                        } else {
-                            const cells = row.querySelectorAll('td');
-                            if (cells && cells.length >= 3) {
-                                roleText = cells[2].innerText.trim().toLowerCase();
-                            } else {
-                                roleText = '';
-                            }
-                        }
-
-                        const matchesSearch = !query || text.includes(query);
-                        const matchesRole = !role || (roleText && (roleText === role || roleText.includes(role)));
-                        const matchesEmpType = !empType || text.includes(empType);
-
-                        row.style.display = (matchesSearch && matchesRole && matchesEmpType) ? '' : 'none';
-                    });
-                });
+                syncSearchToHidden();
+                filterForm.submit();
             }
 
             // If archiveToggleBtn isn't found by id (older markup), try to find a button by text as a fallback
@@ -104,15 +84,88 @@
             }
 
             if (searchInput) {
-                searchInput.addEventListener('input', applyFilters);
+                searchInput.addEventListener('input', function () {
+                    syncSearchToHidden();
+
+                    if (searchSubmitTimer) {
+                        clearTimeout(searchSubmitTimer);
+                    }
+
+                    searchSubmitTimer = setTimeout(function () {
+                        submitFilters();
+                    }, 400);
+                });
             }
 
+            document.addEventListener('click', function (e) {
+                const row = e.target.closest('.table-container.users-table tbody tr, .table-container.archived-users-table tbody tr');
+                if (!row) {
+                    return;
+                }
+
+                if (e.target.closest('a, button, input, textarea, select, label, form')) {
+                    return;
+                }
+
+                const preview = row.querySelector('.user-row-preview');
+                if (!preview) {
+                    return;
+                }
+
+                const name = preview.dataset.name || '';
+                const email = preview.dataset.email || '';
+                const role = preview.dataset.role || '';
+                const employmentType = preview.dataset.employmentType || '';
+                const employmentStartDate = preview.dataset.employmentStartDate || '';
+                const birthdate = preview.dataset.birthdate || '';
+                const gender = preview.dataset.gender || '';
+                const sssNumber = preview.dataset.sssNumber || '';
+                const philhealthNumber = preview.dataset.philhealthNumber || '';
+                const pagibigNumber = preview.dataset.pagibigNumber || '';
+                const registeredAt = preview.dataset.registered || '';
+                const archivedAt = preview.dataset.archivedAt || '';
+
+                const setText = function (id, value) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.textContent = value || 'N/A';
+                    }
+                };
+
+                setText('user-details-name', name);
+                setText('user-details-email', email);
+                setText('user-details-role', role);
+                setText('user-details-employment-type', employmentType);
+                setText('user-details-employment-start-date', employmentStartDate);
+                setText('user-details-birthdate', birthdate);
+                setText('user-details-gender', gender);
+                setText('user-details-sss', sssNumber);
+                setText('user-details-philhealth', philhealthNumber);
+                setText('user-details-pagibig', pagibigNumber);
+                setText('user-details-registered', registeredAt);
+                setText('user-details-archived', archivedAt);
+
+                const modalEl = document.getElementById('userDetailsModal');
+                if (!modalEl) {
+                    return;
+                }
+
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            });
+
             if (roleFilter) {
-                roleFilter.addEventListener('change', applyFilters);
+                roleFilter.addEventListener('change', submitFilters);
             }
 
             if (employmentTypeFilter) {
-                employmentTypeFilter.addEventListener('change', applyFilters);
+                employmentTypeFilter.addEventListener('change', submitFilters);
+            }
+
+            if (filterForm) {
+                filterForm.addEventListener('submit', function () {
+                    syncSearchToHidden();
+                });
             }
 
             // Action buttons (edit/archive/restore/delete)
@@ -362,13 +415,12 @@
                 }
             });
 
-            // default view
-            setView(false);
+            syncSearchToHidden();
 
             // Hard-override cursor on users tables so rows never look clickable.
             document.querySelectorAll('.table-container.users-table tbody tr, .table-container.archived-users-table tbody tr')
                 .forEach(function (row) {
-                    row.style.cursor = 'default';
+                    row.style.cursor = 'pointer';
                 });
 
             // Ensure the New button opens the modal in create mode
@@ -383,6 +435,12 @@
 
                     modalEl.dataset.mode = 'create';
 
+                    const passwordInput = form.querySelector('[name="password"]');
+                    if (passwordInput) {
+                        passwordInput.value = '';
+                        passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+
                     form.action = '{{ route('users.store') }}';
 
                     const methodInput = form.querySelector('input[name="_method"]');
@@ -394,10 +452,18 @@
                     form.reset();
                 });
             }
+
         });
     </script>
 
-    <div class="wrapper {{ $pageClass }}">
+    <div class="wrapper {{ $pageClass }}" data-archived="{{ $showArchived ? '1' : '0' }}">
+
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
         <div class="page-header">
             <div class="page-title">
@@ -411,34 +477,38 @@
 
         <div class="container {{ $pageClass }} tab">
 
-            <div class="d-flex align-items-center" style="gap: 8px;">
-                {{-- SEARCH FIRST (swapped) --}}
+            <form id="users-filter-form" method="GET" action="{{ route('users') }}" class="d-flex align-items-end" style="gap: 8px;">
+                @if ($showArchived)
+                    <input type="hidden" name="archived" value="1">
+                @endif
+
                 @include('components.search', [
                     'searchClass' => 'users',
                     'searchId' => 'users-search',
+                    'searchValue' => $filters['search'] ?? '',
                 ])
+                <input type="hidden" name="search" id="users-filter-search" value="{{ $filters['search'] ?? '' }}">
 
-                {{-- ROLE DROPDOWN SECOND (swapped) --}}
                 @php
                     $currentRoleKey = strtolower(auth()->user()->role ?? '');
                 @endphp
-                <select id="role-filter" class="tab-select">
+                <select id="role-filter" name="role" class="tab-select">
                     <option value="">All roles</option>
                     @if ($currentRoleKey === 'superadmin')
-                        <option value="Admin">Admin</option>
+                        <option value="Admin" @if(($filters['role'] ?? '') === 'Admin') selected @endif>Admin</option>
                     @endif
-                    <option value="HR">HR</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Supervisor">Supervisor</option>
-                    <option value="Worker">Worker</option>
+                    <option value="HR" @if(($filters['role'] ?? '') === 'HR') selected @endif>HR</option>
+                    <option value="Manager" @if(($filters['role'] ?? '') === 'Manager') selected @endif>Manager</option>
+                    <option value="Supervisor" @if(($filters['role'] ?? '') === 'Supervisor') selected @endif>Supervisor</option>
+                    <option value="Worker" @if(($filters['role'] ?? '') === 'Worker') selected @endif>Worker</option>
                 </select>
 
-                <select id="employment-type-filter" class="tab-select">
+                <select id="employment-type-filter" name="employment_type" class="tab-select">
                     <option value="">All types</option>
-                    <option value="Regular">Regular</option>
-                    <option value="Part-time">Part-time</option>
+                    <option value="regular" @if(($filters['employment_type'] ?? '') === 'regular') selected @endif>Regular</option>
+                    <option value="part_time" @if(($filters['employment_type'] ?? '') === 'part_time') selected @endif>Part-time</option>
                 </select>
-            </div>
+            </form>
 
             <div class="crud-buttons">
 
@@ -457,8 +527,8 @@
                     'buttonType' => 'danger',
                     'buttonVar' => 'archive-toggle',
                     'buttonSrc' => 'users',
-                    'buttonIcon' => '<i class="fa-solid fa-clock-rotate-left"></i>',
-                    'buttonLabel' => 'View archived',
+                    'buttonIcon' => $showArchived ? '<i class="fa-solid fa-users"></i>' : '<i class="fa-solid fa-clock-rotate-left"></i>',
+                    'buttonLabel' => $showArchived ? 'Back to users' : 'View archived',
                     'buttonModal' => false,
                     'btnAttribute' => 'id="archive-toggle-users"'
                 ])
@@ -470,7 +540,7 @@
         <div class="container {{ $pageClass }} table-component">
 
             <!-- Active Users Table -->
-            <div id="active-users" class="tab-content active">
+            <div id="active-users" class="tab-content active" style="{{ $showArchived ? 'display: none;' : '' }}">
                 @include('components.table', [
                     'tableClass' => 'users-table',
                     'tableCol' => [
@@ -503,7 +573,21 @@
                                     . '<span class="fw-semibold">' . e($displayName) . '</span>'
                                     . '<span class="badge bg-light text-dark mt-1" style="font-size: 0.7rem;">' . e($employmentTypeLabel) . '</span>'
                                 . '</div>'
-                            . '</div>',
+                            . '</div>'
+                            . '<span class="user-row-preview" style="display:none"'
+                                . ' data-id="' . e($user->id) . '"'
+                                . ' data-name="' . e($displayName) . '"'
+                                . ' data-email="' . e($user->email) . '"'
+                                . ' data-role="' . e($user->role ?? '') . '"'
+                                . ' data-employment-type="' . e($employmentTypeLabel) . '"'
+                                . ' data-employment-start-date="' . e($user->employment_start_date ? now()->parse($user->employment_start_date)->format('M d, Y') : '') . '"'
+                                . ' data-birthdate="' . e($user->userCredential?->birthdate ? now()->parse($user->userCredential->birthdate)->format('M d, Y') : '') . '"'
+                                . ' data-gender="' . e($user->userCredential?->gender ?? '') . '"'
+                                . ' data-sss-number="' . e($user->userCredential?->sss_number ?? '') . '"'
+                                . ' data-philhealth-number="' . e($user->userCredential?->philhealth_number ?? '') . '"'
+                                . ' data-pagibig-number="' . e($user->userCredential?->pagibig_number ?? '') . '"'
+                                . ' data-registered="' . e($registeredAt) . '"'
+                            . '></span>',
                             // Email
                             e($user->email),
                             // Role pill with data-role attribute for reliable JS lookup
@@ -553,7 +637,7 @@
             </div>
 
             <!-- Archived Users Table -->
-            <div id="archived-users" class="tab-content hidden">
+            <div id="archived-users" class="tab-content hidden" style="{{ $showArchived ? '' : 'display: none;' }}">
                 @include('components.table', [
                     'tableClass' => 'archived-users-table',
                     'tableCol' => [
@@ -573,22 +657,39 @@
                     'tableData' => $archivedUsers->map(function ($user) {
                         $employmentType = $user->employment_type ?? \App\Models\User::EMPLOYMENT_TYPE_REGULAR;
                         $employmentTypeLabel = $employmentType === \App\Models\User::EMPLOYMENT_TYPE_PART_TIME ? 'Part-time' : 'Regular';
+                        $displayName = $user->full_name ?? $user->username;
+                        $archivedAt = $user->deleted_at ? now()->parse($user->deleted_at)->format('M d, Y') : '';
                         return [
                             '<div class="d-flex align-items-center">'
                                 . '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width:32px;height:32px;font-size:12px;font-weight:600;">'
                                     . substr($user->full_name ?? $user->username, 0, 2)
                                 . '</div>'
                                 . '<div class="d-flex flex-column">'
-                                    . '<span class="text-muted">' . e($user->full_name ?? $user->username) . '</span>'
+                                    . '<span class="text-muted">' . e($displayName) . '</span>'
                                     . '<span class="badge bg-light text-dark mt-1" style="font-size: 0.7rem;">' . e($employmentTypeLabel) . '</span>'
                                 . '</div>'
-                            . '</div>',
+                            . '</div>'
+                            . '<span class="user-row-preview" style="display:none"'
+                                . ' data-id="' . e($user->id) . '"'
+                                . ' data-name="' . e($displayName) . '"'
+                                . ' data-email="' . e($user->email) . '"'
+                                . ' data-role="' . e($user->role ?? '') . '"'
+                                . ' data-employment-type="' . e($employmentTypeLabel) . '"'
+                                . ' data-employment-start-date="' . e($user->employment_start_date ? now()->parse($user->employment_start_date)->format('M d, Y') : '') . '"'
+                                . ' data-birthdate="' . e($user->userCredential?->birthdate ? now()->parse($user->userCredential->birthdate)->format('M d, Y') : '') . '"'
+                                . ' data-gender="' . e($user->userCredential?->gender ?? '') . '"'
+                                . ' data-sss-number="' . e($user->userCredential?->sss_number ?? '') . '"'
+                                . ' data-philhealth-number="' . e($user->userCredential?->philhealth_number ?? '') . '"'
+                                . ' data-pagibig-number="' . e($user->userCredential?->pagibig_number ?? '') . '"'
+                                . ' data-registered="' . e($user->created_at ? now()->parse($user->created_at)->format('M d, Y') : '') . '"'
+                                . ' data-archived-at="' . e($archivedAt) . '"'
+                            . '></span>',
                             '<span class="text-muted">' . e($user->email) . '</span>',
                             // Role with data-role attribute
                             '<span data-role="' . e($user->role) . '" class="badge rounded-pill bg-secondary text-dark">'
                                 . e($user->role ?? 'N/A')
                             . '</span>',
-                            '<span class="text-muted">' . now()->parse($user->deleted_at)->format('M d, Y') . '</span>',
+                            '<span class="text-muted">' . e($archivedAt) . '</span>',
                             '<div class="users-actions d-flex align-items-center gap-1">'
                                 . '<button type="button" class="btn btn-outline-success btn-sm btn-icon action-btn restore" data-id="' . $user->id . '" title="Restore user">'
                                     . '<i class="fa-solid fa-rotate-left"></i>'
@@ -601,6 +702,13 @@
                     })->toArray(),
                     'rawColumns' => ['user', 'email', 'role', 'archived-date', 'actions'],
                 ])
+
+                <div class="mt-2">
+                    @include('components.pagination', [
+                        'paginationClass' => 'users-archived',
+                        'paginator' => $archivedUsers ?? null,
+                    ])
+                </div>
             </div>
 
         </div>
@@ -663,13 +771,20 @@
                 'selectVar' => 'role',
                 'selectName' => 'role',
                 'selectLabel' => 'Role',
-                'selectData' => [
-                    'Admin' => 'Admin',
-                    'HR' => 'HR',
-                    'Manager' => 'Manager',
-                    'Supervisor' => 'Supervisor',
-                    'Worker' => 'Worker',
-                ],
+                'selectData' => (isset($currentRoleKey) && $currentRoleKey === 'superadmin')
+                    ? [
+                        'Admin' => 'Admin',
+                        'HR' => 'HR',
+                        'Manager' => 'Manager',
+                        'Supervisor' => 'Supervisor',
+                        'Worker' => 'Worker',
+                    ]
+                    : [
+                        'HR' => 'HR',
+                        'Manager' => 'Manager',
+                        'Supervisor' => 'Supervisor',
+                        'Worker' => 'Worker',
+                    ],
                 'isShort' => false,
             ])->render() . '
 
@@ -816,6 +931,64 @@
             ])->render() . '
         ',
     ])
+
+    <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userDetailsModalLabel">User Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="fw-semibold" id="user-details-name">N/A</div>
+                    <div class="small text-muted mb-3" id="user-details-email">N/A</div>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="small text-muted">Role</div>
+                            <div id="user-details-role">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Employment type</div>
+                            <div id="user-details-employment-type">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Employment start date</div>
+                            <div id="user-details-employment-start-date">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Birthdate</div>
+                            <div id="user-details-birthdate">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Gender</div>
+                            <div id="user-details-gender">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">SSS number</div>
+                            <div id="user-details-sss">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">PhilHealth number</div>
+                            <div id="user-details-philhealth">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Pag-IBIG number</div>
+                            <div id="user-details-pagibig">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Registered</div>
+                            <div id="user-details-registered">N/A</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Archived</div>
+                            <div id="user-details-archived">N/A</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- delete --}}
     <!-- Delete Confirmation Modal -->

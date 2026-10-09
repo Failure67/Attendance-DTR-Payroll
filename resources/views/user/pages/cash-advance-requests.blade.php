@@ -128,7 +128,11 @@
 
                     <div class="col-md-4">
                         <label for="amount" class="form-label">Amount</label>
-                        <input type="number" step="0.01" min="0.01" name="amount" id="amount" class="form-control" value="{{ old('amount') }}" required>
+                        <input type="number" step="0.01" min="0.01" name="amount" id="amount" class="form-control" value="{{ old('amount') }}" required
+                            @if(!is_null($effectiveLimit) && $effectiveLimit > 0)
+                                max="{{ number_format((float) $effectiveLimit, 2, '.', '') }}"
+                            @endif
+                        >
                     </div>
 
                     <div class="col-12">

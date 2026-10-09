@@ -16,7 +16,7 @@ return [
         // Maximum outstanding CA balance per employment type (PHP).
         'cap' => [
             // Regular workers: e.g. up to one-half of typical monthly net pay.
-            'regular' => 10000.00,
+            'regular' => 5000.00,
 
             // Part-time workers: much lower exposure; can be enabled via allow_part_time.
             'part_time' => 3000.00,

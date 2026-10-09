@@ -9,39 +9,72 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function viewUsers()
+    public function viewUsers(Request $request)
     {
         $currentRole = strtolower(auth()->user()->role ?? '');
+
+        $search = trim((string) $request->query('search', ''));
+        $roleFilter = (string) $request->query('role', '');
+        $employmentTypeFilter = (string) $request->query('employment_type', '');
 
         $activeQuery = User::with('userCredential')->whereNull('deleted_at');
         $archivedQuery = User::with('userCredential')->onlyTrashed();
 
         $perPage = 10;
 
+        $applyFilters = function ($query) use ($search, $roleFilter, $employmentTypeFilter) {
+            if ($search !== '') {
+                $like = '%' . $search . '%';
+                $query->where(function ($q) use ($like) {
+                    $q->where('full_name', 'like', $like)
+                        ->orWhere('username', 'like', $like)
+                        ->orWhere('email', 'like', $like);
+                });
+            }
+
+            if ($roleFilter !== '') {
+                $query->where('role', $roleFilter);
+            }
+
+            if ($employmentTypeFilter !== '') {
+                $query->where('employment_type', $employmentTypeFilter);
+            }
+
+            return $query;
+        };
+
         if ($currentRole === 'superadmin') {
-            $users = $activeQuery
+            $users = $applyFilters($activeQuery
                 ->whereNotIn('role', ['Superadmin', 'superadmin'])
                 ->orderBy('full_name')
                 ->orderBy('username')
-                ->paginate($perPage);
+            )
+                ->paginate($perPage)
+                ->appends($request->query());
 
-            $archivedUsers = $archivedQuery
+            $archivedUsers = $applyFilters($archivedQuery
                 ->whereNotIn('role', ['Superadmin', 'superadmin'])
                 ->orderBy('full_name')
                 ->orderBy('username')
-                ->paginate($perPage, ['*'], 'archived_page');
+            )
+                ->paginate($perPage, ['*'], 'archived_page')
+                ->appends($request->query());
         } else {
-            $users = $activeQuery
+            $users = $applyFilters($activeQuery
                 ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
                 ->orderBy('full_name')
                 ->orderBy('username')
-                ->paginate($perPage);
+            )
+                ->paginate($perPage)
+                ->appends($request->query());
 
-            $archivedUsers = $archivedQuery
+            $archivedUsers = $applyFilters($archivedQuery
                 ->whereNotIn('role', ['Admin', 'admin', 'Superadmin', 'superadmin'])
                 ->orderBy('full_name')
                 ->orderBy('username')
-                ->paginate($perPage, ['*'], 'archived_page');
+            )
+                ->paginate($perPage, ['*'], 'archived_page')
+                ->appends($request->query());
         }
         
         return view('pages.users', [
@@ -49,15 +82,28 @@ class UserController extends Controller
             'pageClass' => 'users',
             'users' => $users,
             'archivedUsers' => $archivedUsers,
+            'filters' => [
+                'search' => $search,
+                'role' => $roleFilter,
+                'employment_type' => $employmentTypeFilter,
+            ],
+            'showArchived' => $request->boolean('archived'),
         ]);
     }
 
     public function storeUser(Request $request)
     {
+        $currentUser = $request->user();
+        $currentRoleKey = strtolower($currentUser->role ?? '');
+
+        $allowedRoles = $currentRoleKey === 'superadmin'
+            ? 'Admin,HR,Manager,Supervisor,Worker'
+            : 'HR,Manager,Supervisor,Worker';
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'role' => 'required|in:Admin,HR,Manager,Supervisor,Worker',
+            'role' => 'required|in:' . $allowedRoles,
             'password' => 'required|string|min:12',
             'employment_type' => 'nullable|in:regular,part_time',
             'employment_start_date' => 'nullable|date',
@@ -67,9 +113,6 @@ class UserController extends Controller
             'philhealth_number' => 'nullable|string|max:30',
             'pagibig_number' => 'nullable|string|max:30',
         ]);
-
-        $currentUser = $request->user();
-        $currentRoleKey = strtolower($currentUser->role ?? '');
 
         DB::beginTransaction();
 
@@ -96,11 +139,13 @@ class UserController extends Controller
                 $employmentStartDate = $validated['employment_start_date'];
             }
 
+            $password = trim((string) ($validated['password'] ?? ''));
+
             $user = User::create([
                 'username' => $username,
                 'full_name' => $validated['full_name'],
                 'email' => $validated['email'],
-                'password' => \Hash::make($validated['password']),
+                'password' => \Hash::make($password),
                 'role' => $validated['role'],
                 'employment_type' => $employmentType,
                 'employment_start_date' => $employmentStartDate,
@@ -134,10 +179,22 @@ class UserController extends Controller
 
     public function updateUser(Request $request, User $user)
     {
+        $currentUser = $request->user();
+        $currentRoleKey = strtolower($currentUser->role ?? '');
+
+        $targetRoleKey = strtolower($user->role ?? '');
+        if ($currentRoleKey !== 'superadmin' && in_array($targetRoleKey, ['admin', 'superadmin'], true)) {
+            abort(403);
+        }
+
+        $allowedRoles = $currentRoleKey === 'superadmin'
+            ? 'Admin,HR,Manager,Supervisor,Worker'
+            : 'HR,Manager,Supervisor,Worker';
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|in:Admin,HR,Manager,Supervisor,Worker',
+            'role' => 'required|in:' . $allowedRoles,
             'password' => 'nullable|string|min:12',
             'employment_type' => 'nullable|in:regular,part_time',
             'employment_start_date' => 'nullable|date',
@@ -147,9 +204,6 @@ class UserController extends Controller
             'philhealth_number' => 'nullable|string|max:30',
             'pagibig_number' => 'nullable|string|max:30',
         ]);
-
-        $currentUser = $request->user();
-        $currentRoleKey = strtolower($currentUser->role ?? '');
 
         DB::beginTransaction();
 
@@ -179,8 +233,10 @@ class UserController extends Controller
                 $user->employment_start_date = $validated['employment_start_date'];
             }
 
-            if (!empty($validated['password'])) {
-                $user->password = \Hash::make($validated['password']);
+            $password = trim((string) ($validated['password'] ?? ''));
+
+            if ($password !== '') {
+                $user->password = \Hash::make($password);
             }
 
             $user->save();
@@ -238,20 +294,40 @@ class UserController extends Controller
 
     public function archiveUser(User $user)
     {
+        $currentRoleKey = strtolower(auth()->user()->role ?? '');
+        $targetRoleKey = strtolower($user->role ?? '');
+
+        if ($currentRoleKey !== 'superadmin' && in_array($targetRoleKey, ['admin', 'superadmin'], true)) {
+            abort(403);
+        }
+
         $user->delete();
         return response()->json(['success' => true]);
     }
 
     public function restoreUser($id)
     {
+        $currentRoleKey = strtolower(auth()->user()->role ?? '');
         $user = User::withTrashed()->findOrFail($id);
+
+        $targetRoleKey = strtolower($user->role ?? '');
+        if ($currentRoleKey !== 'superadmin' && in_array($targetRoleKey, ['admin', 'superadmin'], true)) {
+            abort(403);
+        }
+
         $user->restore();
         return response()->json(['success' => true]);
     }
 
     public function deleteUser(Request $request, $id)
     {
+        $currentRoleKey = strtolower($request->user()->role ?? '');
         $user = User::withTrashed()->findOrFail($id);
+
+        $targetRoleKey = strtolower($user->role ?? '');
+        if ($currentRoleKey !== 'superadmin' && in_array($targetRoleKey, ['admin', 'superadmin'], true)) {
+            abort(403);
+        }
         
         if ($user->trashed()) {
             $user->forceDelete();
@@ -269,7 +345,19 @@ class UserController extends Controller
             'user_ids.*' => 'exists:users,id',
         ]);
 
+        $currentRoleKey = strtolower($request->user()->role ?? '');
+
         $users = User::whereIn('id', $validated['user_ids'])->get();
+
+        if ($currentRoleKey !== 'superadmin') {
+            foreach ($users as $user) {
+                $targetRoleKey = strtolower($user->role ?? '');
+                if (in_array($targetRoleKey, ['admin', 'superadmin'], true)) {
+                    abort(403);
+                }
+            }
+        }
+
         $users->each->delete();
 
         return redirect()->route('users')->with('success', 'Selected users successfully deleted.');
