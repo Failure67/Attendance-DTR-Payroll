@@ -146,12 +146,11 @@
         @endphp
         
         @if ($isDebug === true)
-<<<<<<< HEAD
+
             <a href="{{ $debugUrl }}" style="color: white; text-decoration: none;">
-=======
+
             <a href="{{ route('new') }}" style="color: white; text-decoration: none;">
->>>>>>> 5395f652ac77a567497165442a059e59b3366e75
-                Debug
+
             </a>
         @endif
 

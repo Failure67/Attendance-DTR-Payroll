@@ -5,7 +5,8 @@
 .table-container {
     border: 1px solid #505050;
     border-radius: 10px;
-    overflow: hidden;
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .table-container table {

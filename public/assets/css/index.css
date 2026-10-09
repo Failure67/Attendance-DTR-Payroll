@@ -4,6 +4,7 @@
     display: flex;
     gap: 20px;
     justify-content: space-between;
+    flex-wrap: wrap;
 }
 
 /* Let the four Home stat cards grow to share the full content width */
@@ -21,4 +22,23 @@
 
 .container.index #company-announcements > .dashboard-card {
     flex: 1 1 0;
+}
+
+@media (max-width: 767px) {
+    .container.index > .dashboard-count,
+    .container.index.mt-3 > .dashboard-card,
+    .container.index > .dashboard-card,
+    .container.index > #company-announcements {
+        flex: 1 1 calc(50% - 10px);
+        min-width: 0;
+    }
+}
+
+@media (max-width: 479px) {
+    .container.index > .dashboard-count,
+    .container.index.mt-3 > .dashboard-card,
+    .container.index > .dashboard-card,
+    .container.index > #company-announcements {
+        flex-basis: 100%;
+    }
 }
