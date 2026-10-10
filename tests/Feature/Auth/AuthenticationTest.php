@@ -16,6 +16,17 @@ class AuthenticationTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertStatus(200);
+        $response->assertDontSee('class="titlebar"', false);
+    }
+
+    public function test_electron_login_screen_includes_window_controls(): void
+    {
+        $response = $this->withHeaders([
+            'User-Agent' => 'AttendanceDTRPayroll Electron/1.0',
+        ])->get('/login');
+
+        $response->assertStatus(200);
+        $response->assertSee('class="titlebar"', false);
     }
 
     public function test_users_can_authenticate_using_the_login_screen(): void

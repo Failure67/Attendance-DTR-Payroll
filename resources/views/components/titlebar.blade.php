@@ -1,3 +1,4 @@
+@if (str_contains(request()->userAgent() ?? '', 'Electron'))
 <div class="titlebar" ondblclick="window.electronAPI.maximize()">
 
     <div class="titlebar-container title">
@@ -5,11 +6,11 @@
         <div class="icon">
             <img src="{{ asset('assets/img/favicon/favicon.ico') }}" alt="Icon" width="30">
         </div>
+        @endif
 
         <div class="title">
             Payroll Management System
         </div>
-        @endif
     </div>
     
     <div class="titlebar-container buttons">
@@ -29,3 +30,4 @@
     </div>
 
 </div>
+@endif
